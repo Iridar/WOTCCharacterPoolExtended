@@ -2,39 +2,24 @@ class CharacterPoolManagerExtended extends CharacterPoolManager;
 
 const CharPoolPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
 
+// ============================================================================
+// OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
+
 event InitSoldier( XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData )
 {
 	local CPUnitData UnitData;
 
 	super.InitSoldier(Unit, CharacterPoolData);
 
-	`LOG(GetFuncName() @ Unit.GetFullName(),, 'IRITEST');
+	`LOG(GetFuncName() @ "Attempting to load data for unit:" @ Unit.GetFullName(),, 'IRITEST');
 
-	`LOG("Attempting to load unit:" @ Unit.GetFullName(),, 'IRITEST');
-	UnitData = LoadUnitData(Unit.GetFullName()); // CRASH IS HERE
+	UnitData = LoadUnitData(Unit.GetFullName());
 	if (UnitData != none)
 	{
-		`LOG("Found saved unit for:" @ Unit.GetFullName() @ ", copying appearance store.",, 'IRITEST');
+		`LOG("Unit data found, copying appearance store.",, 'IRITEST');
 		Unit.AppearanceStore = UnitData.AppearanceStore;
 	}
 	else `LOG("Did NOT found saved unit for:" @ Unit.GetFullName(),, 'IRITEST');
-}
-
-// Doesn't appear to be getting called.
-function LoadCharacterPool()
-{
-	`LOG(GetFuncName() @ "called" @ CharacterPool.Length,, 'IRITEST');
-
-	super.LoadCharacterPool();
-}
-
-function LoadBaseGameCharacterPool()
-{
-	`LOG(GetFuncName() @ "before called" @ CharacterPool.Length,, 'IRITEST');
-
-	super.LoadBaseGameCharacterPool();
-
-	`LOG(GetFuncName() @ "after called" @ CharacterPool.Length,, 'IRITEST');
 }
 
 function SaveCharacterPool()
@@ -50,6 +35,24 @@ function SaveCharacterPool()
 
 	super.SaveCharacterPool();
 }
+/*
+function XComGameState_Unit GetCharacter(string CharacterName)
+{
+	local int Index;	
+
+	for(Index = 0; Index < CharacterPool.Length; ++Index)
+	{
+		if(CharacterName == CharacterPool[Index].GetFullName())
+		{
+			return CharacterPool[Index];
+		}
+	}
+
+	return none;
+}*/
+
+// ============================================================================
+// INTERNAL FUNCTIONS
 
 private function SaveUnitData(const XComGameState_Unit UnitState)
 {
@@ -69,17 +72,25 @@ private function CPUnitData LoadUnitData(const string strSoldierName)
 	local CPUnitData UnitData;
     local bool Success;
    
+	UnitData = new class'CPUnitData';
     Success = class'Engine'.static.BasicLoadObject(UnitData, GetFileNameFromSoldierName(strSoldierName), false, 1);
 
 	`LOG("Loaded unit:" @ strSoldierName @ Success @ GetFileNameFromSoldierName(strSoldierName),, 'IRITEST');
-
-	return UnitData;
+	if (Success)
+	{
+		return UnitData;
+	}
+	return none;
 }
 
 static private function string GetFileNameFromSoldierName(string strSoldierName)
 {
 	return class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolPath $ name(strSoldierName) $ ".bin";
 }
+
+
+// ============================================================================
+// INTERNAL HELPERS
 
 private function PrintCP()
 {
@@ -94,4 +105,22 @@ private function PrintCP()
 	}
 
 	`LOG("####" @ GetFuncName() @ "END",, 'IRITEST');
+}
+
+// ============================================================================
+// These don't appear to be getting called.
+function LoadCharacterPool()
+{
+	`LOG(GetFuncName() @ "called" @ CharacterPool.Length,, 'IRITEST');
+
+	super.LoadCharacterPool();
+}
+
+function LoadBaseGameCharacterPool()
+{
+	`LOG(GetFuncName() @ "before called" @ CharacterPool.Length,, 'IRITEST');
+
+	super.LoadBaseGameCharacterPool();
+
+	`LOG(GetFuncName() @ "after called" @ CharacterPool.Length,, 'IRITEST');
 }

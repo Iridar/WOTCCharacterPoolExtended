@@ -1,0 +1,1 @@
+class CharacterPoolManagerExtended extends CharacterPoolManager;

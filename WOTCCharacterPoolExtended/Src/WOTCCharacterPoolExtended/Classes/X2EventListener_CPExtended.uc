@@ -9,25 +9,19 @@ static function array<X2DataTemplate> CreateTemplates()
 	return Templates;
 }
 
-/*
-'AbilityActivated', AbilityState, SourceUnitState, NewGameState
-'PlayerTurnBegun', PlayerState, PlayerState, NewGameState
-'PlayerTurnEnded', PlayerState, PlayerState, NewGameState
-'UnitDied', UnitState, UnitState, NewGameState
-'KillMail', UnitState, Killer, NewGameState
-'UnitTakeEffectDamage', UnitState, UnitState, NewGameState
-'OnUnitBeginPlay', UnitState, UnitState, NewGameState
-'OnTacticalBeginPlay', X2TacticalGameRuleset, none, NewGameState
-*/
-
 static function CHEventListenerTemplate Create_ListenerTemplate()
 {
 	local CHEventListenerTemplate Template;
 
 	`CREATE_X2TEMPLATE(class'CHEventListenerTemplate', Template, 'IRI_XYM_X2EventListener_CPExtended');
 
-	Template.RegisterInTactical = true; // Unit shouldn't be able to swap armor mid-mission, but you never know
+	// Units shouldn't be able to swap armor mid-mission, but you never know
+	Template.RegisterInTactical = true; 
 	Template.RegisterInStrategy = true;
+
+	// Needed so that soldier generated at the campaign start properly get their custom Kevlar appearance from CP 
+	// even if the CP unit didn't have Kevlar equipped when CP was saved.
+	Template.RegisterInCampaignStart = true; 
 
 	Template.AddCHEvent('ItemAddedToSlot', OnItemAddedToSlot, ELD_Immediate, 50);
 
@@ -64,12 +58,11 @@ static function EventListenerReturn OnItemAddedToSlot(Object EventData, Object E
 		return ELR_NoInterrupt;
 	}
 
-	for (i = 0; i < CPUnitState.AppearanceStore.Length; i++)
-	{
-		`LOG("Stored appearance:" @ CPUnitState.AppearanceStore[i].GenderArmorTemplate,, 'IRITEST');
-	}
-	
-	
+	//for (i = 0; i < CPUnitState.AppearanceStore.Length; i++)
+	//{
+	//	`LOG("Stored appearance:" @ CPUnitState.AppearanceStore[i].GenderArmorTemplate,, 'IRITEST');
+	//}
+		
 	if (CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ItemState.GetMyTemplateName()))
 	{
 		`LOG("Restoring CP appearance",, 'IRITEST');

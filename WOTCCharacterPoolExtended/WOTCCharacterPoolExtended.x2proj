@@ -25,9 +25,12 @@
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\CharacterPoolManagerExtended.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\WOTCCharacterPoolExtended\Classes\CPUnitData.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\X2DLCInfo_WOTCCharacterPoolExtended.uc" />
   </ItemGroup>
-    <PropertyGroup>
+  <PropertyGroup>
     <SolutionRoot>$(MSBuildProjectDirectory)\..\</SolutionRoot>
     <ScriptsDir>$(SolutionRoot).scripts\</ScriptsDir>
     <BuildCommonRoot>$(ScriptsDir)X2ModBuildCommon\</BuildCommonRoot>

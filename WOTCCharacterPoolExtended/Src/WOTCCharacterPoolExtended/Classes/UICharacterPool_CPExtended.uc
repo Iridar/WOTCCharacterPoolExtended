@@ -162,21 +162,46 @@ simulated function CPE_ImportButton_Callback(UIButton kButton)
 	Movie.Pres.PlayUISound(eSUISound_MenuSelect);
 }
 
-simulated function OnCPE_ExportButtonCallback(UIButton kButton)
-{
-	local UICharacterPool_ListPools ListPools;
 
-	if(bAnimateOut) return;
+
+simulated private function OnCPE_ExportButtonCallback(UIButton kButton)
+{
+	local TInputDialogData kData;
 
 	if (SelectedCharacters.Length > 0)
 	{
-		ListPools = PC.Pres.Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres);
-		ListPools.UnitsToExport = SelectedCharacters;
-		PC.Pres.ScreenStack.Push(ListPools);
-		ListPools.UpdateData( true );
+		kData.strTitle = "Enter pool file name";
+		kData.iMaxChars = 99;
+		kData.strInputBoxText = "CPExtendedImport";
+		kData.fnCallback = OnCPE_ExportInputBoxAccepted;
 
-		SelectedCharacters.Length = 0;
+		Movie.Pres.UIInputDialog(kData);
 	}
+}
+
+function OnCPE_ExportInputBoxAccepted(string strFileName)
+{
+	local CPUnitData ExportUnitData;
+	local XComGameState_Unit SelectedCharacter;
+
+	ExportUnitData = new class'CPUnitData';
 	
-	Movie.Pres.PlayUISound(eSUISound_MenuSelect);
+	if (class'Engine'.static.BasicLoadObject(ExportUnitData, ExportUnitData.GetImportPath(strFileName), false, 1))
+	{
+		// TODO: Ask: Update, Replace, Cancel?
+	}
+
+	foreach SelectedCharacters(SelectedCharacter)
+	{
+		ExportUnitData.UpdateOrAddUnit(SelectedCharacter);
+	}
+
+	if (class'Engine'.static.BasicSaveObject(ExportUnitData, ExportUnitData.GetImportPath(strFileName), false, 1))
+	{
+		// TODO: Saved success popup with filepath
+	}
+	else
+	{
+		// TODO: Failed to save
+	}
 }

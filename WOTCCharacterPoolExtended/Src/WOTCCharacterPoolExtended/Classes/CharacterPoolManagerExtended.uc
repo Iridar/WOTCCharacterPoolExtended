@@ -4,8 +4,6 @@ var private CPUnitData UnitData; // Use GetUnitData() before accessing it
 
 var string CharPoolExtendedFilePath;
 
-const CharPoolExtendedImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended";
-
 // ============================================================================
 // OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
 

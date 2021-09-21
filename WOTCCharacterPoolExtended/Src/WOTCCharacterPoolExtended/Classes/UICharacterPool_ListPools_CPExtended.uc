@@ -1,4 +1,6 @@
 class UICharacterPool_ListPools_CPExtended extends UICharacterPool_ListPools;
+
+// Currently unused
 /*
 simulated function bool DoMakeEmptyPool(string NewFriendlyName)
 {

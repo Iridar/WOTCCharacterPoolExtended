@@ -85,3 +85,20 @@ final function string GetImportPath(string strFileName)
 {
 	return class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedImportFolderPath $ strFileName $ ".bin";
 }
+
+final function array<string> GetUnitsFriendly()
+{
+	local array<string> ReturnArray;
+
+	local CPExtendedStruct CPExtendedData;
+
+	foreach CharacterPoolDatas(CPExtendedData)
+	{
+		
+		if (CPExtendedData.CharacterPoolData.strNickName != "")
+			ReturnArray.AddItem(CPExtendedData.CharacterPoolData.strFirstName @ "\"" $ CPExtendedData.CharacterPoolData.strNickName $ "\"" @ CPExtendedData.CharacterPoolData.strLastName);
+		else
+			ReturnArray.AddItem(CPExtendedData.CharacterPoolData.strFirstName @ CPExtendedData.CharacterPoolData.strLastName);
+	}
+	return ReturnArray;
+}

@@ -71,6 +71,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		CPE_ExportButton = Spawn(class'UIButton', Container);
 		CPE_ExportButton.InitButton('', "CPE" @ m_strExportSelection, OnCPE_ExportButtonCallback, eUIButtonStyle_NONE);
 		CPE_ExportButton.SetPosition(10, RunningYBottom - CPE_ExportButton.Height);
+		CPE_ExportButton.DisableButton(m_strNothingSelected);
 		// END OF ADDED
 		RunningYBottom -= ExportButton.Height + 10;
 
@@ -90,9 +91,8 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		SelectAllButton.OnSizeRealized = OnSelectAllButtonSizeRealized;
 
 		CPE_ImportButton = Spawn(class'UIButton', Container);
-		CPE_ImportButton.InitButton('',"CPE" @ m_strImportCharacter, OnButtonCallback, eUIButtonStyle_NONE);
+		CPE_ImportButton.InitButton('',"CPE" @ m_strImportCharacter, CPE_ImportButton_Callback, eUIButtonStyle_NONE);
 		CPE_ImportButton.SetPosition(180, RunningYBottom - CPE_ImportButton.Height);
-		CPE_ImportButton.DisableButton(m_strNothingSelected);
 		// END OF ADDED
 		RunningYBottom -= DeleteButton.Height + 10;
 	}
@@ -141,6 +141,20 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	bAnimateOut = false;
 }
 
+simulated function UpdateEnabledButtons()
+{
+	super.UpdateEnabledButtons();
+
+	if (SelectedCharacters.Length == 0)
+	{
+		CPE_ExportButton.DisableButton(m_strNothingSelected);
+	}
+	else
+	{
+		CPE_ExportButton.EnableButton();
+	}
+}
+
 simulated function OnDeselectAllButtonSizeRealized()
 {
 	CPE_ExportButton.SetX(DeselectAllButton.X + DeselectAllButton.Width + 10);
@@ -154,19 +168,45 @@ simulated function OnSelectAllButtonSizeRealized()
 
 simulated function CPE_ImportButton_Callback(UIButton kButton)
 {
+	local TInputDialogData kData;
+
 	if(bAnimateOut) return;
 
-	PC.Pres.UICharacterPool_ImportPools();
-	SelectedCharacters.Length = 0;
-	
-	Movie.Pres.PlayUISound(eSUISound_MenuSelect);
+	kData.strTitle = "Enter pool file name";
+	kData.iMaxChars = 99;
+	kData.strInputBoxText = "CPExtendedImport";
+	kData.fnCallback = OnCPE_ImportInputBoxAccepted;
+
+	Movie.Pres.UIInputDialog(kData);
 }
 
+function OnCPE_ImportInputBoxAccepted(string strFileName)
+{
+	local CPUnitData							ImportUnitData;
+	local UICharacterPool_ListPools_CPExtended	ImportUnitsScreen;
+
+	ImportUnitData = new class'CPUnitData';
+	
+	if (class'Engine'.static.BasicLoadObject(ImportUnitData, ImportUnitData.GetImportPath(strFileName), false, 1))
+	{
+		ImportUnitsScreen = UICharacterPool_ListPools_CPExtended(PC.Pres.ScreenStack.Push(Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres)));
+		ImportUnitsScreen.UnitData = ImportUnitData;
+		ImportUnitsScreen.UpdateData( false );
+
+		SelectedCharacters.Length = 0;
+	}
+	else
+	{
+		// TODO: Popup failed to load CP
+	}
+}
 
 
 simulated private function OnCPE_ExportButtonCallback(UIButton kButton)
 {
 	local TInputDialogData kData;
+
+	if(bAnimateOut) return;
 
 	if (SelectedCharacters.Length > 0)
 	{

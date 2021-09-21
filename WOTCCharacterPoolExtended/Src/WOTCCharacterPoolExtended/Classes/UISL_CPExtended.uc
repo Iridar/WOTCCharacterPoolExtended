@@ -1,23 +1,25 @@
 class UISL_CPExtended extends UIScreenListener;
 
+// This UISL adds a "LOADOUT" button to the character customization screen while in Character Pool.
+
 event OnInit(UIScreen Screen)
 {
 	local UICustomize_Menu CustomizeScreen;
 
-	`LOG("Screen init:" @ Screen.Class.Name,, 'IRITEST');
+	//`LOG("Screen init:" @ Screen.Class.Name,, 'IRITEST');
 
 	CustomizeScreen = UICustomize_Menu(Screen);
 	if (CustomizeScreen == none || CustomizeScreen.bInArmory)
 		return;
 
-	`LOG(GetFuncName() @ "Adding button into list of members:" @ CustomizeScreen.List.ItemCount,, 'IRITEST');
+	//`LOG(GetFuncName() @ "Adding button into list of members:" @ CustomizeScreen.List.ItemCount,, 'IRITEST');
 
 	AddMenuItem();
 }
 
 event OnReceiveFocus(UIScreen Screen)
 {
-	`LOG(GetFuncName() @ Screen.Class.Name,, 'IRITEST');
+	//`LOG(GetFuncName() @ Screen.Class.Name,, 'IRITEST');
 
 	OnInit(Screen);
 }

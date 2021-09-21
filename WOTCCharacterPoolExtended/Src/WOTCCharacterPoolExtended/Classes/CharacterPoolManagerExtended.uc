@@ -2,8 +2,9 @@ class CharacterPoolManagerExtended extends CharacterPoolManager dependson(CPUnit
 
 var private CPUnitData UnitData; // Use GetUnitData() before accessing it
 
-const CharPoolExtendedFilePath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended.bin";
-const CharPoolExtendedImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
+var string CharPoolExtendedFilePath;
+
+const CharPoolExtendedImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended";
 
 // ============================================================================
 // OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
@@ -32,21 +33,12 @@ event XComGameState_Unit CreateSoldier(name DataTemplateName)
 {
 	local XComGameState					SoldierContainerState;
 	local XComGameState_Unit			NewSoldierState;	
-
-	// Create the new soldiers
 	local X2CharacterTemplateManager    CharTemplateMgr;	
 	local X2CharacterTemplate           CharacterTemplate;
 	local TSoldier                      CharacterGeneratorResult;
 	local XGCharacterGenerator          CharacterGenerator;
-
 	local XComGameStateHistory			History;
-
 	local XComGameStateContext_ChangeContainer ChangeContainer;
-
-
-	//Create a new game state that will form the start state for the tactical battle. Use this helper method to set up the basics and
-	//get a reference to the battle data object
-	//NewStartState = class'XComGameStateContext_TacticalGameRule'.static.CreateDefaultTacticalStartState_Singleplayer(BattleData);
 
 	History = `XCOMHISTORY;
 	
@@ -177,3 +169,8 @@ function LoadBaseGameCharacterPool()
 	`LOG(GetFuncName() @ "after called" @ CharacterPool.Length,, 'IRITEST');
 }
 */
+
+defaultproperties
+{
+	CharPoolExtendedFilePath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended.bin"
+}

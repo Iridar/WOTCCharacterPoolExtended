@@ -69,7 +69,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		DeselectAllButton.OnSizeRealized = OnDeselectAllButtonSizeRealized;
 
 		CPE_ExportButton = Spawn(class'UIButton', Container);
-		CPE_ExportButton.InitButton('', "CPE" @ m_strExportSelection, OnButtonCallback, eUIButtonStyle_NONE);
+		CPE_ExportButton.InitButton('', "CPE" @ m_strExportSelection, OnCPE_ExportButtonCallback, eUIButtonStyle_NONE);
 		CPE_ExportButton.SetPosition(10, RunningYBottom - CPE_ExportButton.Height);
 		// END OF ADDED
 		RunningYBottom -= ExportButton.Height + 10;
@@ -151,68 +151,6 @@ simulated function OnSelectAllButtonSizeRealized()
 	CPE_ImportButton.SetX(SelectAllButton.X + SelectAllButton.Width + 10);
 }
 
-/*
-simulated function EditSoldier()
-{
-	local int itemIndex;
-	local XComGameState_Unit SlotSoldier;
-
-	itemIndex = List.GetItemIndex(List.GetSelectedItem());
-
-	SlotSoldier = GetSoldierInSlot(itemIndex);
-	if (SlotSoldier == none)
-		return;
-
-	// Replace vanilla customization screen
-	//if (SlotSoldier.GetMyTemplate().UICustomizationMenuClass.IsA('UICustomize_Menu'))
-	//{
-		`LOG("Replacing UICustomize_Menu",, 'IRITEST');
-		PC.Pres.InitializeCustomizeManager(SlotSoldier, none);
-		PC.Pres.ScreenStack.Push(PC.Pres.Spawn(class'UICustomize_Menu_CPExtended', PC.Pres), PC.Pres.Get3DMovie());
-	//}
-	//else PC.Pres.UICustomize_Menu(SlotSoldier, none);
-
-	CharacterPoolMgr.SaveCharacterPool();
-}
-
-simulated function OnButtonCallbackCreateNew()
-{
-	local XComGameState_Unit	NewSoldierState;
-
-	NewSoldierState = CharacterPoolMgr.CreateSoldier('Soldier');
-	NewSoldierState.PoolTimestamp = class'X2StrategyGameRulesetDataStructures'.static.GetSystemDateTimeString();
-	CharacterPoolMgr.CharacterPool.AddItem(NewSoldierState);
-
-	// Replace vanilla customization screen
-	//if (NewSoldierState.GetMyTemplate().UICustomizationMenuClass.IsA('UICustomize_Menu'))
-	//{
-		`LOG("Replacing UICustomize_Menu",, 'IRITEST');
-		PC.Pres.InitializeCustomizeManager(NewSoldierState, none);
-		PC.Pres.ScreenStack.Push(PC.Pres.Spawn(class'UICustomize_Menu_CPExtended', PC.Pres), PC.Pres.Get3DMovie());
-	//}
-	//else PC.Pres.UICustomize_Menu(NewSoldierState, none); // If sending in 'none', needs to create this character. // Original dev comment, no idea what it menas.
-
-	//<workshop> CHARACTER_POOL RJM 2016/02/05
-	//WAS:
-	//CharacterPoolMgr.SaveCharacterPool();	
-	SaveCharacterPool();
-	//</workshop>
-	SelectedCharacters.Length = 0;
-}*/
-
-/*
-simulated function UpdateNavHelp()
-{
-	super.UpdateNavHelp();
-
-	NavHelp.AddRightHelp("CPE Import",			
-				class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ class'UIUtilities_Input'.const.ICON_RT_R2, 
-				CPE_ImportButton_Callback,
-				false,
-				"Tooltip",
-				class'UIUtilities'.const.ANCHOR_BOTTOM_CENTER);
-}
-*/
 
 simulated function CPE_ImportButton_Callback(UIButton kButton)
 {
@@ -220,6 +158,25 @@ simulated function CPE_ImportButton_Callback(UIButton kButton)
 
 	PC.Pres.UICharacterPool_ImportPools();
 	SelectedCharacters.Length = 0;
+	
+	Movie.Pres.PlayUISound(eSUISound_MenuSelect);
+}
+
+simulated function OnCPE_ExportButtonCallback(UIButton kButton)
+{
+	local UICharacterPool_ListPools ListPools;
+
+	if(bAnimateOut) return;
+
+	if (SelectedCharacters.Length > 0)
+	{
+		ListPools = PC.Pres.Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres);
+		ListPools.UnitsToExport = SelectedCharacters;
+		PC.Pres.ScreenStack.Push(ListPools);
+		ListPools.UpdateData( true );
+
+		SelectedCharacters.Length = 0;
+	}
 	
 	Movie.Pres.PlayUISound(eSUISound_MenuSelect);
 }

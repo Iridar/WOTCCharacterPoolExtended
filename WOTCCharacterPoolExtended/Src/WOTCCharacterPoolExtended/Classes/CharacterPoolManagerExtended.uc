@@ -51,6 +51,72 @@ function XComGameState_Unit GetCharacter(string CharacterName)
 	return none;
 }*/
 
+// Replace pointless 'assert' with 'return none' so we can do error detecting
+// in case player attempts to import a unit with a custom char template that's not present with their current modlist
+event XComGameState_Unit CreateSoldier(name DataTemplateName)
+{
+	local XComGameState					SoldierContainerState;
+	local XComGameState_Unit			NewSoldierState;	
+
+	// Create the new soldiers
+	local X2CharacterTemplateManager    CharTemplateMgr;	
+	local X2CharacterTemplate           CharacterTemplate;
+	local TSoldier                      CharacterGeneratorResult;
+	local XGCharacterGenerator          CharacterGenerator;
+
+	local XComGameStateHistory			History;
+
+	local XComGameStateContext_ChangeContainer ChangeContainer;
+
+
+	//Create a new game state that will form the start state for the tactical battle. Use this helper method to set up the basics and
+	//get a reference to the battle data object
+	//NewStartState = class'XComGameStateContext_TacticalGameRule'.static.CreateDefaultTacticalStartState_Singleplayer(BattleData);
+
+	History = `XCOMHISTORY;
+	
+	//Create a game state to use for creating a unit
+	ChangeContainer = class'XComGameStateContext_ChangeContainer'.static.CreateEmptyChangeContainer("Character Pool Manager");
+	SoldierContainerState = History.CreateNewGameState(true, ChangeContainer);
+
+	CharTemplateMgr = class'X2CharacterTemplateManager'.static.GetCharacterTemplateManager();
+	if (CharTemplateMgr == none)
+	{
+		History.CleanupPendingGameState(SoldierContainerState);
+		return none;
+	}
+
+	CharacterTemplate = CharTemplateMgr.FindCharacterTemplate(DataTemplateName);	
+
+	if (CharacterTemplate != none)
+	{
+		CharacterGenerator = `XCOMGAME.Spawn(CharacterTemplate.CharacterGeneratorClass);
+		if (CharacterGenerator == none)
+		{
+			History.CleanupPendingGameState(SoldierContainerState);
+			return none;
+		}
+
+		NewSoldierState = CharacterTemplate.CreateInstanceFromTemplate(SoldierContainerState);
+		NewSoldierState.RandomizeStats();
+
+		NewSoldierState.bAllowedTypeSoldier = true;
+
+		CharacterGeneratorResult = CharacterGenerator.CreateTSoldier(DataTemplateName);
+		NewSoldierState.SetTAppearance(CharacterGeneratorResult.kAppearance);
+		NewSoldierState.SetCharacterName(CharacterGeneratorResult.strFirstName, CharacterGeneratorResult.strLastName, CharacterGeneratorResult.strNickName);
+		NewSoldierState.SetCountry(CharacterGeneratorResult.nmCountry);
+		class'XComGameState_Unit'.static.NameCheck(CharacterGenerator, NewSoldierState, eNameType_Full);
+
+		NewSoldierState.GenerateBackground(, CharacterGenerator.BioCountryName);
+	}
+	
+	//Tell the history that we don't actually want this game state
+	History.CleanupPendingGameState(SoldierContainerState);
+
+	return NewSoldierState;
+}
+
 // ============================================================================
 // INTERNAL FUNCTIONS
 
@@ -60,6 +126,9 @@ private function SaveUnitData(const XComGameState_Unit UnitState)
 	local CPUnitData NewData;
 
 	NewData = new class'CPUnitData';
+	
+	FillCharacterPoolData(UnitState);
+	NewData.CharacterPoolData = CharacterPoolSerializeHelper;
 	NewData.AppearanceStore = UnitState.AppearanceStore;
 
     Success = class'Engine'.static.BasicSaveObject(NewData, GetFileNameFromSoldierName(UnitState.GetFullName()), false, 1);
@@ -67,7 +136,7 @@ private function SaveUnitData(const XComGameState_Unit UnitState)
     `LOG("Saved unit:" @ UnitState.GetFullName() @ Success @ GetFileNameFromSoldierName(UnitState.GetFullName()),, 'IRITEST');
 }
 
-private function CPUnitData LoadUnitData(const string strSoldierName)
+final function CPUnitData LoadUnitData(const string strSoldierName)
 {
 	local CPUnitData UnitData;
     local bool Success;
@@ -87,7 +156,6 @@ static private function string GetFileNameFromSoldierName(string strSoldierName)
 {
 	return class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolPath $ name(strSoldierName) $ ".bin";
 }
-
 
 // ============================================================================
 // INTERNAL HELPERS

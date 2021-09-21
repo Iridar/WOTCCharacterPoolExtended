@@ -107,3 +107,47 @@ simulated function OnLoadout()
 
 	`XSTRATEGYSOUNDMGR.PlaySoundEvent("Play_MenuSelect");
 }
+
+simulated function UpdateNavHelp()
+{
+	super.UpdateNavHelp();
+
+	NavHelp.AddRightHelp("IMPORT UNIT",			
+				class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ class'UIUtilities_Input'.const.ICON_RT_R2, 
+				OnImportUnitButtonClicked,
+				false,
+				"IMPORT UNIT TOOLTIP",
+				class'UIUtilities'.const.ANCHOR_BOTTOM_CENTER);
+}
+
+simulated private function OnImportUnitButtonClicked()
+{
+	local TInputDialogData kData;
+
+	kData.strTitle = "IMPORT UNIT TITLE";
+	kData.iMaxChars = 99;
+	kData.strInputBoxText = "";
+	kData.fnCallback = OnImportUnitButtonAccepted;
+
+	Movie.Pres.UIInputDialog(kData);
+}
+
+function OnImportUnitButtonAccepted(string strSoldierName)
+{
+	local CPUnitData					UnitData;
+	local XComGameState_Unit			NewUnitState;
+	local CharacterPoolManagerExtended	CharacterPool;
+
+	CharacterPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
+	UnitData = CharacterPool.LoadUnitData(strSoldierName);
+	if (UnitData == none)
+		return; // TODO: Display error message
+
+	NewUnitState = CharacterPool.CreateSoldier(UnitData.CharacterPoolData.CharacterTemplateName);
+	if (NewUnitState == none)
+		return; // TODO: Failed to created unit
+
+	CharacterPool.InitSoldier(NewUnitState, UnitData.CharacterPoolData);
+	CharacterPool.CharacterPool.AddItem(NewUnitState);
+	CharacterPool.SaveCharacterPool();
+}

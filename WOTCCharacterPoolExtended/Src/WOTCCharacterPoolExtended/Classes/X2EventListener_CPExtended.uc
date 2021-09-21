@@ -35,7 +35,6 @@ static function EventListenerReturn OnItemAddedToSlot(Object EventData, Object E
 	local XComGameState_Unit	CPUnitState;
 	local CharacterPoolManager	CharacterPool;
 	local TAppearance			CPAppearance;
-	local int i;
 
 	ItemState = XComGameState_Item(EventData);
 	if (ItemState == none || X2ArmorTemplate(ItemState.GetMyTemplate()) == none)
@@ -50,6 +49,13 @@ static function EventListenerReturn OnItemAddedToSlot(Object EventData, Object E
 		return ELR_NoInterrupt;
 
 	`LOG(ItemState.GetMyTemplateName() @ "equipped on:" @ UnitState.GetFullName(),, 'IRITEST');
+
+	if (UnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ItemState.GetMyTemplateName()))
+	{
+		`LOG("Unit already has stored appearance for this armor, exiting",, 'IRITEST');
+		return ELR_NoInterrupt;
+	}
+	
 	CharacterPool = `CHARACTERPOOLMGR;
 	CPUnitState = CharacterPool.GetCharacter(UnitState.GetFullName());
 	if (CPUnitState == none)

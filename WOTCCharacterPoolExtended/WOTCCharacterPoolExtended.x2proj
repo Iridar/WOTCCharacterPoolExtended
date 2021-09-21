@@ -31,6 +31,9 @@
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UIArmory_Loadout_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICharacterPool_CPExtended.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICustomize_Menu_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>

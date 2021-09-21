@@ -3,6 +3,7 @@ class UICharacterPool_CPExtended extends UICharacterPool;
 var UIButton CPE_ImportButton;
 var UIButton CPE_ExportButton;
 
+// Just adding a couple of buttons in a third column at the bottom of the CP screen
 simulated function InitScreen(XComPlayerController InitController, UIMovie InitMovie, optional name InitName)
 {
 	local float RunningY;
@@ -53,18 +54,6 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 
 	if (Movie.IsMouseActive())
 	{
-		CPE_ImportButton = Spawn(class'UIButton', Container);
-		CPE_ImportButton.InitButton('', "CPE" @ m_strImportCharacter, CPE_ImportButton_Callback, eUIButtonStyle_NONE);
-		CPE_ImportButton.SetPosition(10, RunningYBottom - CPE_ImportButton.Height);
-		CPE_ImportButton.OnSizeRealized = OnCPE_ImportButtonSizeRealized;
-
-		CPE_ExportButton = Spawn(class'UIButton', Container);
-		CPE_ExportButton.InitButton('',"CPE" @ m_strExportSelection, OnButtonCallback, eUIButtonStyle_NONE);
-		CPE_ExportButton.SetPosition(180, RunningYBottom - CPE_ExportButton.Height);
-		CPE_ExportButton.DisableButton(m_strNothingSelected);
-
-		RunningYBottom -= ExportButton.Height + 10;
-
 		ExportButton = Spawn(class'UIButton', Container);
 		ExportButton.ResizeToText = true;
 		ExportButton.InitButton('', m_strExportSelection, OnButtonCallback, eUIButtonStyle_NONE);
@@ -76,7 +65,13 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		DeselectAllButton.InitButton('', m_strDeselectAll, OnButtonCallback, eUIButtonStyle_NONE);
 		DeselectAllButton.SetPosition(180, RunningYBottom - DeselectAllButton.Height);
 		DeselectAllButton.DisableButton(m_strNothingSelected);
+		// ADDED
+		DeselectAllButton.OnSizeRealized = OnDeselectAllButtonSizeRealized;
 
+		CPE_ExportButton = Spawn(class'UIButton', Container);
+		CPE_ExportButton.InitButton('', "CPE" @ m_strExportSelection, OnButtonCallback, eUIButtonStyle_NONE);
+		CPE_ExportButton.SetPosition(10, RunningYBottom - CPE_ExportButton.Height);
+		// END OF ADDED
 		RunningYBottom -= ExportButton.Height + 10;
 
 		DeleteButton = Spawn(class'UIButton', Container);
@@ -91,6 +86,14 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		SelectAllButton.SetPosition(180, RunningYBottom - SelectAllButton.Height);
 		SelectAllButton.DisableButton(m_strNoCharacters);
 
+		// ADDED
+		SelectAllButton.OnSizeRealized = OnSelectAllButtonSizeRealized;
+
+		CPE_ImportButton = Spawn(class'UIButton', Container);
+		CPE_ImportButton.InitButton('',"CPE" @ m_strImportCharacter, OnButtonCallback, eUIButtonStyle_NONE);
+		CPE_ImportButton.SetPosition(180, RunningYBottom - CPE_ImportButton.Height);
+		CPE_ImportButton.DisableButton(m_strNothingSelected);
+		// END OF ADDED
 		RunningYBottom -= DeleteButton.Height + 10;
 	}
 
@@ -138,9 +141,63 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	bAnimateOut = false;
 }
 
-simulated function OnCPE_ImportButtonSizeRealized()
+simulated function OnDeselectAllButtonSizeRealized()
 {
-	CPE_ExportButton.SetX(CPE_ImportButton.X + CPE_ImportButton.Width + 10);
+	CPE_ExportButton.SetX(DeselectAllButton.X + DeselectAllButton.Width + 10);
+}
+
+simulated function OnSelectAllButtonSizeRealized()
+{
+	CPE_ImportButton.SetX(SelectAllButton.X + SelectAllButton.Width + 10);
+}
+
+
+simulated function EditSoldier()
+{
+	local int itemIndex;
+	local XComGameState_Unit SlotSoldier;
+
+	itemIndex = List.GetItemIndex(List.GetSelectedItem());
+
+	SlotSoldier = GetSoldierInSlot(itemIndex);
+	if (SlotSoldier == none)
+		return;
+
+	// Replace vanilla customization screen
+	//if (SlotSoldier.GetMyTemplate().UICustomizationMenuClass.IsA('UICustomize_Menu'))
+	//{
+		`LOG("Replacing UICustomize_Menu",, 'IRITEST');
+		PC.Pres.InitializeCustomizeManager(SlotSoldier, none);
+		PC.Pres.ScreenStack.Push(PC.Pres.Spawn(class'UICustomize_Menu_CPExtended', PC.Pres), PC.Pres.Get3DMovie());
+	//}
+	//else PC.Pres.UICustomize_Menu(SlotSoldier, none);
+
+	CharacterPoolMgr.SaveCharacterPool();
+}
+
+simulated function OnButtonCallbackCreateNew()
+{
+	local XComGameState_Unit	NewSoldierState;
+
+	NewSoldierState = CharacterPoolMgr.CreateSoldier('Soldier');
+	NewSoldierState.PoolTimestamp = class'X2StrategyGameRulesetDataStructures'.static.GetSystemDateTimeString();
+	CharacterPoolMgr.CharacterPool.AddItem(NewSoldierState);
+
+	// Replace vanilla customization screen
+	//if (NewSoldierState.GetMyTemplate().UICustomizationMenuClass.IsA('UICustomize_Menu'))
+	//{
+		`LOG("Replacing UICustomize_Menu",, 'IRITEST');
+		PC.Pres.InitializeCustomizeManager(NewSoldierState, none);
+		PC.Pres.ScreenStack.Push(PC.Pres.Spawn(class'UICustomize_Menu_CPExtended', PC.Pres), PC.Pres.Get3DMovie());
+	//}
+	//else PC.Pres.UICustomize_Menu(NewSoldierState, none); // If sending in 'none', needs to create this character. // Original dev comment, no idea what it menas.
+
+	//<workshop> CHARACTER_POOL RJM 2016/02/05
+	//WAS:
+	//CharacterPoolMgr.SaveCharacterPool();	
+	SaveCharacterPool();
+	//</workshop>
+	SelectedCharacters.Length = 0;
 }
 
 /*

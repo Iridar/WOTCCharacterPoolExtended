@@ -1,55 +1,30 @@
-class CharacterPoolManagerExtended extends CharacterPoolManager;
+class CharacterPoolManagerExtended extends CharacterPoolManager dependson(CPUnitData);
 
-const CharPoolPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
+var private CPUnitData UnitData; // Use GetUnitData() before accessing it
+
+const CharPoolExtendedFilePath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended.bin";
+const CharPoolExtendedImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
 
 // ============================================================================
 // OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
 
 event InitSoldier( XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData )
 {
-	local CPUnitData UnitData;
+	`LOG(GetFuncName() @ "called for unit:" @ Unit.GetFullName(),, 'IRITEST');
 
 	super.InitSoldier(Unit, CharacterPoolData);
-
-	`LOG(GetFuncName() @ "Attempting to load data for unit:" @ Unit.GetFullName(),, 'IRITEST');
-
-	UnitData = LoadUnitData(Unit.GetFullName());
-	if (UnitData != none)
-	{
-		`LOG("Unit data found, copying appearance store.",, 'IRITEST');
-		Unit.AppearanceStore = UnitData.AppearanceStore;
-	}
-	else `LOG("Did NOT found saved unit for:" @ Unit.GetFullName(),, 'IRITEST');
+	
+	GetUnitData();
+	UnitData.ApplyAppearanceStore(Unit);
 }
 
 function SaveCharacterPool()
 {
-	local XComGameState_Unit UnitState;
-
 	`LOG(GetFuncName() @ "called",, 'IRITEST');
 
-	foreach CharacterPool(UnitState)
-	{
-		SaveUnitData(UnitState);
-	}
-
+	SaveCharacterPoolExtended();
 	super.SaveCharacterPool();
 }
-/*
-function XComGameState_Unit GetCharacter(string CharacterName)
-{
-	local int Index;	
-
-	for(Index = 0; Index < CharacterPool.Length; ++Index)
-	{
-		if(CharacterName == CharacterPool[Index].GetFullName())
-		{
-			return CharacterPool[Index];
-		}
-	}
-
-	return none;
-}*/
 
 // Replace pointless 'assert' with 'return none' so we can do error detecting
 // in case player attempts to import a unit with a custom char template that's not present with their current modlist
@@ -120,41 +95,49 @@ event XComGameState_Unit CreateSoldier(name DataTemplateName)
 // ============================================================================
 // INTERNAL FUNCTIONS
 
-private function SaveUnitData(const XComGameState_Unit UnitState)
+final function SaveCharacterPoolExtended()
 {
-    local bool Success;
-	local CPUnitData NewData;
+	local CPExtendedStruct		CPExtendedUnitData;
+	local CPExtendedStruct		EmptyCPExtendedUnitData;
+	local bool					Success;
+	local XComGameState_Unit	UnitState;
 
-	NewData = new class'CPUnitData';
-	
-	FillCharacterPoolData(UnitState);
-	NewData.CharacterPoolData = CharacterPoolSerializeHelper;
-	NewData.AppearanceStore = UnitState.AppearanceStore;
-
-    Success = class'Engine'.static.BasicSaveObject(NewData, GetFileNameFromSoldierName(UnitState.GetFullName()), false, 1);
-
-    `LOG("Saved unit:" @ UnitState.GetFullName() @ Success @ GetFileNameFromSoldierName(UnitState.GetFullName()),, 'IRITEST');
-}
-
-final function CPUnitData LoadUnitData(const string strSoldierName)
-{
-	local CPUnitData UnitData;
-    local bool Success;
-   
 	UnitData = new class'CPUnitData';
-    Success = class'Engine'.static.BasicLoadObject(UnitData, GetFileNameFromSoldierName(strSoldierName), false, 1);
 
-	`LOG("Loaded unit:" @ strSoldierName @ Success @ GetFileNameFromSoldierName(strSoldierName),, 'IRITEST');
-	if (Success)
+	foreach CharacterPool(UnitState)
 	{
-		return UnitData;
+		CPExtendedUnitData = EmptyCPExtendedUnitData;
+
+		FillCharacterPoolData(UnitState); // This saves UnitState to 'CharacterPoolSerializeHelper' 
+		CPExtendedUnitData.CharacterPoolData = CharacterPoolSerializeHelper;
+		CPExtendedUnitData.AppearanceStore = UnitState.AppearanceStore;
+
+		UnitData.CharacterPoolDatas.AddItem(CPExtendedUnitData);
+
+		`LOG("Saved" @ UnitState.GetFullName() @ "to CP Extended:" @ CPExtendedUnitData.AppearanceStore.Length,, 'IRITEST');
 	}
-	return none;
+
+    Success = class'Engine'.static.BasicSaveObject(UnitData, class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedFilePath, false, 1);
+
+    `LOG("Saved CP Extended:" @ Success,, 'IRITEST');
 }
 
-static private function string GetFileNameFromSoldierName(string strSoldierName)
+final function CPUnitData GetUnitData()
 {
-	return class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolPath $ name(strSoldierName) $ ".bin";
+	if (UnitData != none)
+		return UnitData;
+
+	UnitData = new class'CPUnitData';
+	
+	if (class'Engine'.static.BasicLoadObject(UnitData, class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedFilePath, false, 1))
+	{
+		`LOG("Loaded CP Extended: true",, 'IRITEST');
+	}
+	else 
+	{
+		SaveCharacterPoolExtended();
+		`LOG("Failed to load CP Extended, recreating it.",, 'IRITEST');
+	}
 }
 
 // ============================================================================
@@ -177,6 +160,7 @@ private function PrintCP()
 
 // ============================================================================
 // These don't appear to be getting called.
+/*
 function LoadCharacterPool()
 {
 	`LOG(GetFuncName() @ "called" @ CharacterPool.Length,, 'IRITEST');
@@ -192,3 +176,4 @@ function LoadBaseGameCharacterPool()
 
 	`LOG(GetFuncName() @ "after called" @ CharacterPool.Length,, 'IRITEST');
 }
+*/

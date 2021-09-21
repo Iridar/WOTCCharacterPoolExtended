@@ -56,6 +56,7 @@ simulated function UpdateData()
 			GetListItem(i++).UpdateDataCheckbox(m_strAllowTypeDarkVIP, m_strAllowed, CustomizeManager.UpdatedUnitState.bAllowedTypeDarkVIP, OnCheckbox_Type_DarkVIP);
 
 			// ADDED
+			`LOG("adding loadout button",, 'IRITEST');
 			GetListItem(i++).UpdateDataDescription(class'UIArmory_MainMenu'.default.m_strLoadout, OnLoadout);
 			// END OF ADDED
 
@@ -107,7 +108,7 @@ simulated function OnLoadout()
 
 	`XSTRATEGYSOUNDMGR.PlaySoundEvent("Play_MenuSelect");
 }
-
+/*
 simulated function UpdateNavHelp()
 {
 	super.UpdateNavHelp();
@@ -150,4 +151,4 @@ function OnImportUnitButtonAccepted(string strSoldierName)
 	CharacterPool.InitSoldier(NewUnitState, UnitData.CharacterPoolData);
 	CharacterPool.CharacterPool.AddItem(NewUnitState);
 	CharacterPool.SaveCharacterPool();
-}
+}*/

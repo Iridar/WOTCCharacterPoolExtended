@@ -1,5 +1,5 @@
 class UISL_CPExtended extends UIScreenListener;
-
+/*
 event OnInit(UIScreen Screen)
 {
 	local UICustomize_Menu				CustomizeScreen;
@@ -7,7 +7,7 @@ event OnInit(UIScreen Screen)
 	local XComPresentationlayerBase		Pres;
 
 	CustomizeScreen = UICustomize_Menu(Screen);
-	if (CustomizeScreen != none && CustomizeScreen.bInArmory && CustomizeScreen.Class != class'UICustomize_Menu_CPExtended')
+	if (CustomizeScreen != none && !CustomizeScreen.bInArmory && CustomizeScreen.Class != class'UICustomize_Menu_CPExtended')
 	{
 		Pres = CustomizeScreen.Movie.Pres;
 		NewCustomizeScreen = Pres.Spawn(class'UICustomize_Menu_CPExtended', Pres);
@@ -33,7 +33,7 @@ event OnInit(UIScreen Screen)
 		Pres.ScreenStack.Pop(CustomizeScreen);
 		Pres.ScreenStack.Push(NewCustomizeScreen, Pres.Get3DMovie());
 	}
-}
+}*/
 /*
 event OnReceiveFocus(UIScreen Screen);
 

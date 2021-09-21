@@ -151,7 +151,7 @@ simulated function OnSelectAllButtonSizeRealized()
 	CPE_ImportButton.SetX(SelectAllButton.X + SelectAllButton.Width + 10);
 }
 
-
+/*
 simulated function EditSoldier()
 {
 	local int itemIndex;
@@ -198,7 +198,7 @@ simulated function OnButtonCallbackCreateNew()
 	SaveCharacterPool();
 	//</workshop>
 	SelectedCharacters.Length = 0;
-}
+}*/
 
 /*
 simulated function UpdateNavHelp()

@@ -1,32 +1,14 @@
 class UICharacterPool_ListPools_CPExtended extends UICharacterPool_ListPools;
 
 var private CPUnitData UnitData; // Current pool we're exporting into or importing from.
+
 var private config(CharacterPoolExtended_NULLCONFIG) array<string> PoolFileNames; // List of all pools added previously.
 
-simulated function InitScreen(XComPlayerController InitController, UIMovie InitMovie, optional name InitName)
-{
-	super.InitScreen(InitController, InitMovie, InitName);
-	ValidatePools();
-}
+var private array<string> ReadFailPoolFileNames; // List of pools that couldn't be read from the disk. 
 
-// Attempt to load all previously added pools.
-// Delete pools that fail to load from the list.
-simulated private function ValidatePools()
-{
-	local CPUnitData TestUnitData;
-	local int i;
+// ============================================================================
+// OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
 
-	TestUnitData = new class'CPUnitData';
-	for (i = PoolFileNames.Length - 1; i >= 0; i--)
-	{
-		if (!class'Engine'.static.BasicLoadObject(TestUnitData, TestUnitData.GetImportPath(PoolFileNames[i]), false, 1))
-		{
-			PoolFileNames.Remove(i, 1);
-		}
-	}
-	default.PoolFileNames = PoolFileNames;
-	self.SaveConfig();
-}
 
 simulated function UpdateData( bool _bIsExporting )
 {
@@ -56,28 +38,30 @@ simulated function UpdateData( bool _bIsExporting )
 	UpdateDisplay();
 }
 
-simulated function array<string> GetListOfPools()
+simulated function DoExportCharacters(string FilenameForExport)
 {
-	local array<string> Items; 
-
-	Items = PoolFileNames;
-	Items.InsertItem(0, "ADD NEW POOL");
-
-	return Items; 
-}
-
-simulated function array<string> GetListOfImportableUnitsFromSelectedPool()
-{
-	local array<string> Items; 
-
-	Items = UnitData.GetUnitsFriendly();
+	local int i;
+	local XComGameState_Unit ExportUnit;
 	
-	if (Items.Length > 0)
+	//Copy out each character
+	for (i = 0; i < UnitsToExport.Length; i++)
 	{
-		Items.InsertItem(0, m_strImportAll);
+		ExportUnit = UnitsToExport[i];
+		if (ExportUnit == None)
+			continue;
+
+		UnitData.UpdateOrAddUnit(ExportUnit);
 	}
 
-	return Items; 
+	//Save it
+	if (SaveCurrentlyOpenPool())
+	{	
+		ExportSuccessDialogue();
+	}
+	else
+	{
+		ShowInfoPopup("ERROR!", "Warning! Failed to write the pool to the disk.", eDialog_Warning);
+	}
 }
 
 simulated function OnClickLocal(UIList _list, int iItemIndex)
@@ -92,11 +76,18 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 		else
 		{
 			//TODO @nway: notify the game of the export pool: iItemIndex-1 
-			SelectedFilename = EnumeratedFilenames[iItemIndex-1];
-			SelectedFriendlyName = Data[iItemIndex];
-			// TODO: Confirm export
-			`log("EXPORT location selected: " $string(iItemIndex-1) $ ":" $ SelectedFilename);
-			OnExportCharacters();
+
+			if (LoadPool(PoolFileNames[iItemIndex-1]))
+			{
+				SelectedFilename = PoolFileNames[iItemIndex-1];
+				SelectedFriendlyName = SelectedFilename;
+
+				OnExportCharacters();
+			}
+			else
+			{
+				ShowInfoPopup("ERROR!", "Warning! Failed to read pool from the disk.", eDialog_Warning);
+			}
 		}
 	}
 	else
@@ -136,26 +127,9 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 	}
 }
 
-
-simulated function AddNewPoolInputBox()
-{
-	local TInputDialogData kData;
-
-	kData.strTitle = "Enter pool file name:";
-	kData.iMaxChars = 99;
-	kData.strInputBoxText = "CPExtendedImport";
-	kData.fnCallback = fnCallbackAccepted;
-
-	Movie.Pres.UIInputDialog(kData);
-}
-
-function OnAddNewPoolInputBoxClosed(string strFileName)
+private function OnAddNewPoolInputBoxAccepted(string strFileName)
 {
 	local CPUnitData NewUnitData;
-
-	// TODO: If cancelled, then?
-	//var delegate<TextInputCancelledCallback> fnCallbackCancelled;
-	//var delegate<TextInputAcceptedCallback> fnCallbackAccepted;
 
 	if (string(name(strFileName)) != strFileName)
 	{
@@ -165,7 +139,7 @@ function OnAddNewPoolInputBoxClosed(string strFileName)
 
 	if (PoolFileNames.Find(strFileName) != INDEX_NONE)
 	{
-		// TODO: This pool already exists!
+		// This pool already exists!
 		ShowInfoPopup("Warning!", "A pool with this filename already exists in the list. Aborting.", eDialog_Alert);
 		return;
 	}
@@ -174,7 +148,7 @@ function OnAddNewPoolInputBoxClosed(string strFileName)
 	
 	if (class'Engine'.static.BasicLoadObject(NewUnitData, NewUnitData.GetImportPath(strFileName), false, 1))
 	{
-		// TODO: Loaded pool successfully!
+		// Loaded pool successfully!
 		PoolFileNames.AddItem(strFileName);
 		default.PoolFileNames = PoolFileNames;
 		self.SaveConfig();
@@ -183,7 +157,7 @@ function OnAddNewPoolInputBoxClosed(string strFileName)
 	}
 	else if (class'Engine'.static.BasicSaveObject(NewUnitData, NewUnitData.GetImportPath(strFileName), false, 1))
 	{
-		// TODO: Created new pool successfully!
+		// Created new pool successfully!
 		PoolFileNames.AddItem(strFileName);
 		default.PoolFileNames = PoolFileNames;
 		self.SaveConfig();
@@ -192,13 +166,69 @@ function OnAddNewPoolInputBoxClosed(string strFileName)
 	}
 	else
 	{
-		// TODO: ERROR! Failed to save pool.
+		// ERROR! Failed to save pool.
 		ShowInfoPopup("ERROR!", "Warning! Failed to write the new pool to the disk.", eDialog_Warning);
 	}
 }
 
+// ============================================================================
+// INTERNAL FUNCTIONS
 
-simulated function ShowInfoPopup(string strTitle, string strText, optional EUIDialogBoxDisplay eType)
+simulated function array<string> GetListOfPools()
+{
+	local array<string> Items; 
+	local string PoolFileName;
+
+	ReadFailPoolFileNames.Length = 0;
+	Items.AddItem("ADD NEW POOL");
+
+	foreach PoolFileNames(PoolFileName)
+	{
+		if (LoadPool(PoolFileName))
+		{
+			Items.AddItem(PoolFileName);
+		}
+		else
+		{
+			Items.AddItem(PoolFileName @ "FILE ACCESS ERROR!");
+			ReadFailPoolFileNames.AddItem(PoolFileName);
+		}
+	}
+	
+	return Items; 
+}
+
+simulated function array<string> GetListOfImportableUnitsFromSelectedPool()
+{
+	local array<string> Items; 
+
+	Items = UnitData.GetUnitsFriendly();
+	
+	if (Items.Length > 0)
+	{
+		Items.InsertItem(0, m_strImportAll);
+	}
+
+	return Items; 
+}
+
+
+private simulated function AddNewPoolInputBox()
+{
+	local TInputDialogData kData;
+
+	kData.strTitle = "Enter pool file name:";
+	kData.iMaxChars = 99;
+	kData.strInputBoxText = "CPExtendedImport";
+	kData.fnCallbackAccepted = OnAddNewPoolInputBoxAccepted;
+
+	Movie.Pres.UIInputDialog(kData);
+}
+
+// ============================================================================
+// INTERNAL HELPERS
+
+simulated private function ShowInfoPopup(string strTitle, string strText, optional EUIDialogBoxDisplay eType)
 {
 	local TDialogueBoxData kDialogData;
 
@@ -209,6 +239,44 @@ simulated function ShowInfoPopup(string strTitle, string strText, optional EUIDi
 
 	Movie.Pres.UIRaiseDialog(kDialogData);
 }
+
+simulated private function bool LoadPool(string strFileName)
+{
+	UnitData = new class'CPUnitData';
+
+	return class'Engine'.static.BasicLoadObject(UnitData, UnitData.GetImportPath(strFileName), false, 1);
+}
+
+simulated private function bool SaveCurrentlyOpenPool()
+{
+	return class'Engine'.static.BasicSaveObject(UnitData, UnitData.GetImportPath(SelectedFilename), false, 1);
+}
+
+/*
+simulated function InitScreen(XComPlayerController InitController, UIMovie InitMovie, optional name InitName)
+{
+	super.InitScreen(InitController, InitMovie, InitName);
+	ValidatePools();
+}
+
+// Attempt to load all previously added pools.
+// Delete pools that fail to load from the list.
+simulated private function ValidatePools()
+{
+	local CPUnitData TestUnitData;
+	local int i;
+
+	TestUnitData = new class'CPUnitData';
+	for (i = PoolFileNames.Length - 1; i >= 0; i--)
+	{
+		if (!class'Engine'.static.BasicLoadObject(TestUnitData, TestUnitData.GetImportPath(PoolFileNames[i]), false, 1))
+		{
+			PoolFileNames.Remove(i, 1);
+		}
+	}
+	default.PoolFileNames = PoolFileNames;
+	self.SaveConfig();
+}*/
 /*
 simulated function RequiredModsPopups()
 {

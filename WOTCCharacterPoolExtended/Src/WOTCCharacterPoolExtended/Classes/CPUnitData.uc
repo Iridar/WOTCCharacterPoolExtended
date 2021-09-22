@@ -86,6 +86,12 @@ final function string GetImportPath(string strFileName)
 	return class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedImportFolderPath $ strFileName $ ".bin";
 }
 
+final function int GetNumUnits()
+{
+	return CharacterPoolDatas.Length;
+}
+
+
 final function array<string> GetUnitsFriendly()
 {
 	local array<string> ReturnArray;

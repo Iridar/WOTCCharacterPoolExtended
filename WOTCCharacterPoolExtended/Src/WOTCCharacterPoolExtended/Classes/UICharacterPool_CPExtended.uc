@@ -167,23 +167,24 @@ simulated function OnSelectAllButtonSizeRealized()
 
 simulated function CPE_ImportButton_Callback(UIButton kButton)
 {
-	local UICharacterPool_ListPools_CPExtended ImportUnitsScreen;
+	local UICharacterPool_ListPools_CPExtended ListPools;
 
 	if(bAnimateOut) return;
 
-	ImportUnitsScreen = UICharacterPool_ListPools_CPExtended(PC.Pres.ScreenStack.Push(Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres)));
-	ImportUnitsScreen.UpdateData(false); // Is exporting?
+	ListPools = UICharacterPool_ListPools_CPExtended(PC.Pres.ScreenStack.Push(Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres)));
+	ListPools.UpdateData(false); // Is exporting?
 }
 
 simulated private function OnCPE_ExportButtonCallback(UIButton kButton)
 {
-	local UICharacterPool_ListPools_CPExtended ImportUnitsScreen;
+	local UICharacterPool_ListPools_CPExtended ListPools;
 
 	if(bAnimateOut) return;
 
 	if (SelectedCharacters.Length > 0)
 	{	
-		ImportUnitsScreen = UICharacterPool_ListPools_CPExtended(PC.Pres.ScreenStack.Push(Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres)));
-		ImportUnitsScreen.UpdateData(true); // Is exporting?
+		ListPools = UICharacterPool_ListPools_CPExtended(PC.Pres.ScreenStack.Push(Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres)));
+		ListPools.UnitsToExport = SelectedCharacters;
+		ListPools.UpdateData(true); // Is exporting?
 	}
 }

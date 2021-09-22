@@ -17,6 +17,11 @@ event InitSoldier( XComGameState_Unit Unit, const out CharacterPoolDataElement C
 	UnitData.ApplyAppearanceStore(Unit);
 }
 
+event InitSoldierOld(XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData)
+{
+	super.InitSoldier(Unit, CharacterPoolData);
+}
+
 function SaveCharacterPool()
 {
 	`LOG(GetFuncName() @ "called",, 'IRITEST');

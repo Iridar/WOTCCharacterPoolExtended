@@ -66,17 +66,17 @@ simulated function DoExportCharacters(string FilenameForExport)
 
 simulated function OnClickLocal(UIList _list, int iItemIndex)
 {
-	if( bIsExporting )
+	// If we're exporting, the soldiers to be exported are already selected in UICharacterPool,
+	// and written into 'UnitsToExport' array, so the only thing left to do is select the pool to export into.
+	if (bIsExporting)
 	{
-		if( iItemIndex == 0) //Request to create a new pool 
+		if (iItemIndex == 0) //Request to create a new pool 
 		{
-			// We want a new pool
 			AddNewPoolInputBox();
 		}
 		else
 		{
-			//TODO @nway: notify the game of the export pool: iItemIndex-1 
-
+			// Player selected an existing pool
 			if (LoadPool(PoolFileNames[iItemIndex-1]))
 			{
 				SelectedFilename = PoolFileNames[iItemIndex-1];
@@ -90,32 +90,32 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 			}
 		}
 	}
-	else
+	else // If we're importing, the player has to select the pool to import from, and then a specific soldier, or the 'import all' option.
 	{
-		if( !bHasSelectedImportLocation )
+		if (!bHasSelectedImportLocation) // Select pool to import to.
 		{
-			if( iItemIndex == 0) //Request to create a new pool 
+			if (iItemIndex == 0) //Request to create a new pool 
 			{
-				// We want a new pool
 				AddNewPoolInputBox();
 			}
 			else
 			{
-				// TODO: Do stuff that will result in printing soldiers available for import
-				// (i.e. read selected pool into UnitData
-				// We just picked the import location
-				bHasSelectedImportLocation = true; 
-				SelectedFilename = EnumeratedFilenames[iItemIndex];
-				SelectedFriendlyName = Data[iItemIndex];
-				`log("IMPORT location selected: " $string(iItemIndex) $ ":" $ SelectedFilename);
-				// Then, refresh this screen:
-				UpdateData( false );
+				if (LoadPool(PoolFileNames[iItemIndex-1]))
+				{
+					bHasSelectedImportLocation = true; 
+					SelectedFilename = PoolFileNames[iItemIndex-1];
+					SelectedFriendlyName = SelectedFilename;
+
+					UpdateData(false); // We're not exporting
+				}
+				else
+				{
+					ShowInfoPopup("ERROR!", "Warning! Failed to read pool from the disk.", eDialog_Warning);
+				}				
 			}
 		}	
 		else
 		{
-			`log("IMPORT character selected: " $ string(iItemIndex));
-
 			if (iItemIndex == 0) //"all" case
 				DoImportAllCharacters(SelectedFilename);
 			else
@@ -127,6 +127,118 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 	}
 }
 
+simulated function DoImportCharacter(string FilenameForImport, int IndexOfCharacter)
+{
+	local CharacterPoolManagerExtended	CharacterPool;
+	local CharacterPoolDataElement		CPData;
+	local XComGameState_Unit			NewUnitState;
+
+	CharacterPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
+	CPData = UnitData.CharacterPoolDatas[IndexOfCharacter].CharacterPoolData;
+	
+	NewUnitState = CharacterPool.CreateSoldier(CPData.CharacterTemplateName);
+	if (NewUnitState == none)
+	{
+		ShowInfoPopup("ERROR!", "Failed to import unit" @ CPData.strFirstName @ CPData.strLastName @ "with character template:" @ CPData.CharacterTemplateName @ ", maybe you're mising a mod?", eDialog_Warning);
+		return; 
+	}
+	
+	CharacterPool.InitSoldierOld(NewUnitState, CPData);
+	NewUnitState.AppearanceStore = UnitData.CharacterPoolDatas[IndexOfCharacter].AppearanceStore;
+
+	CharacterPool.CharacterPool.AddItem(NewUnitState);
+	CharacterPool.SaveCharacterPool();
+}
+
+simulated function DoImportAllCharacters(string FilenameForImport)
+{
+	local int i;
+
+	for (i = 0; i < UnitData.CharacterPoolDatas.Length; i++)
+	{
+		DoImportCharacter("", i);
+	}
+}
+
+simulated function OnDeletePool(UIButton Button)
+{
+	local int Index;
+
+	Index = List.GetItemIndex(Button);
+
+	if(Index != INDEX_NONE)
+	{
+		Index -= 1;
+		SelectedFilename = PoolFileNames[Index];
+		SelectedFriendlyName = SelectedFilename;
+		OnConfirmDeletePool();
+	}
+}
+
+simulated function OnConfirmDeletePool()
+{
+	local XGParamTag        kTag;
+	local TDialogueBoxData  DialogData;
+
+	kTag = XGParamTag(`XEXPANDCONTEXT.FindTag("XGParam"));
+	kTag.StrValue0 = SelectedFilename;
+
+	DialogData.strTitle = m_strDeletePoolDialogueTitle;
+	DialogData.strText = `XEXPAND.ExpandString(m_strDeletePoolDialogueBody);
+	DialogData.fnCallback = OnConfirmDeletePoolCallback;
+
+	DialogData.strAccept = class'UIUtilities_Text'.default.m_strGenericYes;
+	DialogData.strCancel = class'UIUtilities_Text'.default.m_strGenericNo;
+
+	Movie.Pres.UIRaiseDialog(DialogData);
+}
+
+simulated public function OnConfirmDeletePoolCallback(Name eAction)
+{
+	local CharacterPoolManager CharacterPool;
+
+	if (eAction == 'eUIAction_Accept')
+	{
+		CharacterPool = new class'CharacterPoolManager';
+		CharacterPool.PoolFileName = "CharacterPool\\CharacterPoolExtended\\" $ SelectedFilename $ ".bin";
+		CharacterPool.DeleteCharacterPool();
+
+		PoolFileNames.RemoveItem(SelectedFilename);
+		default.PoolFileNames = PoolFileNames;
+		SaveConfig();
+		SelectedFilename = "";
+
+		UpdateData(bIsExporting);
+	}
+}
+
+/*
+simulated function DoImportAllCharacters(string FilenameForImport)
+{
+	local CharacterPoolManagerExtended	CharacterPool;
+	local CharacterPoolDataElement		CPData;
+	local XComGameState_Unit			NewUnitState;
+	local int i;
+
+	CharacterPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
+	
+	for (i = 0; i < UnitData.CharacterPoolDatas.Length; i++)
+	{
+		CPData = UnitData.CharacterPoolDatas[i].CharacterPoolData;
+		NewUnitState = CharacterPool.CreateSoldier(CPData.CharacterTemplateName);
+		if (NewUnitState == none)
+		{
+			ShowInfoPopup("ERROR!", "Failed to import unit" @ CPData.strFirstName @ CPData.strLastName @ "with character template:" @ CPData.CharacterTemplateName @ ", maybe you're mising a mod?", eDialog_Warning);
+			continue; 
+		}
+	
+		CharacterPool.InitSoldierOld(NewUnitState, CPData);
+		NewUnitState.AppearanceStore = UnitData.CharacterPoolDatas[i].AppearanceStore;
+		CharacterPool.CharacterPool.AddItem(NewUnitState);
+	}
+	CharacterPool.SaveCharacterPool();
+}
+*/
 private function OnAddNewPoolInputBoxAccepted(string strFileName)
 {
 	local CPUnitData NewUnitData;

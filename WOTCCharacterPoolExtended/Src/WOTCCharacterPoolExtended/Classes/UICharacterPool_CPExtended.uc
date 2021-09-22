@@ -165,83 +165,25 @@ simulated function OnSelectAllButtonSizeRealized()
 	CPE_ImportButton.SetX(SelectAllButton.X + SelectAllButton.Width + 10);
 }
 
-
 simulated function CPE_ImportButton_Callback(UIButton kButton)
 {
-	local TInputDialogData kData;
+	local UICharacterPool_ListPools_CPExtended ImportUnitsScreen;
 
 	if(bAnimateOut) return;
 
-	kData.strTitle = "Enter pool file name";
-	kData.iMaxChars = 99;
-	kData.strInputBoxText = "CPExtendedImport";
-	kData.fnCallback = OnCPE_ImportInputBoxAccepted;
-
-	Movie.Pres.UIInputDialog(kData);
+	ImportUnitsScreen = UICharacterPool_ListPools_CPExtended(PC.Pres.ScreenStack.Push(Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres)));
+	ImportUnitsScreen.UpdateData(false); // Is exporting?
 }
-
-function OnCPE_ImportInputBoxAccepted(string strFileName)
-{
-	local CPUnitData							ImportUnitData;
-	local UICharacterPool_ListPools_CPExtended	ImportUnitsScreen;
-
-	ImportUnitData = new class'CPUnitData';
-	
-	if (class'Engine'.static.BasicLoadObject(ImportUnitData, ImportUnitData.GetImportPath(strFileName), false, 1))
-	{
-		ImportUnitsScreen = UICharacterPool_ListPools_CPExtended(PC.Pres.ScreenStack.Push(Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres)));
-		ImportUnitsScreen.UnitData = ImportUnitData;
-		ImportUnitsScreen.UpdateData( false );
-
-		SelectedCharacters.Length = 0;
-	}
-	else
-	{
-		// TODO: Popup failed to load CP
-	}
-}
-
 
 simulated private function OnCPE_ExportButtonCallback(UIButton kButton)
 {
-	local TInputDialogData kData;
+	local UICharacterPool_ListPools_CPExtended ImportUnitsScreen;
 
 	if(bAnimateOut) return;
 
 	if (SelectedCharacters.Length > 0)
-	{
-		kData.strTitle = "Enter pool file name";
-		kData.iMaxChars = 99;
-		kData.strInputBoxText = "CPExtendedImport";
-		kData.fnCallback = OnCPE_ExportInputBoxAccepted;
-
-		Movie.Pres.UIInputDialog(kData);
-	}
-}
-
-function OnCPE_ExportInputBoxAccepted(string strFileName)
-{
-	local CPUnitData ExportUnitData;
-	local XComGameState_Unit SelectedCharacter;
-
-	ExportUnitData = new class'CPUnitData';
-	
-	if (class'Engine'.static.BasicLoadObject(ExportUnitData, ExportUnitData.GetImportPath(strFileName), false, 1))
-	{
-		// TODO: Ask: Update, Replace, Cancel?
-	}
-
-	foreach SelectedCharacters(SelectedCharacter)
-	{
-		ExportUnitData.UpdateOrAddUnit(SelectedCharacter);
-	}
-
-	if (class'Engine'.static.BasicSaveObject(ExportUnitData, ExportUnitData.GetImportPath(strFileName), false, 1))
-	{
-		// TODO: Saved success popup with filepath
-	}
-	else
-	{
-		// TODO: Failed to save
+	{	
+		ImportUnitsScreen = UICharacterPool_ListPools_CPExtended(PC.Pres.ScreenStack.Push(Spawn(class'UICharacterPool_ListPools_CPExtended', PC.Pres)));
+		ImportUnitsScreen.UpdateData(true); // Is exporting?
 	}
 }

@@ -4,17 +4,28 @@ class UISL_CPExtended extends UIScreenListener;
 
 event OnInit(UIScreen Screen)
 {
-	local UICustomize_Menu CustomizeScreen;
+	local UICustomize_Menu	CustomizeMenuScreen;
+	local UICustomize		CustomizeScreen;
 
 	//`LOG("Screen init:" @ Screen.Class.Name,, 'IRITEST');
 
-	CustomizeScreen = UICustomize_Menu(Screen);
-	if (CustomizeScreen == none || CustomizeScreen.bInArmory)
+	CustomizeScreen = UICustomize(Screen);
+	if (CustomizeScreen == none)
 		return;
+		
+	if (CustomizeScreen.bInArmory)
+	{
+		AddNavHelpButtons();
+		return;
+	}
 
+	CustomizeMenuScreen = UICustomize_Menu(Screen);
+	if (CustomizeMenuScreen != none)
+	{
+		AddLoadoutButton();
+	}
 	//`LOG(GetFuncName() @ "Adding button into list of members:" @ CustomizeScreen.List.ItemCount,, 'IRITEST');
 
-	AddMenuItem();
 }
 
 event OnReceiveFocus(UIScreen Screen)
@@ -24,7 +35,41 @@ event OnReceiveFocus(UIScreen Screen)
 	OnInit(Screen);
 }
 
-simulated function AddMenuItem()
+simulated function AddNavHelpButtons()
+{
+	local UICustomize CustomizeScreen;
+
+	CustomizeScreen = UICustomize(`SCREENSTACK.GetCurrentScreen());
+	if (CustomizeScreen == none)
+		return;
+
+	if (CustomizeScreen.NavHelp.m_arrButtonClickDelegates.Find(OnImportUnitButtonClicked) == INDEX_NONE)
+	{
+		CustomizeScreen.NavHelp.AddRightHelp("CPE IMPORT",			
+				class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ class'UIUtilities_Input'.const.ICON_RT_R2, 
+				OnImportUnitButtonClicked,
+				false,
+				"Tooltip placeholder",
+				class'UIUtilities'.const.ANCHOR_BOTTOM_CENTER);
+	}
+	CustomizeScreen.SetTimer(0.1f, false, nameof(AddNavHelpButtons), self);
+}
+
+simulated private function OnImportUnitButtonClicked()
+{
+	local UICustomize_CPExtended CustomizeScreen;
+	local XComHQPresentationLayer HQPresLayer;
+
+	HQPresLayer = `HQPRES;
+	if (HQPresLayer == none || HQPresLayer.ScreenStack == none)
+		return;
+
+	CustomizeScreen = HQPresLayer.Spawn(class'UICustomize_CPExtended', HQPresLayer);
+	HQPresLayer.ScreenStack.Push(CustomizeScreen);
+	CustomizeScreen.UpdateData();
+}
+
+simulated function AddLoadoutButton()
 {
 	local UICustomize_Menu	CustomizeScreen;
 	local bool				bItemAlreadyExists;
@@ -56,7 +101,7 @@ simulated function AddMenuItem()
 		CustomizeScreen.ShowListItems();
 	}
 
-	CustomizeScreen.SetTimer(0.1f, false, nameof(AddMenuItem), self);
+	CustomizeScreen.SetTimer(0.1f, false, nameof(AddLoadoutButton), self);
 }
 
 simulated function OnLoadout()

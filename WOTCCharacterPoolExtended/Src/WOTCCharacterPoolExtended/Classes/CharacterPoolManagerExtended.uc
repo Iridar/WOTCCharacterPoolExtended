@@ -204,6 +204,36 @@ final function CPUnitData GetUnitData()
 	}
 }
 
+final function string GetUnitFullNameExtraData(const int Index)
+{
+	local XComGameState_Unit		CPUnit;
+	local string					SoldierString;
+	local X2SoldierClassTemplate	ClassTemplate;
+
+	CPUnit = CharacterPool[Index];
+
+	ClassTemplate = CPUnit.GetSoldierClassTemplate();
+	if (ClassTemplate != none)
+	{
+		SoldierString = ClassTemplate.DisplayName $ ": ";
+	}
+	else
+	{
+		SoldierString = "";
+	}
+
+	if (CPUnit.GetNickName() != "")
+	{
+		SoldierString $= CPUnit.GetFirstName @ "\"" $ CPUnit.GetNickName() $ "\"" @ CPUnit.GetLastName();
+	}
+	else
+	{
+		SoldierString $= CPUnit.GetFirstName @ CPUnit.GetLastName();
+	}
+
+	return SoldierString;
+}
+
 // ============================================================================
 // INTERNAL HELPERS
 

@@ -90,6 +90,75 @@ event XComGameState_Unit CreateSoldier(name DataTemplateName)
 // ============================================================================
 // INTERNAL FUNCTIONS
 
+final function SortCharacterPoolBySoldierClass()
+{
+	CharacterPool.Sort(SortCharacterPoolBySoldierClassFn);
+}
+
+final function SortCharacterPoolBySoldierName()
+{
+	CharacterPool.Sort(SortCharacterPoolBySoldierNameFn);
+}
+
+private final function int SortCharacterPoolBySoldierNameFn(XComGameState_Unit UnitA, XComGameState_Unit UnitB)
+{
+	if (UnitA.GetFullName() < UnitB.GetFullName())
+	{
+		return 1;
+	}
+	else if (UnitA.GetFullName() > UnitB.GetFullName())
+	{
+		return -1;
+	}
+	return 0;
+}
+
+private final function int SortCharacterPoolBySoldierClassFn(XComGameState_Unit UnitA, XComGameState_Unit UnitB)
+{
+	local X2SoldierClassTemplate TemplateA;
+	local X2SoldierClassTemplate TemplateB;
+
+	TemplateA = UnitA.GetSoldierClassTemplate();
+	TemplateB = UnitB.GetSoldierClassTemplate();
+
+	// Put units without soldier class template below those with one.
+	if (TemplateA == none)
+	{
+		if (TemplateB == none)
+		{
+			return 0;	
+		}		
+		else
+		{
+			return -1;
+		}
+	}
+	else if (TemplateB == none)
+	{
+		return 1;
+	}
+
+	if (TemplateA.DisplayName == TemplateB.DisplayName)
+	{
+		return 0;
+	}
+	
+	if (TemplateA.DataName == 'Rookie')
+	{
+		return 1;
+	}
+	if (TemplateB.DataName == 'Rookie')
+	{
+		return -1;
+	}
+	
+	if (TemplateA.DisplayName < TemplateB.DisplayName)
+	{
+		return 1;
+	}
+	return -1;
+}
+
 final function SaveCharacterPoolExtended()
 {
 	local CPExtendedStruct		CPExtendedUnitData;

@@ -141,6 +141,39 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	bAnimateOut = false;
 }
 
+simulated function array<string> GetCharacterNames()
+{
+	local array<string> CharacterNames; 
+	local int i; 
+	
+	local XComGameState_Unit Soldier;
+	local string soldierName;
+
+	CharacterPoolManagerExtended(CharacterPoolMgr).SortCharacterPoolBySoldierName();
+	CharacterPoolManagerExtended(CharacterPoolMgr).SortCharacterPoolBySoldierClass();
+	
+	for( i = 0; i < CharacterPoolMgr.CharacterPool.Length; i++ )
+	{
+		Soldier = CharacterPoolMgr.CharacterPool[i];
+
+		// Display soldier class name in front of the name.
+		if (Soldier.GetSoldierClassTemplate() != none)
+		{
+			soldierName = Soldier.GetSoldierClassTemplate().DisplayName $ ": ";
+		}
+		else soldierName = "";
+
+
+		if( Soldier.GetNickName() != "" )
+			soldierName $= Soldier.GetFirstName() @ Soldier.GetNickName() @ Soldier.GetLastName();
+		else
+			soldierName $= Soldier.GetFirstName() @ Soldier.GetLastName();
+
+		CharacterNames.AddItem(soldierName);
+	}
+	return CharacterNames; 
+}
+
 simulated function UpdateEnabledButtons()
 {
 	super.UpdateEnabledButtons();

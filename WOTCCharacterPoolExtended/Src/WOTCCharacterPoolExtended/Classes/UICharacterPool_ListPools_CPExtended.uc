@@ -343,7 +343,8 @@ simulated function array<string> GetListOfImportableUnitsFromSelectedPool()
 {
 	local array<string> Items; 
 
-	Items = UnitData.GetUnitsFriendly();
+	//Items = UnitData.GetUnitsFriendly();
+	Items = UnitData.GetUnitsFriendlyExtraData();
 	
 	if (Items.Length > 0)
 	{

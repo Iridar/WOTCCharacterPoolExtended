@@ -108,3 +108,39 @@ final function array<string> GetUnitsFriendly()
 	}
 	return ReturnArray;
 }
+
+final function array<string> GetUnitsFriendlyExtraData()
+{
+	local array<string>		ReturnArray;
+	local string			SoldierString;
+	local CPExtendedStruct	CPExtendedData;
+	local X2SoldierClassTemplate			ClassTemplate;
+	local X2SoldierClassTemplateManager		ClassMgr;
+
+	ClassMgr = class'X2SoldierClassTemplateManager'.static.GetSoldierClassTemplateManager();
+
+	foreach CharacterPoolDatas(CPExtendedData)	
+	{
+		ClassTemplate = ClassMgr.FindSoldierClassTemplate(CPExtendedData.CharacterPoolData.m_SoldierClassTemplateName);
+		if (ClassTemplate != none)
+		{
+			SoldierString = ClassTemplate.DisplayName $ ": ";
+		}
+		else
+		{
+			SoldierString = "";
+		}
+
+		if (CPExtendedData.CharacterPoolData.strNickName != "")
+		{
+			SoldierString $= CPExtendedData.CharacterPoolData.strFirstName @ "\"" $ CPExtendedData.CharacterPoolData.strNickName $ "\"" @ CPExtendedData.CharacterPoolData.strLastName;
+		}
+		else
+		{
+			SoldierString $= CPExtendedData.CharacterPoolData.strFirstName @ CPExtendedData.CharacterPoolData.strLastName;
+		}
+
+		ReturnArray.AddItem(SoldierString);
+	}
+	return ReturnArray;
+}

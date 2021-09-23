@@ -144,3 +144,81 @@ final function array<string> GetUnitsFriendlyExtraData()
 	}
 	return ReturnArray;
 }
+
+
+final function SortCharacterPoolBySoldierClass()
+{
+	CharacterPoolDatas.Sort(SortCharacterPoolBySoldierClassFn);
+}
+
+final function SortCharacterPoolBySoldierName()
+{
+	CharacterPoolDatas.Sort(SortCharacterPoolBySoldierNameFn);
+}
+
+private function int SortCharacterPoolBySoldierNameFn(CPExtendedStruct UnitA, CPExtendedStruct UnitB)
+{
+	if (GetFullName(UnitA) < GetFullName(UnitB))
+	{
+		return 1;
+	}
+	else if (GetFullName(UnitA) > GetFullName(UnitB))
+	{
+		return -1;
+	}
+	return 0;
+}
+
+private function string GetFullName(CPExtendedStruct Unit)
+{
+	return Unit.CharacterPoolData.strFirstName @ Unit.CharacterPoolData.strLastName;
+}
+
+private function int SortCharacterPoolBySoldierClassFn(CPExtendedStruct UnitA, CPExtendedStruct UnitB)
+{
+	local X2SoldierClassTemplate TemplateA;
+	local X2SoldierClassTemplate TemplateB;
+	local X2SoldierClassTemplateManager ClassMgr;
+
+	ClassMgr = class'X2SoldierClassTemplateManager'.static.GetSoldierClassTemplateManager();
+
+	TemplateA = ClassMgr.FindSoldierClassTemplate(UnitA.CharacterPoolData.m_SoldierClassTemplateName);
+	TemplateB = ClassMgr.FindSoldierClassTemplate(UnitB.CharacterPoolData.m_SoldierClassTemplateName);
+
+	// Put units without soldier class template below those with one.
+	if (TemplateA == none)
+	{
+		if (TemplateB == none)
+		{
+			return 0;	
+		}		
+		else
+		{
+			return -1;
+		}
+	}
+	else if (TemplateB == none)
+	{
+		return 1;
+	}
+
+	if (TemplateA.DisplayName == TemplateB.DisplayName)
+	{
+		return 0;
+	}
+	
+	if (TemplateA.DataName == 'Rookie')
+	{
+		return 1;
+	}
+	if (TemplateB.DataName == 'Rookie')
+	{
+		return -1;
+	}
+	
+	if (TemplateA.DisplayName < TemplateB.DisplayName)
+	{
+		return 1;
+	}
+	return -1;
+}

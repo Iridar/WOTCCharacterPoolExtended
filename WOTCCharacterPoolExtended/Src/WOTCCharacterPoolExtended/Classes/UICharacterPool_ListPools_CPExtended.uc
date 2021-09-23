@@ -172,10 +172,10 @@ simulated function UpdateDisplay()
 	{
 		SpawnedItem = Spawn(class'UIMechaListItem', List.itemContainer);
 		SpawnedItem.bAnimateOnInit = false;
-		SpawnedItem.InitListItem();
+		SpawnedItem.InitListItem(,, 340); // Give more room to the text
 	}
 	
-	// Display delete buttons on pools except the first one
+	// Display delete buttons on pools except the first one, since the first one is "add new pool" option.
 	for( i = 0; i < Data.Length; i++ )
 	{
 		if (((!bHasSelectedImportLocation || bIsExporting) && i != 0) && !`ISCONTROLLERACTIVE)

@@ -160,6 +160,35 @@ simulated function DoImportAllCharacters(string FilenameForImport)
 	}
 }
 
+simulated function UpdateDisplay()
+{
+	local UIMechaListItem SpawnedItem;
+	local int i;
+
+	if(List.itemCount > Data.length)
+		List.ClearItems();
+
+	while (List.itemCount < Data.length)
+	{
+		SpawnedItem = Spawn(class'UIMechaListItem', List.itemContainer);
+		SpawnedItem.bAnimateOnInit = false;
+		SpawnedItem.InitListItem();
+	}
+	
+	// Display delete buttons on pools except the first one
+	for( i = 0; i < Data.Length; i++ )
+	{
+		if (((!bHasSelectedImportLocation || bIsExporting) && i != 0) && !`ISCONTROLLERACTIVE)
+		{
+			UIMechaListItem(List.GetItem(i)).UpdateDataButton(Data[i], class'UISaveLoadGameListItem'.default.m_sDeleteLabel, OnDeletePool);
+		}
+		else
+		{
+			UIMechaListItem(List.GetItem(i)).UpdateDataValue(Data[i], "");
+		}
+	}
+}
+
 simulated function OnDeletePool(UIButton Button)
 {
 	local int Index;
@@ -298,7 +327,7 @@ simulated function array<string> GetListOfPools()
 	{
 		if (LoadPool(PoolFileName))
 		{
-			Items.AddItem(PoolFileName);
+			Items.AddItem(PoolFileName $ ":" @ UnitData.GetNumUnits() @ "units"); // TODO: Localize
 		}
 		else
 		{

@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="Config\" />
+    <Folder Include="Config\Base" />
     <Folder Include="Localization\" />
     <Folder Include="Src\" />
     <Folder Include="Src\WOTCCharacterPoolExtended\" />

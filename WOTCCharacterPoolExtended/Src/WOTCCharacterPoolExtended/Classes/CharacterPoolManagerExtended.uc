@@ -224,11 +224,11 @@ final function string GetUnitFullNameExtraData(const int Index)
 
 	if (CPUnit.GetNickName() != "")
 	{
-		SoldierString $= CPUnit.GetFirstName @ "\"" $ CPUnit.GetNickName() $ "\"" @ CPUnit.GetLastName();
+		SoldierString $= CPUnit.GetFirstName() @ "\"" $ CPUnit.GetNickName() $ "\"" @ CPUnit.GetLastName();
 	}
 	else
 	{
-		SoldierString $= CPUnit.GetFirstName @ CPUnit.GetLastName();
+		SoldierString $= CPUnit.GetFirstName() @ CPUnit.GetLastName();
 	}
 
 	return SoldierString;

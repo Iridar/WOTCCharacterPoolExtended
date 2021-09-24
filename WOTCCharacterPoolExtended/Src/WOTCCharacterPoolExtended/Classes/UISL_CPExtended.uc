@@ -10,7 +10,7 @@ event OnInit(UIScreen Screen)
 	//`LOG("Screen init:" @ Screen.Class.Name,, 'IRITEST');
 
 	CustomizeScreen = UICustomize(Screen);
-	if (CustomizeScreen == none)
+	if (CustomizeScreen == none || CustomizeScreen.Class == class'UICustomize_CPExtended')
 		return;
 		
 	if (CustomizeScreen.bInArmory)
@@ -40,7 +40,7 @@ simulated function AddNavHelpButtons()
 	local UICustomize CustomizeScreen;
 
 	CustomizeScreen = UICustomize(`SCREENSTACK.GetCurrentScreen());
-	if (CustomizeScreen == none)
+	if (CustomizeScreen == none || CustomizeScreen.Class == class'UICustomize_CPExtended')
 		return;
 
 	if (CustomizeScreen.NavHelp.m_arrButtonClickDelegates.Find(OnImportUnitButtonClicked) == INDEX_NONE)
@@ -66,7 +66,7 @@ simulated private function OnImportUnitButtonClicked()
 
 	CustomizeScreen = HQPresLayer.Spawn(class'UICustomize_CPExtended', HQPresLayer);
 	HQPresLayer.ScreenStack.Push(CustomizeScreen);
-	CustomizeScreen.UpdateData();
+	//CustomizeScreen.UpdateData();
 }
 
 simulated function AddLoadoutButton()

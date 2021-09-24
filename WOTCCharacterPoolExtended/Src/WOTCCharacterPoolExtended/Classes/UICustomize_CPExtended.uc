@@ -7,12 +7,14 @@ var private bool bPlayerClickedOnUnit;
 
 var private XComHumanPawn		ArmoryPawn;
 var private XComGameState_Unit	ArmoryUnit;
+var private vector				OriginalPawnLocation;
 var private TAppearance			OriginalAppearance; // Appearance to restore if the player exits the screen without selecting anything
 var private name				ArmorTemplateName;
 
 simulated function InitScreen(XComPlayerController InitController, UIMovie InitMovie, optional name InitName)
 {
-	local XComGameState_Item Armor;
+	local XComGameState_Item	Armor;
+	local vector				PawnLocation;
 
 	super.InitScreen(InitController, InitMovie, InitName);
 
@@ -34,11 +36,20 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		ArmorTemplateName = Armor.GetMyTemplateName();
 	}
 	OriginalAppearance = ArmoryPawn.m_kAppearance;
+	OriginalPawnLocation = ArmoryPawn.Location;
+
+	PawnLocation = OriginalPawnLocation;
+	PawnLocation.X += 20; // Nudge the soldier pawn to the left a little
+	ArmoryPawn.SetLocation(PawnLocation);
 
 	List.OnSelectionChanged = OnUnitSelected;
 	List.OnItemClicked = UnitClicked;
-	//List.SetX(List.X + 900);
-	//ListBG.SetX(ListBG.X + 900);
+
+	List.SetPosition(1920 - List.Width - 70, 10);
+	ListBG.SetPosition(List.X, 10);
+
+	List.SetPosition(List.X + 15, List.Y + 15);
+	ListBG.SetHeight(725);
 }
 
 simulated function UpdateData()
@@ -47,6 +58,8 @@ simulated function UpdateData()
 	local int i;
 
 	super.UpdateData();
+
+	GetListItem(0).UpdateDataDescription("NO CHANGE"); // TODO: Localize
 	
 	UniformIndices.Length = 0;
 
@@ -66,9 +79,15 @@ simulated function UpdateData()
 
 		UniformIndices.AddItem(i);
 	}
-	for (i = 0; i < UniformIndices.Length; i++)
+	
+	//for (i = 1; i < UniformIndices.Length + 1; i++)
+	//{
+	//	GetListItem(i).UpdateDataDescription(PoolMgr.GetUnitFullNameExtraData(UniformIndices[i - 1]));
+	//}
+
+	for (i = 1; i < 25; i++)
 	{
-		GetListItem(i).UpdateDataDescription(PoolMgr.GetUnitFullNameExtraData(UniformIndices[i]));
+		GetListItem(i).UpdateDataDescription("Mockup entry" @ i);
 	}
 }
 
@@ -78,10 +97,17 @@ simulated function OnUnitSelected(UIList ContainerList, int ItemIndex)
 	local TAppearance			CPUnitAppearance;
 	local TAppearance			NewAppearance;
 
-	if (ItemIndex == INDEX_NONE || ItemIndex > UniformIndices.Length - 1)
+	if (ItemIndex == 0)
+	{
+		ArmoryPawn.SetAppearance(OriginalAppearance);
+		CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, OriginalAppearance.iWeaponTint);
+		return;
+	}
+
+	if (ItemIndex == INDEX_NONE || ItemIndex - 1 > UniformIndices.Length - 1)
 		return;
 
-	CPUnit = PoolMgr.CharacterPool[UniformIndices[ItemIndex]];
+	CPUnit = PoolMgr.CharacterPool[UniformIndices[ItemIndex - 1]];
 	NewAppearance = ArmoryPawn.m_kAppearance;
 
 	if (ArmorTemplateName != '' && CPUnit.HasStoredAppearance(NewAppearance.iGender, ArmorTemplateName))
@@ -117,6 +143,7 @@ simulated function CloseScreen()
 		CustomizeManager.UpdatedUnitState.SetTAppearance(ArmoryPawn.m_kAppearance);
 		CustomizeManager.UpdatedUnitState.StoreAppearance();
 	}
+	ArmoryPawn.SetLocation(OriginalPawnLocation);
 	super.CloseScreen();
 }
 

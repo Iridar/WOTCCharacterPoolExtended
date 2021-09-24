@@ -47,9 +47,6 @@
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICustomize_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>
-    <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICustomize_Menu_CPExtended.uc">
-      <SubType>Content</SubType>
-    </Content>
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UISL_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>

@@ -57,16 +57,16 @@ simulated function AddNavHelpButtons()
 
 simulated private function OnImportUnitButtonClicked()
 {
-	local UICustomize_CPExtended CustomizeScreen;
-	local XComHQPresentationLayer HQPresLayer;
-
+	local UICustomize_CPExtended	CustomizeScreen;
+	local XComHQPresentationLayer	HQPresLayer;
+	
 	HQPresLayer = `HQPRES;
 	if (HQPresLayer == none || HQPresLayer.ScreenStack == none)
 		return;
 
 	CustomizeScreen = HQPresLayer.Spawn(class'UICustomize_CPExtended', HQPresLayer);
 	HQPresLayer.ScreenStack.Push(CustomizeScreen);
-	//CustomizeScreen.UpdateData();
+	CustomizeScreen.UpdateData();
 }
 
 simulated function AddLoadoutButton()

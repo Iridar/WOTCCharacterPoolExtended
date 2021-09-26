@@ -57,7 +57,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	ArmoryPawn.SetLocation(PawnLocation);
 
 	List.bStickyHighlight = true;
-	List.OnSelectionChanged = OnUnitSelected;
+	//List.OnSelectionChanged = OnUnitSelected;
 	List.OnItemClicked = UnitClicked;
 
 	List.SetPosition(1920 - List.Width - 70, 280);
@@ -106,7 +106,13 @@ simulated function UpdateData()
 
 	super.UpdateData();
 
-	GetListItem(0).UpdateDataDescription("NO CHANGE"); // TODO: Localize
+	//GetListItem(0).UpdateDataDescription("NO CHANGE"); 
+
+	GetListItem(0).UpdateDataCheckbox("NO CHANGE", // TODO: Localize
+			"",
+			true, // bIsChecked
+			SoldierCheckboxChanged, 
+			none);
 	
 	UniformIndices.Length = 0;
 
@@ -127,18 +133,45 @@ simulated function UpdateData()
 		UniformIndices.AddItem(i);
 	}
 	
-	// DEBUG ONLY
-	//for (i = 1; i < UniformIndices.Length + 1; i++)
-	//{
-	//	GetListItem(i).UpdateDataDescription(PoolMgr.GetUnitFullNameExtraData(UniformIndices[i - 1]));
-	//}
-
-	for (i = 1; i < 25; i++)
+	for (i = 1; i < UniformIndices.Length + 1; i++)
 	{
-		GetListItem(i).UpdateDataDescription("Mockup entry" @ i);
+		//GetListItem(i).UpdateDataDescription(PoolMgr.GetUnitFullNameExtraData(UniformIndices[i - 1]));
+
+		GetListItem(i).UpdateDataCheckbox(PoolMgr.GetUnitFullNameExtraData(UniformIndices[i - 1]), 
+			"",
+			false, // bIsChecked
+			SoldierCheckboxChanged, 
+			none);
 	}
 
+	//for (i = 1; i < 25; i++)
+	//{
+	//	GetListItem(i).UpdateDataDescription("Mockup entry" @ i);
+	//}
+
 	UpdateOptionsList();
+}
+
+simulated function SoldierCheckboxChanged(UICheckbox CheckBox)
+{
+	local UIMechaListItem ListItem;
+	local int Index;
+	local int i;
+
+	Index = List.GetItemIndex(CheckBox.ParentPanel);
+	for (i = 0; i < List.ItemCount; i++)
+	{
+		if (i == Index)
+			continue;
+
+		GetListItem(i).Checkbox.SetChecked(false, false);
+	}
+
+	CheckBox.SetChecked(true, false);
+	if (Index != INDEX_NONE)
+	{
+		OnUnitSelected(Index);
+	}
 }
 
 simulated function CreateOptionName(name OptionName, name CosmeticTemplateName)
@@ -160,16 +193,10 @@ simulated function CreateOptionName(name OptionName, name CosmeticTemplateName)
 		BodyPartTemplate = BodyPartMgr.FindUberTemplate(PartType, CosmeticTemplateName);
 	}
 
-	/*simulated function UIMechaListItem UpdateDataCheckbox(string _Desc,
-									  String _CheckboxLabel,
-									  bool bIsChecked,
-									  delegate<OnCheckboxChangedCallback> _OnCheckboxChangedCallback = none,
-									  optional delegate<OnClickDelegate> _OnClickDelegate = none)*/
-
 	SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ BodyPartTemplate != none ? BodyPartTemplate.DisplayName : string(CosmeticTemplateName), 
 			"",
 			true, // bIsChecked
-			none, 
+			OptionCheckboxChanged, 
 			none);
 }
 
@@ -180,27 +207,24 @@ simulated function CreateOptionInt(name OptionName, int iValue)
 	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem(OptionName);
-
-	//SpawnedItem.UpdateDataButton(string(CosmeticTemplateName), class'UISaveLoadGameListItem'.default.m_sDeleteLabel, OnDeletePool);
-
-	/*simulated function UIMechaListItem UpdateDataCheckbox(string _Desc,
-									  String _CheckboxLabel,
-									  bool bIsChecked,
-									  delegate<OnCheckboxChangedCallback> _OnCheckboxChangedCallback = none,
-									  optional delegate<OnClickDelegate> _OnClickDelegate = none)*/
-
+									 
 	SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ string(iValue), 
 			"",
 			true, // bIsChecked
-			none, 
+			OptionCheckboxChanged, 
 			none);
 }
 
-simulated function OnUnitSelected(UIList ContainerList, int ItemIndex)
+simulated function OptionCheckboxChanged(UICheckbox CheckBox)
 {
-	local XComGameState_Unit	CPUnit;
-	local TAppearance			NewAppearance;
+	UpdateUnitAppearance();
+}
 
+//simulated function OnUnitSelected(UIList ContainerList, int ItemIndex)
+simulated function OnUnitSelected(int ItemIndex)
+{
+	local XComGameState_Unit CPUnit;
+	
 	if (ItemIndex == 0)
 	{
 		ArmoryPawn.SetAppearance(OriginalAppearance);
@@ -212,29 +236,37 @@ simulated function OnUnitSelected(UIList ContainerList, int ItemIndex)
 		return;
 
 	CPUnit = PoolMgr.CharacterPool[UniformIndices[ItemIndex - 1]];
-	NewAppearance = ArmoryPawn.m_kAppearance;
 
-	if (ArmorTemplateName != '' && CPUnit.HasStoredAppearance(NewAppearance.iGender, ArmorTemplateName))
+	if (ArmorTemplateName != '' && CPUnit.HasStoredAppearance(OriginalAppearance.iGender, ArmorTemplateName))
 	{
-		CPUnit.GetStoredAppearance(SelectedAppearance, NewAppearance.iGender, ArmorTemplateName);
+		CPUnit.GetStoredAppearance(SelectedAppearance, OriginalAppearance.iGender, ArmorTemplateName);
 	}
 	else
 	{
 		SelectedAppearance = CPUnit.kAppearance;
 	}
 	
+	UpdateOptionsList();
+	UpdateUnitAppearance();	
+}
+
+simulated function UpdateUnitAppearance()
+{
+	local TAppearance NewAppearance;
+
+	NewAppearance = OriginalAppearance;
+
 	CopyUniformAppearance(NewAppearance, SelectedAppearance);
 
 	ArmoryPawn.SetAppearance(NewAppearance);
 	CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, NewAppearance.iWeaponTint);
-
-	UpdateOptionsList();
 }
 
 simulated function UnitClicked(UIList ContainerList, int ItemIndex)
 {
-	bPlayerClickedOnUnit = true;
-	CloseScreen();
+	//bPlayerClickedOnUnit = true;
+	//CloseScreen();
+	SoldierCheckboxChanged(GetListItem(ItemIndex).Checkbox);
 }
 
 simulated function CloseScreen()
@@ -253,9 +285,68 @@ simulated function CloseScreen()
 	super.CloseScreen();
 }
 
-static function CopyUniformAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
+simulated function bool ShouldCopy(name OptionName)
 {
-	NewAppearance = UniformAppearance;
+	local UIMechaListItem ListItem;
+
+	ListItem = UIMechaListItem(OptionsList.GetChildByName(OptionName, false));
+
+	return ListItem != none && ListItem.Checkbox.bChecked;
+}
+
+simulated function CopyUniformAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
+{
+	//NewAppearance = UniformAppearance;
+
+	if (ShouldCopy('nmHead')) NewAppearance.nmHead = UniformAppearance.nmHead;
+	if (ShouldCopy('iGender')) NewAppearance.iGender = UniformAppearance.iGender;
+	if (ShouldCopy('iRace')) NewAppearance.iRace = UniformAppearance.iRace;
+	if (ShouldCopy('nmHaircut')) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
+	if (ShouldCopy('iHairColor')) NewAppearance.iHairColor = UniformAppearance.iHairColor;
+	if (ShouldCopy('iFacialHair')) NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
+	if (ShouldCopy('nmBeard')) NewAppearance.nmBeard = UniformAppearance.nmBeard;
+	if (ShouldCopy('iSkinColor')) NewAppearance.iSkinColor = UniformAppearance.iSkinColor;
+	if (ShouldCopy('iEyeColor')) NewAppearance.iEyeColor = UniformAppearance.iEyeColor;
+	if (ShouldCopy('nmFlag')) NewAppearance.nmFlag = UniformAppearance.nmFlag;
+	if (ShouldCopy('iVoice')) NewAppearance.iVoice = UniformAppearance.iVoice;
+	if (ShouldCopy('iAttitude')) NewAppearance.iAttitude = UniformAppearance.iAttitude;
+	if (ShouldCopy('iArmorDeco')) NewAppearance.iArmorDeco = UniformAppearance.iArmorDeco;
+	if (ShouldCopy('iArmorTint')) NewAppearance.iArmorTint = UniformAppearance.iArmorTint;
+	if (ShouldCopy('iArmorTintSecondary')) NewAppearance.iArmorTintSecondary = UniformAppearance.iArmorTintSecondary;
+	if (ShouldCopy('iWeaponTint')) NewAppearance.iWeaponTint = UniformAppearance.iWeaponTint;
+	if (ShouldCopy('iTattooTint')) NewAppearance.iTattooTint = UniformAppearance.iTattooTint;
+	if (ShouldCopy('nmWeaponPattern')) NewAppearance.nmWeaponPattern = UniformAppearance.nmWeaponPattern;
+	if (ShouldCopy('nmTorso')) NewAppearance.nmTorso = UniformAppearance.nmTorso;
+	if (ShouldCopy('nmArms')) NewAppearance.nmArms = UniformAppearance.nmArms;
+	if (ShouldCopy('nmLegs')) NewAppearance.nmLegs = UniformAppearance.nmLegs;
+	if (ShouldCopy('nmHelmet')) NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
+	if (ShouldCopy('nmEye')) NewAppearance.nmEye = UniformAppearance.nmEye;
+	if (ShouldCopy('nmTeeth')) NewAppearance.nmTeeth = UniformAppearance.nmTeeth;
+	if (ShouldCopy('nmFacePropLower')) NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
+	if (ShouldCopy('nmFacePropUpper')) NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
+	if (ShouldCopy('nmPatterns')) NewAppearance.nmPatterns = UniformAppearance.nmPatterns;
+	if (ShouldCopy('nmVoice')) NewAppearance.nmVoice = UniformAppearance.nmVoice;
+	if (ShouldCopy('nmLanguage')) NewAppearance.nmLanguage = UniformAppearance.nmLanguage;
+	if (ShouldCopy('nmTattoo_LeftArm')) NewAppearance.nmTattoo_LeftArm = UniformAppearance.nmTattoo_LeftArm;
+	if (ShouldCopy('nmTattoo_RightArm')) NewAppearance.nmTattoo_RightArm = UniformAppearance.nmTattoo_RightArm;
+	if (ShouldCopy('nmScars')) NewAppearance.nmScars = UniformAppearance.nmScars;
+	if (ShouldCopy('nmTorso_Underlay')) NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
+	if (ShouldCopy('nmArms_Underlay')) NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
+	if (ShouldCopy('nmLegs_Underlay')) NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
+	if (ShouldCopy('nmFacePaint')) NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
+	if (ShouldCopy('nmLeftArm')) NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
+	if (ShouldCopy('nmRightArm')) NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
+	if (ShouldCopy('nmLeftArmDeco')) NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
+	if (ShouldCopy('nmRightArmDeco')) NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
+	if (ShouldCopy('nmLeftForearm')) NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
+	if (ShouldCopy('nmRightForearm')) NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
+	if (ShouldCopy('nmThighs')) NewAppearance.nmThighs = UniformAppearance.nmThighs;
+	if (ShouldCopy('nmShins')) NewAppearance.nmShins = UniformAppearance.nmShins;
+	if (ShouldCopy('nmTorsoDeco')) NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
+	if (ShouldCopy('bGhostPawn')) NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
+
+	//OptionsList.GetChildByName()
+
 	/*
 	NewAppearance.iArmorDeco = UniformAppearance.iArmorDeco;
 	NewAppearance.iArmorTint = UniformAppearance.iArmorTint;

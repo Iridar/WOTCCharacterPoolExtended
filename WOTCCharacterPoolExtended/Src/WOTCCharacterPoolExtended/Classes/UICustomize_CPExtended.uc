@@ -1,19 +1,34 @@
 class UICustomize_CPExtended extends UICustomize;
 
+/*
+var UIIcon Icon;
+
+Icon = Spawn(class'UIIcon', self);
+	Icon.InitIcon('IconMC',, false, true, 36); // 'IconMC' matches instance name of control in Flash's 'AbilityItem' Symbol
+	Icon.SetPosition(-20, -20); // offset because we scale the icon
+
+Icon.LoadIcon(AbilityState.GetMyIconImage());
+Icon.EnableMouseAutomaticColor(BackgroundColor, ForegroundColor);
+*/
+
 var private CharacterPoolManagerExtended	PoolMgr;
 var private X2BodyPartTemplateManager		BodyPartMgr;
+var private X2StrategyElementTemplateManager StratMgr;
 
 var private array<int> UniformIndices;
 
 var private bool bPlayerClickedOnUnit;
 
 var private TAppearance			SelectedAppearance;
+var private X2SoldierPersonalityTemplate SelectedAttitude; // TODO: Actually use it lol
+
 
 var private XComHumanPawn		ArmoryPawn;
 var private XComGameState_Unit	ArmoryUnit;
 var private vector				OriginalPawnLocation;
 var private TAppearance			OriginalAppearance; // Appearance to restore if the player exits the screen without selecting anything
 var private name				ArmorTemplateName;
+var private X2SoldierPersonalityTemplate OriginalAttitude;
 
 // Left list with lotta checkboxes
 var UIPanel	OptionsContainer;
@@ -42,6 +57,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		super.CloseScreen();
 
 	BodyPartMgr = class'X2BodyPartTemplateManager'.static.GetBodyPartTemplateManager();
+	StratMgr = class'X2StrategyElementTemplateManager'.static.GetStrategyElementTemplateManager();
 
 	Armor = ArmoryUnit.GetItemInSlot(eInvSlot_Armor);
 	if (Armor != none)
@@ -50,7 +66,9 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	}
 	// TODO: MAke this work for switching between units
 	OriginalAppearance = ArmoryPawn.m_kAppearance;
+	SelectedAppearance = OriginalAppearance;
 	OriginalPawnLocation = ArmoryPawn.Location;
+	OriginalAttitude = ArmoryUnit.GetPersonalityTemplate();
 
 	PawnLocation = OriginalPawnLocation;
 	PawnLocation.X += 20; // Nudge the soldier pawn to the left a little
@@ -95,8 +113,6 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	
 	OptionsBG.ProcessMouseEvents(List.OnChildMouseEvent);
 }
-
-	
 
 simulated function UpdateData()
 {
@@ -154,7 +170,6 @@ simulated function UpdateData()
 
 simulated function SoldierCheckboxChanged(UICheckbox CheckBox)
 {
-	local UIMechaListItem ListItem;
 	local int Index;
 	local int i;
 
@@ -174,18 +189,28 @@ simulated function SoldierCheckboxChanged(UICheckbox CheckBox)
 	}
 }
 
-simulated function CreateOptionName(name OptionName, name CosmeticTemplateName)
+simulated function CreateOptionName(name OptionName, name CosmeticTemplateName, name NewCosmeticTemplateName)
 {
-	local UIMechaListItem		SpawnedItem;
-	local X2BodyPartTemplate	BodyPartTemplate;
-	local string				PartType;
-	
-	if (CosmeticTemplateName == '')
-		return;
+	local UIMechaListItem SpawnedItem;
 
 	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem(OptionName);
+
+	SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ GetBodyPartFriendlyName(OptionName, CosmeticTemplateName) @ "->" @ GetBodyPartFriendlyName(OptionName, NewCosmeticTemplateName), 
+			"",
+			true, // bIsChecked
+			OptionCheckboxChanged, 
+			none);
+}
+
+simulated function string GetBodyPartFriendlyName(name OptionName, name CosmeticTemplateName)
+{
+	local X2BodyPartTemplate	BodyPartTemplate;
+	local string				PartType;
+
+	if (CosmeticTemplateName == '')
+		return class'UIPhotoboothBase'.default.m_strEmptyOption; // "none"
 
 	PartType = GetPartType(OptionName);
 	if (PartType != "")
@@ -193,14 +218,41 @@ simulated function CreateOptionName(name OptionName, name CosmeticTemplateName)
 		BodyPartTemplate = BodyPartMgr.FindUberTemplate(PartType, CosmeticTemplateName);
 	}
 
-	SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ BodyPartTemplate != none ? BodyPartTemplate.DisplayName : string(CosmeticTemplateName), 
+	if (BodyPartTemplate != none && BodyPartTemplate.DisplayName == "")
+		`LOG("No localized name for template:" @ BodyPartTemplate.DataName @ PartType @ OptionName,, 'IRITEST');
+
+	if (BodyPartTemplate != none && BodyPartTemplate.DisplayName != "")
+		return BodyPartTemplate.DisplayName;
+
+	return string(CosmeticTemplateName);
+}
+
+simulated function CreateCountryOptionName(name CountryTemplateName, name NewCountryTemplateName)
+{
+	local UIMechaListItem SpawnedItem;
+
+	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('nmFlag');
+
+	SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strNationality $ ":" @ GetFriendlyCountryName(CountryTemplateName) @ "->" @ GetFriendlyCountryName(NewCountryTemplateName), 
 			"",
 			true, // bIsChecked
 			OptionCheckboxChanged, 
 			none);
 }
 
-simulated function CreateOptionInt(name OptionName, int iValue)
+simulated function string GetFriendlyCountryName(name CountryTemplateName)
+{
+	local X2CountryTemplate	CountryTemplate;
+
+	CountryTemplate = X2CountryTemplate(StratMgr.FindStrategyElementTemplate(CountryTemplateName));
+
+	return CountryTemplate != none ? CountryTemplate.DisplayName : string(CountryTemplateName);
+}
+
+
+simulated function CreateOptionInt(name OptionName, int iValue, int iNewValue)
 {
 	local UIMechaListItem SpawnedItem;
 	
@@ -208,12 +260,77 @@ simulated function CreateOptionInt(name OptionName, int iValue)
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem(OptionName);
 									 
-	SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ string(iValue), 
+	SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ string(iValue) @ "->" @ string(iNewValue), 
 			"",
 			true, // bIsChecked
 			OptionCheckboxChanged, 
 			none);
 }
+
+simulated function CreateColorOptionInt(name OptionName, int iValue, int iNewValue, EColorPalette PaletteType, optional bool bPrimary = true)
+{
+	local UIMechaListItem_Color			SpawnedItem;
+	local XComLinearColorPalette	Palette;
+	local LinearColor				ParamColor;
+	local LinearColor				NewParamColor;
+
+	SpawnedItem = Spawn(class'UIMechaListItem_Color', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem(OptionName);
+
+	SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName), 
+			"",
+			true, // bIsChecked
+			OptionCheckboxChanged, 
+			none);
+
+	Palette = `CONTENT.GetColorPalette(PaletteType);
+	if (bPrimary)
+	{
+		ParamColor = Palette.Entries[iValue].Primary;
+		NewParamColor = Palette.Entries[iNewValue].Primary;
+	}
+	else
+	{
+		ParamColor = Palette.Entries[iValue].Secondary;
+		NewParamColor = Palette.Entries[iNewValue].Secondary;
+	}
+	SpawnedItem.HTMLColorChip2 = GetHTMLColor(NewParamColor);
+	SpawnedItem.strColor1 = string(iValue);
+	SpawnedItem.strColor2 = string(iNewValue);
+	SpawnedItem.UpdateDataColorChip(GetOptionFriendlyName(OptionName), GetHTMLColor(ParamColor));	
+}
+
+simulated function string GetColorFriendlyText(coerce string strText, LinearColor ParamColor)
+{
+	return "<font color='#" $ GetHTMLColor(ParamColor) $ "'>" $ strText $ "</font>";
+}
+
+simulated function string GetHTMLColor(LinearColor ParamColor)
+{
+	local string ColorString;
+
+	ColorString = Right(ToHex(int(ParamColor.R * 255.0f)), 2) $ Right(ToHex(int(ParamColor.G * 255.0f)), 2)  $ Right(ToHex(int(ParamColor.B * 255.0f)), 2);
+	
+	return ColorString;
+}
+
+simulated function CreateOptionAttitude()
+{
+	local UIMechaListItem SpawnedItem;
+	
+	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('iAttitude');
+									 
+	SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strAttitude $ ":" @ OriginalAttitude.FriendlyName @ "->" @ SelectedAttitude.FriendlyName, 
+			"",
+			true, // bIsChecked
+			OptionCheckboxChanged, 
+			none);
+}
+
+
 
 simulated function OptionCheckboxChanged(UICheckbox CheckBox)
 {
@@ -224,28 +341,29 @@ simulated function OptionCheckboxChanged(UICheckbox CheckBox)
 simulated function OnUnitSelected(int ItemIndex)
 {
 	local XComGameState_Unit CPUnit;
-	
-	if (ItemIndex == 0)
-	{
-		ArmoryPawn.SetAppearance(OriginalAppearance);
-		CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, OriginalAppearance.iWeaponTint);
-		return;
-	}
 
 	if (ItemIndex == INDEX_NONE || ItemIndex - 1 > UniformIndices.Length - 1)
 		return;
-
-	CPUnit = PoolMgr.CharacterPool[UniformIndices[ItemIndex - 1]];
-
-	if (ArmorTemplateName != '' && CPUnit.HasStoredAppearance(OriginalAppearance.iGender, ArmorTemplateName))
+	
+	if (ItemIndex == 0)
 	{
-		CPUnit.GetStoredAppearance(SelectedAppearance, OriginalAppearance.iGender, ArmorTemplateName);
+		SelectedAppearance = OriginalAppearance;
 	}
 	else
 	{
-		SelectedAppearance = CPUnit.kAppearance;
+		CPUnit = PoolMgr.CharacterPool[UniformIndices[ItemIndex - 1]];
+
+		if (ArmorTemplateName != '' && CPUnit.HasStoredAppearance(OriginalAppearance.iGender, ArmorTemplateName))
+		{
+			CPUnit.GetStoredAppearance(SelectedAppearance, OriginalAppearance.iGender, ArmorTemplateName);
+		}
+		else
+		{
+			SelectedAppearance = CPUnit.kAppearance;
+		}
+
+		SelectedAttitude = CPUnit.GetPersonalityTemplate();
 	}
-	
 	UpdateOptionsList();
 	UpdateUnitAppearance();	
 }
@@ -371,51 +489,156 @@ simulated function CopyUniformAppearance(out TAppearance NewAppearance, const ou
 simulated function UpdateOptionsList()
 {
 	OptionsList.ClearItems();
-	
-	if (OriginalAppearance.iRace != SelectedAppearance.iRace)								CreateOptionInt('iRace', SelectedAppearance.iRace);
-	if (OriginalAppearance.iHairColor != SelectedAppearance.iHairColor)						CreateOptionInt('iHairColor', SelectedAppearance.iHairColor);
-	if (OriginalAppearance.iFacialHair != SelectedAppearance.iFacialHair)					CreateOptionInt('iFacialHair', SelectedAppearance.iFacialHair);
-	if (OriginalAppearance.iSkinColor != SelectedAppearance.iSkinColor)						CreateOptionInt('iSkinColor', SelectedAppearance.iSkinColor);
-	if (OriginalAppearance.iEyeColor != SelectedAppearance.iEyeColor)						CreateOptionInt('iEyeColor', SelectedAppearance.iEyeColor);
-	if (OriginalAppearance.iAttitude != SelectedAppearance.iAttitude)						CreateOptionInt('iAttitude', SelectedAppearance.iAttitude);
-	if (OriginalAppearance.iArmorDeco != SelectedAppearance.iArmorDeco)						CreateOptionInt('iArmorDeco', SelectedAppearance.iArmorDeco);
-	if (OriginalAppearance.iArmorTint != SelectedAppearance.iArmorTint)						CreateOptionInt('iArmorTint', SelectedAppearance.iArmorTint);
-	if (OriginalAppearance.iArmorTintSecondary != SelectedAppearance.iArmorTintSecondary)	CreateOptionInt('iArmorTintSecondary', SelectedAppearance.iArmorTintSecondary);
-	if (OriginalAppearance.iWeaponTint != SelectedAppearance.iWeaponTint)					CreateOptionInt('iWeaponTint', SelectedAppearance.iWeaponTint);
-	if (OriginalAppearance.iTattooTint != SelectedAppearance.iTattooTint)					CreateOptionInt('iTattooTint', SelectedAppearance.iTattooTint);
 
-	if (OriginalAppearance.nmHead != SelectedAppearance.nmHead)								CreateOptionName('nmHead', SelectedAppearance.nmHead);
-	if (OriginalAppearance.nmHaircut != SelectedAppearance.nmHaircut)						CreateOptionName('nmHaircut', SelectedAppearance.nmHaircut);
-	if (OriginalAppearance.nmBeard != SelectedAppearance.nmBeard)							CreateOptionName('nmBeard', SelectedAppearance.nmBeard);
-	if (OriginalAppearance.nmVoice != SelectedAppearance.nmVoice)							CreateOptionName('nmVoice', SelectedAppearance.nmVoice);
-	if (OriginalAppearance.nmFlag != SelectedAppearance.nmFlag)								CreateOptionName('nmFlag', SelectedAppearance.nmFlag);
-	if (OriginalAppearance.nmPatterns != SelectedAppearance.nmPatterns)						CreateOptionName('nmPatterns', SelectedAppearance.nmPatterns);
-	if (OriginalAppearance.nmWeaponPattern != SelectedAppearance.nmWeaponPattern)			CreateOptionName('nmWeaponPattern', SelectedAppearance.nmWeaponPattern);
-	if (OriginalAppearance.nmTorso != SelectedAppearance.nmTorso)							CreateOptionName('nmTorso', SelectedAppearance.nmTorso);
-	if (OriginalAppearance.nmArms != SelectedAppearance.nmArms)								CreateOptionName('nmArms', SelectedAppearance.nmArms);
-	if (OriginalAppearance.nmLegs != SelectedAppearance.nmLegs)								CreateOptionName('nmLegs', SelectedAppearance.nmLegs);
-	if (OriginalAppearance.nmHelmet != SelectedAppearance.nmHelmet)							CreateOptionName('nmHelmet', SelectedAppearance.nmHelmet);
-	if (OriginalAppearance.nmEye != SelectedAppearance.nmEye)								CreateOptionName('nmEye', SelectedAppearance.nmEye);
-	if (OriginalAppearance.nmTeeth != SelectedAppearance.nmTeeth)							CreateOptionName('nmTeeth', SelectedAppearance.nmTeeth);
-	if (OriginalAppearance.nmFacePropLower != SelectedAppearance.nmFacePropLower)			CreateOptionName('nmFacePropLower', SelectedAppearance.nmFacePropLower);
-	if (OriginalAppearance.nmFacePropUpper != SelectedAppearance.nmFacePropUpper)			CreateOptionName('nmFacePropUpper', SelectedAppearance.nmFacePropUpper);
-	if (OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage)						CreateOptionName('nmLanguage', SelectedAppearance.nmLanguage);
-	if (OriginalAppearance.nmTattoo_LeftArm != SelectedAppearance.nmTattoo_LeftArm)			CreateOptionName('nmTattoo_LeftArm', SelectedAppearance.nmTattoo_LeftArm);
-	if (OriginalAppearance.nmTattoo_RightArm != SelectedAppearance.nmTattoo_RightArm)		CreateOptionName('nmTattoo_RightArm', SelectedAppearance.nmTattoo_RightArm);
-	if (OriginalAppearance.nmScars != SelectedAppearance.nmScars)							CreateOptionName('nmScars', SelectedAppearance.nmScars);
-	if (OriginalAppearance.nmTorso_Underlay != SelectedAppearance.nmTorso_Underlay)			CreateOptionName('nmTorso_Underlay', SelectedAppearance.nmTorso_Underlay);
-	if (OriginalAppearance.nmArms_Underlay != SelectedAppearance.nmArms_Underlay)			CreateOptionName('nmArms_Underlay', SelectedAppearance.nmArms_Underlay);
-	if (OriginalAppearance.nmLegs_Underlay != SelectedAppearance.nmLegs_Underlay)			CreateOptionName('nmLegs_Underlay', SelectedAppearance.nmLegs_Underlay);
-	if (OriginalAppearance.nmFacePaint != SelectedAppearance.nmFacePaint)					CreateOptionName('nmFacePaint', SelectedAppearance.nmFacePaint);
-	if (OriginalAppearance.nmLeftArm != SelectedAppearance.nmLeftArm)						CreateOptionName('nmLeftArm', SelectedAppearance.nmLeftArm);
-	if (OriginalAppearance.nmRightArm != SelectedAppearance.nmRightArm)						CreateOptionName('nmRightArm', SelectedAppearance.nmRightArm);
-	if (OriginalAppearance.nmLeftArmDeco != SelectedAppearance.nmLeftArmDeco)				CreateOptionName('nmLeftArmDeco', SelectedAppearance.nmLeftArmDeco);
-	if (OriginalAppearance.nmRightArmDeco != SelectedAppearance.nmRightArmDeco)				CreateOptionName('nmRightArmDeco', SelectedAppearance.nmRightArmDeco);
-	if (OriginalAppearance.nmLeftForearm != SelectedAppearance.nmLeftForearm)				CreateOptionName('nmLeftForearm', SelectedAppearance.nmLeftForearm);
-	if (OriginalAppearance.nmRightForearm != SelectedAppearance.nmRightForearm)				CreateOptionName('nmRightForearm', SelectedAppearance.nmRightForearm);
-	if (OriginalAppearance.nmThighs != SelectedAppearance.nmThighs)							CreateOptionName('nmThighs', SelectedAppearance.nmThighs);
-	if (OriginalAppearance.nmShins != SelectedAppearance.nmShins)							CreateOptionName('nmShins', SelectedAppearance.nmShins);
-	if (OriginalAppearance.nmTorsoDeco != SelectedAppearance.nmTorsoDeco)					CreateOptionName('nmTorsoDeco', SelectedAppearance.nmTorsoDeco);
+	if (SelectedAppearance == OriginalAppearance)
+	{
+		OptionsList.Hide();
+	}
+	else if (!OptionsList.bIsVisible)
+	{
+		OptionsList.Show();
+	}
+
+	// HEAD
+	if (ShouldShowHeadCategory()) CreateOptionCategory(class'UICustomize_Menu'.default.m_strEditHead); 
+
+	if (OriginalAppearance.iRace != SelectedAppearance.iRace)								CreateOptionInt('iRace', OriginalAppearance.iRace, SelectedAppearance.iRace);
+	if (OriginalAppearance.iSkinColor != SelectedAppearance.iSkinColor)						CreateOptionInt('iSkinColor', OriginalAppearance.iSkinColor, SelectedAppearance.iSkinColor);
+	if (OriginalAppearance.nmHead != SelectedAppearance.nmHead)								CreateOptionName('nmHead', OriginalAppearance.nmHead , SelectedAppearance.nmHead);
+	if (OriginalAppearance.nmHelmet != SelectedAppearance.nmHelmet)							CreateOptionName('nmHelmet', OriginalAppearance.nmHelmet, SelectedAppearance.nmHelmet);
+	if (OriginalAppearance.nmFacePropLower != SelectedAppearance.nmFacePropLower)			CreateOptionName('nmFacePropLower', OriginalAppearance.nmHelmet, SelectedAppearance.nmFacePropLower);
+	if (OriginalAppearance.nmFacePropUpper != SelectedAppearance.nmFacePropUpper)			CreateOptionName('nmFacePropUpper', OriginalAppearance.nmFacePropUpper, SelectedAppearance.nmFacePropUpper);
+	if (OriginalAppearance.nmHaircut != SelectedAppearance.nmHaircut)						CreateOptionName('nmHaircut', OriginalAppearance.nmHaircut, SelectedAppearance.nmHaircut);
+	if (OriginalAppearance.nmBeard != SelectedAppearance.nmBeard)							CreateOptionName('nmBeard', OriginalAppearance.nmBeard, SelectedAppearance.nmBeard);
+	if (OriginalAppearance.iHairColor != SelectedAppearance.iHairColor)						CreateColorOptionInt('iHairColor', OriginalAppearance.iHairColor, SelectedAppearance.iHairColor, ePalette_HairColor);
+	if (OriginalAppearance.iFacialHair != SelectedAppearance.iFacialHair)					CreateOptionInt('iFacialHair', OriginalAppearance.iFacialHair, SelectedAppearance.iFacialHair);
+	if (OriginalAppearance.iEyeColor != SelectedAppearance.iEyeColor)						CreateColorOptionInt('iEyeColor', OriginalAppearance.iEyeColor, SelectedAppearance.iEyeColor, ePalette_EyeColor);
+	if (OriginalAppearance.nmScars != SelectedAppearance.nmScars)							CreateOptionName('nmScars', OriginalAppearance.nmScars, SelectedAppearance.nmScars);
+	if (OriginalAppearance.nmFacePaint != SelectedAppearance.nmFacePaint)					CreateOptionName('nmFacePaint', OriginalAppearance.nmFacePaint, SelectedAppearance.nmFacePaint);
+	if (OriginalAppearance.nmEye != SelectedAppearance.nmEye)								CreateOptionName('nmEye', OriginalAppearance.nmEye ,SelectedAppearance.nmEye);
+	if (OriginalAppearance.nmTeeth != SelectedAppearance.nmTeeth)							CreateOptionName('nmTeeth', OriginalAppearance.nmTeeth, SelectedAppearance.nmTeeth);
+
+	// BODY
+	if (ShouldShowBodyCategory()) CreateOptionCategory(class'UICustomize_Menu'.default.m_strEditBody); 
+
+	if (OriginalAppearance.nmTorso != SelectedAppearance.nmTorso)							CreateOptionName('nmTorso', OriginalAppearance.nmTorso, SelectedAppearance.nmTorso);
+	if (OriginalAppearance.nmArms != SelectedAppearance.nmArms)								CreateOptionName('nmArms', OriginalAppearance.nmArms, SelectedAppearance.nmArms);
+	if (OriginalAppearance.nmLegs != SelectedAppearance.nmLegs)								CreateOptionName('nmLegs', OriginalAppearance.nmLegs, SelectedAppearance.nmLegs);
+	if (OriginalAppearance.nmTorso_Underlay != SelectedAppearance.nmTorso_Underlay)			CreateOptionName('nmTorso_Underlay', OriginalAppearance.nmTorso_Underlay, SelectedAppearance.nmTorso_Underlay);
+	if (OriginalAppearance.nmArms_Underlay != SelectedAppearance.nmArms_Underlay)			CreateOptionName('nmArms_Underlay', OriginalAppearance.nmArms_Underlay, SelectedAppearance.nmArms_Underlay);
+	if (OriginalAppearance.nmLeftArm != SelectedAppearance.nmLeftArm)						CreateOptionName('nmLeftArm', OriginalAppearance.nmLeftArm, SelectedAppearance.nmLeftArm);
+	if (OriginalAppearance.nmRightArm != SelectedAppearance.nmRightArm)						CreateOptionName('nmRightArm', OriginalAppearance.nmRightArm, SelectedAppearance.nmRightArm);
+	if (OriginalAppearance.nmLeftArmDeco != SelectedAppearance.nmLeftArmDeco)				CreateOptionName('nmLeftArmDeco', OriginalAppearance.nmLeftArmDeco, SelectedAppearance.nmLeftArmDeco);
+	if (OriginalAppearance.nmRightArmDeco != SelectedAppearance.nmRightArmDeco)				CreateOptionName('nmRightArmDeco', OriginalAppearance.nmRightArmDeco, SelectedAppearance.nmRightArmDeco);
+	if (OriginalAppearance.nmLeftForearm != SelectedAppearance.nmLeftForearm)				CreateOptionName('nmLeftForearm', OriginalAppearance.nmLeftForearm, SelectedAppearance.nmLeftForearm);
+	if (OriginalAppearance.nmRightForearm != SelectedAppearance.nmRightForearm)				CreateOptionName('nmRightForearm', OriginalAppearance.nmRightForearm, SelectedAppearance.nmRightForearm);
+	if (OriginalAppearance.nmLegs_Underlay != SelectedAppearance.nmLegs_Underlay)			CreateOptionName('nmLegs_Underlay', OriginalAppearance.nmLegs_Underlay, SelectedAppearance.nmLegs_Underlay);
+	if (OriginalAppearance.nmThighs != SelectedAppearance.nmThighs)							CreateOptionName('nmThighs', OriginalAppearance.nmThighs, SelectedAppearance.nmThighs);
+	if (OriginalAppearance.nmShins != SelectedAppearance.nmShins)							CreateOptionName('nmShins', OriginalAppearance.nmShins, SelectedAppearance.nmShins);
+	if (OriginalAppearance.nmTorsoDeco != SelectedAppearance.nmTorsoDeco)					CreateOptionName('nmTorsoDeco', OriginalAppearance.nmTorsoDeco, SelectedAppearance.nmTorsoDeco);
+
+	// TATTOOS - thanks to Xym for Localize()
+	if (ShouldShowTattooCategory()) CreateOptionCategory(Localize("UIArmory_Customize", "m_strBaseLabels[eUICustomizeBase_Tattoos]", "XComGame"));
+
+	if (OriginalAppearance.nmTattoo_LeftArm != SelectedAppearance.nmTattoo_LeftArm)			CreateOptionName('nmTattoo_LeftArm', OriginalAppearance.nmTattoo_LeftArm, SelectedAppearance.nmTattoo_LeftArm);
+	if (OriginalAppearance.nmTattoo_RightArm != SelectedAppearance.nmTattoo_RightArm)		CreateOptionName('nmTattoo_RightArm', OriginalAppearance.nmTattoo_RightArm, SelectedAppearance.nmTattoo_RightArm);
+	if (ShouldShowTatooColorOption())														CreateColorOptionInt('iTattooTint', OriginalAppearance.iTattooTint, SelectedAppearance.iTattooTint, ePalette_ArmorTint);
+	
+	// ARMOR PATTERN
+	if (ShouldShowArmorPatternCategory()) CreateOptionCategory(class'UICustomize_Body'.default.m_strArmorPattern);
+
+	if (OriginalAppearance.nmPatterns != SelectedAppearance.nmPatterns)						CreateOptionName('nmPatterns', OriginalAppearance.nmPatterns, SelectedAppearance.nmPatterns);
+	if (OriginalAppearance.iArmorDeco != SelectedAppearance.iArmorDeco)						CreateOptionInt('iArmorDeco', OriginalAppearance.iArmorDeco, SelectedAppearance.iArmorDeco);
+	if (OriginalAppearance.iArmorTint != SelectedAppearance.iArmorTint)						CreateColorOptionInt('iArmorTint', OriginalAppearance.iArmorTint, SelectedAppearance.iArmorTint, ePalette_ArmorTint);
+	if (OriginalAppearance.iArmorTintSecondary != SelectedAppearance.iArmorTintSecondary)	CreateColorOptionInt('iArmorTintSecondary', OriginalAppearance.iArmorTintSecondary, SelectedAppearance.iArmorTintSecondary, ePalette_ArmorTint, false);
+
+	// WEAPON PATTERN
+	if (ShouldShowWeaponPatternCategory())  CreateOptionCategory(class'UICustomize_Weapon'.default.m_strWeaponPattern); // WEAPON PATTERN
+
+	if (OriginalAppearance.nmWeaponPattern != SelectedAppearance.nmWeaponPattern)			CreateOptionName('nmWeaponPattern', OriginalAppearance.nmWeaponPattern, SelectedAppearance.nmWeaponPattern);
+	if (OriginalAppearance.iWeaponTint != SelectedAppearance.iWeaponTint)					CreateColorOptionInt('iWeaponTint', OriginalAppearance.iWeaponTint, SelectedAppearance.iWeaponTint, ePalette_ArmorTint);	
+
+	if (ShouldShowPersonalityCategory()) CreateOptionCategory(Localize("UIArmory_Customize", "m_strBaseLabels[eUICustomizeBase_Personality]", "XComGame")); // PERSONALITY
+
+	if (OriginalAppearance.iAttitude != SelectedAppearance.iAttitude)						CreateOptionAttitude();
+	if (OriginalAppearance.nmVoice != SelectedAppearance.nmVoice)							CreateOptionName('nmVoice', OriginalAppearance.nmVoice, SelectedAppearance.nmVoice);
+	if (OriginalAppearance.nmFlag != SelectedAppearance.nmFlag)								CreateCountryOptionName(OriginalAppearance.nmFlag, SelectedAppearance.nmFlag);
+	if (OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage)						CreateOptionName('nmLanguage', OriginalAppearance.nmLanguage, SelectedAppearance.nmLanguage);
+}
+
+simulated function bool ShouldShowHeadCategory()
+{	
+	return  OriginalAppearance.iRace != SelectedAppearance.iRace ||
+			OriginalAppearance.iSkinColor != SelectedAppearance.iSkinColor ||
+			OriginalAppearance.nmHead != SelectedAppearance.nmHead ||
+			OriginalAppearance.nmHelmet != SelectedAppearance.nmHelmet ||
+			OriginalAppearance.nmFacePropLower != SelectedAppearance.nmFacePropLower ||
+			OriginalAppearance.nmFacePropUpper != SelectedAppearance.nmFacePropUpper ||
+			OriginalAppearance.nmHaircut != SelectedAppearance.nmHaircut ||
+			OriginalAppearance.nmBeard != SelectedAppearance.nmBeard ||
+			OriginalAppearance.iHairColor != SelectedAppearance.iHairColor ||
+			OriginalAppearance.iFacialHair != SelectedAppearance.iFacialHair ||
+			OriginalAppearance.iEyeColor != SelectedAppearance.iEyeColor||
+			OriginalAppearance.nmScars != SelectedAppearance.nmScars ||
+			OriginalAppearance.nmFacePaint != SelectedAppearance.nmFacePaint ||
+			OriginalAppearance.nmEye != SelectedAppearance.nmEye ||
+			OriginalAppearance.nmTeeth != SelectedAppearance.nmTeeth;
+}
+
+simulated function bool ShouldShowBodyCategory()
+{	
+	return  OriginalAppearance.nmTorso != SelectedAppearance.nmTorso ||
+			OriginalAppearance.nmArms != SelectedAppearance.nmArms ||				
+			OriginalAppearance.nmLegs != SelectedAppearance.nmLegs ||					
+			OriginalAppearance.nmTorso_Underlay != SelectedAppearance.nmTorso_Underlay ||
+			OriginalAppearance.nmArms_Underlay != SelectedAppearance.nmArms_Underlay ||
+			OriginalAppearance.nmLeftArm != SelectedAppearance.nmLeftArm ||
+			OriginalAppearance.nmRightArm != SelectedAppearance.nmRightArm ||
+			OriginalAppearance.nmLeftArmDeco != SelectedAppearance.nmLeftArmDeco ||
+			OriginalAppearance.nmRightArmDeco != SelectedAppearance.nmRightArmDeco ||		
+			OriginalAppearance.nmLeftForearm != SelectedAppearance.nmLeftForearm ||	
+			OriginalAppearance.nmRightForearm != SelectedAppearance.nmRightForearm ||		
+			OriginalAppearance.nmLegs_Underlay != SelectedAppearance.nmLegs_Underlay ||	
+			OriginalAppearance.nmThighs != SelectedAppearance.nmThighs ||
+			OriginalAppearance.nmShins != SelectedAppearance.nmShins ||				
+			OriginalAppearance.nmTorsoDeco != SelectedAppearance.nmTorsoDeco;
+}
+
+simulated function bool ShouldShowTattooCategory()
+{	
+	return   OriginalAppearance.nmTattoo_LeftArm != SelectedAppearance.nmTattoo_LeftArm ||
+			 OriginalAppearance.nmTattoo_RightArm != SelectedAppearance.nmTattoo_RightArm ||
+			 ShouldShowTatooColorOption();
+}
+
+simulated function bool ShouldShowTatooColorOption()
+{
+	// Show tattoo color only if we're changing it *and* at least one of the tattoos for the new appearance isn't empty
+	return	OriginalAppearance.iTattooTint != SelectedAppearance.iTattooTint && 
+			(SelectedAppearance.nmTattoo_LeftArm != 'Tattoo_Arms_BLANK' || 
+			SelectedAppearance.nmTattoo_RightArm != 'Tattoo_Arms_BLANK');
+}
+
+simulated function bool ShouldShowArmorPatternCategory()
+{	
+	return OriginalAppearance.nmPatterns != SelectedAppearance.nmPatterns ||		
+		   OriginalAppearance.iArmorDeco != SelectedAppearance.iArmorDeco ||				
+		   OriginalAppearance.iArmorTint != SelectedAppearance.iArmorTint ||				
+		   OriginalAppearance.iArmorTintSecondary != SelectedAppearance.iArmorTintSecondary;
+}
+
+simulated function bool ShouldShowWeaponPatternCategory()
+{	
+	return	OriginalAppearance.nmWeaponPattern != SelectedAppearance.nmWeaponPattern ||
+			OriginalAppearance.iWeaponTint != SelectedAppearance.iWeaponTint;
+}
+
+simulated function bool ShouldShowPersonalityCategory()
+{	
+	return	OriginalAppearance.iAttitude != SelectedAppearance.iAttitude ||
+			OriginalAppearance.nmVoice != SelectedAppearance.nmVoice ||		
+			OriginalAppearance.nmFlag != SelectedAppearance.nmFlag ||
+			OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage;				
 }
 
 static simulated function string GetOptionFriendlyName(name OptionName)
@@ -512,6 +735,17 @@ simulated function string GetPartType(name OptionName)
 	
 	//DecoKits
 }
+simulated function CreateOptionCategory(string strText)
+{
+	local UIMechaListItem SpawnedItem;
+
+	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem();
+	SpawnedItem.SetDisabled(true);
+	SpawnedItem.UpdateDataDescription(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS(strText));
+}
+
 
 /*class'UICustomize_Info'.default.m_strFirstNameLabel=First Name
 class'UICustomize_Info'.default.m_strLastNameLabel=Last Name
@@ -528,7 +762,9 @@ class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_DEV_Torso]=To
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_DEV_Arms]=Arms (DEV)
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_DEV_Legs]=Legs (DEV)
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Skin]=SKIN
+
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Face]=FACE
+
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_EyeColor]=EYE COLOR
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_EyeType]=EYE TYPE
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_TeethType]=TEETH TYPE
@@ -539,7 +775,9 @@ class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_FaceDecoratio
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_FacialHair]=FACIAL HAIR
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Scars]=SCARS
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Tattoos]=TATTOOS
+
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Personality]=PERSONALITY
+
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Clothes]=CLOTHES
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Country]=COUNTRY
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Voice]=VOICE

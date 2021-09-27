@@ -1,26 +1,16 @@
 class UIMechaListItem_Color extends UIMechaListItem;
 
-// Same as original, but used to display two colors at once.
+// Same as original, but used to display two colors at once in addition to a checkbox.
 
-var UIBGBox	ColorChip2;
-var UIText	ArrowText;
+var string	strColorText_1;
+var string	strColorText_2;
+var string	HTMLColorChip2;
 
-var string	strColor1;
-var string	strColor2;
+var private UIBGBox	ColorChip2;
+var private UIText	ArrowText;
 
-var private UIText Color1_Text;
-var private UIText Color2_Text;
-
-var string HTMLColorChip2;
-/*
-simulated function SetWidgetType(EUILineItemType NewType)
-{
-	super.SetWidgetType(NewType);
-
-	if(ColorChip2 != None) ColorChip2.Hide();
-
-	Show();
-}*/
+var private UIText	Color1_Text;
+var private UIText	Color2_Text;
 
 simulated function UIMechaListItem UpdateDataColorChip(string _Desc,
 										String _HTMLColorChip,
@@ -45,8 +35,7 @@ simulated function UIMechaListItem UpdateDataColorChip(string _Desc,
 	Color1_Text = Spawn(class'UIText', self);
 	Color1_Text.InitText('ColorChip1TextMC');
 	Color1_Text.SetPosition(ColorChip.X, 5);
-	Color1_Text.SetCenteredText(strColor1, ColorChip);
-	//Color1_Text.MoveToHighestDepth();
+	Color1_Text.SetCenteredText(strColorText_1, ColorChip);
 	
 	ArrowText = Spawn(class'UIText', self);
 	ArrowText.InitText('ColorArrowTextMC', "->");
@@ -64,8 +53,7 @@ simulated function UIMechaListItem UpdateDataColorChip(string _Desc,
 		Color2_Text = Spawn(class'UIText', self);
 		Color2_Text.InitText('ColorChip2TextMC');
 		Color2_Text.SetPosition(ColorChip2.X, 5);
-		Color2_Text.SetCenteredText(strColor2, ColorChip2);
-		//Color2_Text.MoveToHighestDepth();
+		Color2_Text.SetCenteredText(strColorText_2, ColorChip2);
 	}
 
 	ColorChip2.SetColor(HTMLColorChip2);

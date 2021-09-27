@@ -1,16 +1,5 @@
 class UICustomize_CPExtended extends UICustomize;
 
-/*
-var UIIcon Icon;
-
-Icon = Spawn(class'UIIcon', self);
-	Icon.InitIcon('IconMC',, false, true, 36); // 'IconMC' matches instance name of control in Flash's 'AbilityItem' Symbol
-	Icon.SetPosition(-20, -20); // offset because we scale the icon
-
-Icon.LoadIcon(AbilityState.GetMyIconImage());
-Icon.EnableMouseAutomaticColor(BackgroundColor, ForegroundColor);
-*/
-
 var private CharacterPoolManagerExtended	PoolMgr;
 var private X2BodyPartTemplateManager		BodyPartMgr;
 var private X2StrategyElementTemplateManager StratMgr;
@@ -20,7 +9,7 @@ var private array<int> UniformIndices;
 var private bool bPlayerClickedOnUnit;
 
 var private TAppearance			SelectedAppearance;
-var private X2SoldierPersonalityTemplate SelectedAttitude; // TODO: Actually use it lol
+var private X2SoldierPersonalityTemplate SelectedAttitude;
 
 
 var private XComHumanPawn		ArmoryPawn;
@@ -168,7 +157,7 @@ simulated function UpdateData()
 	UpdateOptionsList();
 }
 
-simulated function SoldierCheckboxChanged(UICheckbox CheckBox)
+simulated private function SoldierCheckboxChanged(UICheckbox CheckBox)
 {
 	local int Index;
 	local int i;
@@ -189,7 +178,7 @@ simulated function SoldierCheckboxChanged(UICheckbox CheckBox)
 	}
 }
 
-simulated function CreateOptionName(name OptionName, name CosmeticTemplateName, name NewCosmeticTemplateName)
+simulated private function CreateOptionName(name OptionName, name CosmeticTemplateName, name NewCosmeticTemplateName)
 {
 	local UIMechaListItem SpawnedItem;
 
@@ -204,7 +193,7 @@ simulated function CreateOptionName(name OptionName, name CosmeticTemplateName, 
 			none);
 }
 
-simulated function string GetBodyPartFriendlyName(name OptionName, name CosmeticTemplateName)
+simulated private function string GetBodyPartFriendlyName(name OptionName, name CosmeticTemplateName)
 {
 	local X2BodyPartTemplate	BodyPartTemplate;
 	local string				PartType;
@@ -227,7 +216,7 @@ simulated function string GetBodyPartFriendlyName(name OptionName, name Cosmetic
 	return string(CosmeticTemplateName);
 }
 
-simulated function CreateCountryOptionName(name CountryTemplateName, name NewCountryTemplateName)
+simulated private function CreateCountryOptionName(name CountryTemplateName, name NewCountryTemplateName)
 {
 	local UIMechaListItem SpawnedItem;
 
@@ -242,7 +231,7 @@ simulated function CreateCountryOptionName(name CountryTemplateName, name NewCou
 			none);
 }
 
-simulated function string GetFriendlyCountryName(name CountryTemplateName)
+simulated private function string GetFriendlyCountryName(name CountryTemplateName)
 {
 	local X2CountryTemplate	CountryTemplate;
 
@@ -252,7 +241,7 @@ simulated function string GetFriendlyCountryName(name CountryTemplateName)
 }
 
 
-simulated function CreateOptionInt(name OptionName, int iValue, int iNewValue)
+simulated private function CreateOptionInt(name OptionName, int iValue, int iNewValue)
 {
 	local UIMechaListItem SpawnedItem;
 	
@@ -267,7 +256,7 @@ simulated function CreateOptionInt(name OptionName, int iValue, int iNewValue)
 			none);
 }
 
-simulated function CreateColorOptionInt(name OptionName, int iValue, int iNewValue, EColorPalette PaletteType, optional bool bPrimary = true)
+simulated private function CreateColorOptionInt(name OptionName, int iValue, int iNewValue, EColorPalette PaletteType, optional bool bPrimary = true)
 {
 	local UIMechaListItem_Color			SpawnedItem;
 	local XComLinearColorPalette	Palette;
@@ -296,26 +285,14 @@ simulated function CreateColorOptionInt(name OptionName, int iValue, int iNewVal
 		NewParamColor = Palette.Entries[iNewValue].Secondary;
 	}
 	SpawnedItem.HTMLColorChip2 = GetHTMLColor(NewParamColor);
-	SpawnedItem.strColor1 = string(iValue);
-	SpawnedItem.strColor2 = string(iNewValue);
+	SpawnedItem.strColorText_1 = string(iValue);
+	SpawnedItem.strColorText_2 = string(iNewValue);
 	SpawnedItem.UpdateDataColorChip(GetOptionFriendlyName(OptionName), GetHTMLColor(ParamColor));	
 }
 
-simulated function string GetColorFriendlyText(coerce string strText, LinearColor ParamColor)
-{
-	return "<font color='#" $ GetHTMLColor(ParamColor) $ "'>" $ strText $ "</font>";
-}
 
-simulated function string GetHTMLColor(LinearColor ParamColor)
-{
-	local string ColorString;
 
-	ColorString = Right(ToHex(int(ParamColor.R * 255.0f)), 2) $ Right(ToHex(int(ParamColor.G * 255.0f)), 2)  $ Right(ToHex(int(ParamColor.B * 255.0f)), 2);
-	
-	return ColorString;
-}
-
-simulated function CreateOptionAttitude()
+simulated private function CreateOptionAttitude()
 {
 	local UIMechaListItem SpawnedItem;
 	
@@ -332,13 +309,13 @@ simulated function CreateOptionAttitude()
 
 
 
-simulated function OptionCheckboxChanged(UICheckbox CheckBox)
+simulated private function OptionCheckboxChanged(UICheckbox CheckBox)
 {
 	UpdateUnitAppearance();
 }
 
 //simulated function OnUnitSelected(UIList ContainerList, int ItemIndex)
-simulated function OnUnitSelected(int ItemIndex)
+simulated private function OnUnitSelected(int ItemIndex)
 {
 	local XComGameState_Unit CPUnit;
 
@@ -368,7 +345,7 @@ simulated function OnUnitSelected(int ItemIndex)
 	UpdateUnitAppearance();	
 }
 
-simulated function UpdateUnitAppearance()
+simulated private function UpdateUnitAppearance()
 {
 	local TAppearance NewAppearance;
 
@@ -378,6 +355,17 @@ simulated function UpdateUnitAppearance()
 
 	ArmoryPawn.SetAppearance(NewAppearance);
 	CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, NewAppearance.iWeaponTint);
+
+	if (ShouldCopy('iAttitude'))
+	{
+		XComHumanPawn(CustomizeManager.ActorPawn).PlayHQIdleAnim(SelectedAttitude.IdleAnimName);
+		XComHumanPawn(CustomizeManager.ActorPawn).CustomizationIdleAnim = SelectedAttitude.IdleAnimName;
+	}
+	else
+	{
+		XComHumanPawn(CustomizeManager.ActorPawn).PlayHQIdleAnim(OriginalAttitude.IdleAnimName);
+		XComHumanPawn(CustomizeManager.ActorPawn).CustomizationIdleAnim = OriginalAttitude.IdleAnimName;
+	}
 }
 
 simulated function UnitClicked(UIList ContainerList, int ItemIndex)
@@ -403,7 +391,7 @@ simulated function CloseScreen()
 	super.CloseScreen();
 }
 
-simulated function bool ShouldCopy(name OptionName)
+simulated private function bool ShouldCopy(name OptionName)
 {
 	local UIMechaListItem ListItem;
 
@@ -412,7 +400,7 @@ simulated function bool ShouldCopy(name OptionName)
 	return ListItem != none && ListItem.Checkbox.bChecked;
 }
 
-simulated function CopyUniformAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
+simulated private function CopyUniformAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
 {
 	//NewAppearance = UniformAppearance;
 
@@ -566,7 +554,7 @@ simulated function UpdateOptionsList()
 	if (OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage)						CreateOptionName('nmLanguage', OriginalAppearance.nmLanguage, SelectedAppearance.nmLanguage);
 }
 
-simulated function bool ShouldShowHeadCategory()
+simulated private function bool ShouldShowHeadCategory()
 {	
 	return  OriginalAppearance.iRace != SelectedAppearance.iRace ||
 			OriginalAppearance.iSkinColor != SelectedAppearance.iSkinColor ||
@@ -585,7 +573,7 @@ simulated function bool ShouldShowHeadCategory()
 			OriginalAppearance.nmTeeth != SelectedAppearance.nmTeeth;
 }
 
-simulated function bool ShouldShowBodyCategory()
+simulated private function bool ShouldShowBodyCategory()
 {	
 	return  OriginalAppearance.nmTorso != SelectedAppearance.nmTorso ||
 			OriginalAppearance.nmArms != SelectedAppearance.nmArms ||				
@@ -604,14 +592,14 @@ simulated function bool ShouldShowBodyCategory()
 			OriginalAppearance.nmTorsoDeco != SelectedAppearance.nmTorsoDeco;
 }
 
-simulated function bool ShouldShowTattooCategory()
+simulated private function bool ShouldShowTattooCategory()
 {	
 	return   OriginalAppearance.nmTattoo_LeftArm != SelectedAppearance.nmTattoo_LeftArm ||
 			 OriginalAppearance.nmTattoo_RightArm != SelectedAppearance.nmTattoo_RightArm ||
 			 ShouldShowTatooColorOption();
 }
 
-simulated function bool ShouldShowTatooColorOption()
+simulated private function bool ShouldShowTatooColorOption()
 {
 	// Show tattoo color only if we're changing it *and* at least one of the tattoos for the new appearance isn't empty
 	return	OriginalAppearance.iTattooTint != SelectedAppearance.iTattooTint && 
@@ -619,7 +607,7 @@ simulated function bool ShouldShowTatooColorOption()
 			SelectedAppearance.nmTattoo_RightArm != 'Tattoo_Arms_BLANK');
 }
 
-simulated function bool ShouldShowArmorPatternCategory()
+simulated private function bool ShouldShowArmorPatternCategory()
 {	
 	return OriginalAppearance.nmPatterns != SelectedAppearance.nmPatterns ||		
 		   OriginalAppearance.iArmorDeco != SelectedAppearance.iArmorDeco ||				
@@ -627,13 +615,13 @@ simulated function bool ShouldShowArmorPatternCategory()
 		   OriginalAppearance.iArmorTintSecondary != SelectedAppearance.iArmorTintSecondary;
 }
 
-simulated function bool ShouldShowWeaponPatternCategory()
+simulated private function bool ShouldShowWeaponPatternCategory()
 {	
 	return	OriginalAppearance.nmWeaponPattern != SelectedAppearance.nmWeaponPattern ||
 			OriginalAppearance.iWeaponTint != SelectedAppearance.iWeaponTint;
 }
 
-simulated function bool ShouldShowPersonalityCategory()
+simulated private function bool ShouldShowPersonalityCategory()
 {	
 	return	OriginalAppearance.iAttitude != SelectedAppearance.iAttitude ||
 			OriginalAppearance.nmVoice != SelectedAppearance.nmVoice ||		
@@ -641,7 +629,7 @@ simulated function bool ShouldShowPersonalityCategory()
 			OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage;				
 }
 
-static simulated function string GetOptionFriendlyName(name OptionName)
+static simulated private function string GetOptionFriendlyName(name OptionName)
 {
 	switch (OptionName)
 	{
@@ -693,7 +681,7 @@ static simulated function string GetOptionFriendlyName(name OptionName)
 	}
 }
 
-simulated function string GetPartType(name OptionName)
+simulated private function string GetPartType(name OptionName)
 {
 	switch (OptionName)
 	{
@@ -735,7 +723,7 @@ simulated function string GetPartType(name OptionName)
 	
 	//DecoKits
 }
-simulated function CreateOptionCategory(string strText)
+simulated private function CreateOptionCategory(string strText)
 {
 	local UIMechaListItem SpawnedItem;
 
@@ -746,6 +734,19 @@ simulated function CreateOptionCategory(string strText)
 	SpawnedItem.UpdateDataDescription(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS(strText));
 }
 
+simulated private function string GetColorFriendlyText(coerce string strText, LinearColor ParamColor)
+{
+	return "<font color='#" $ GetHTMLColor(ParamColor) $ "'>" $ strText $ "</font>";
+}
+
+simulated private function string GetHTMLColor(LinearColor ParamColor)
+{
+	local string ColorString;
+
+	ColorString = Right(ToHex(int(ParamColor.R * 255.0f)), 2) $ Right(ToHex(int(ParamColor.G * 255.0f)), 2)  $ Right(ToHex(int(ParamColor.B * 255.0f)), 2);
+	
+	return ColorString;
+}
 
 /*class'UICustomize_Info'.default.m_strFirstNameLabel=First Name
 class'UICustomize_Info'.default.m_strLastNameLabel=Last Name

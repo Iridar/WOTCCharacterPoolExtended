@@ -1,33 +1,31 @@
 class UICustomize_CPExtended extends UICustomize;
 
-var private CharacterPoolManagerExtended	PoolMgr;
-var private X2BodyPartTemplateManager		BodyPartMgr;
-var private X2StrategyElementTemplateManager StratMgr;
+// Internal cached info
+var private CharacterPoolManagerExtended		PoolMgr;
+var private X2BodyPartTemplateManager			BodyPartMgr;
+var private X2StrategyElementTemplateManager	StratMgr;
 
-var private array<int> UniformIndices;
+var private array<int> UniformIndices; // Array of CP.CharacterPool indices of units displayed in the list after filtering
 
-var private bool bPlayerClickedOnUnit;
+// Info about selected CP unit
+var private TAppearance						SelectedAppearance;
+var private X2SoldierPersonalityTemplate	SelectedAttitude;
 
-var private TAppearance			SelectedAppearance;
-var private X2SoldierPersonalityTemplate SelectedAttitude;
-
-
-var private XComHumanPawn		ArmoryPawn;
-var private XComGameState_Unit	ArmoryUnit;
-var private vector				OriginalPawnLocation;
-var private TAppearance			OriginalAppearance; // Appearance to restore if the player exits the screen without selecting anything
-var private name				ArmorTemplateName;
-var private X2SoldierPersonalityTemplate OriginalAttitude;
+// Info about Armory unit
+var private XComHumanPawn					ArmoryPawn;
+var private XComGameState_Unit				ArmoryUnit;
+var private vector							OriginalPawnLocation;
+var private TAppearance						OriginalAppearance; // Appearance to restore if the player exits the screen without selecting anything
+var private name							ArmorTemplateName;
+var private X2SoldierPersonalityTemplate	OriginalAttitude;
 
 // Left list with lotta checkboxes
-var UIPanel	OptionsContainer;
-var UIBGBox OptionsBG;
-var UIList	OptionsList;
+var private UIPanel	OptionsContainer;
+var private UIBGBox OptionsBG;
+var private UIList	OptionsList;
 
 simulated function InitScreen(XComPlayerController InitController, UIMovie InitMovie, optional name InitName)
 {
-	local XComGameState_Item	Armor;
-	local vector				PawnLocation;
 	local UIScreen				CycleScreen;
 	local UIMouseGuard			MouseGuard;
 
@@ -37,34 +35,11 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	if (PoolMgr == none)
 		super.CloseScreen();
 
-	ArmoryUnit = CustomizeManager.UpdatedUnitState;
-	if (ArmoryUnit == none)
-		super.CloseScreen();
-
-	ArmoryPawn = XComHumanPawn(CustomizeManager.ActorPawn);
-	if (ArmoryPawn == none)
-		super.CloseScreen();
-
 	BodyPartMgr = class'X2BodyPartTemplateManager'.static.GetBodyPartTemplateManager();
 	StratMgr = class'X2StrategyElementTemplateManager'.static.GetStrategyElementTemplateManager();
 
-	Armor = ArmoryUnit.GetItemInSlot(eInvSlot_Armor);
-	if (Armor != none)
-	{
-		ArmorTemplateName = Armor.GetMyTemplateName();
-	}
-	// TODO: MAke this work for switching between units
-	OriginalAppearance = ArmoryPawn.m_kAppearance;
-	SelectedAppearance = OriginalAppearance;
-	OriginalPawnLocation = ArmoryPawn.Location;
-	OriginalAttitude = ArmoryUnit.GetPersonalityTemplate();
+	CacheArmoryUnitData();
 
-	PawnLocation = OriginalPawnLocation;
-	PawnLocation.X += 20; // Nudge the soldier pawn to the left a little
-	ArmoryPawn.SetLocation(PawnLocation);
-
-	List.bStickyHighlight = true;
-	//List.OnSelectionChanged = OnUnitSelected;
 	List.OnItemClicked = UnitClicked;
 
 	List.SetPosition(1920 - List.Width - 70, 280);
@@ -103,13 +78,44 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	OptionsBG.ProcessMouseEvents(List.OnChildMouseEvent);
 }
 
+simulated function CacheArmoryUnitData()
+{
+	local XComGameState_Item	Armor;
+	local vector				PawnLocation;
+
+	ArmoryUnit = CustomizeManager.UpdatedUnitState;
+	if (ArmoryUnit == none)
+		super.CloseScreen();
+
+	ArmoryPawn = XComHumanPawn(CustomizeManager.ActorPawn);
+	if (ArmoryPawn == none)
+		super.CloseScreen();
+
+	Armor = ArmoryUnit.GetItemInSlot(eInvSlot_Armor);
+	if (Armor != none)
+	{
+		ArmorTemplateName = Armor.GetMyTemplateName();
+	}
+
+	OriginalAppearance = ArmoryPawn.m_kAppearance;
+	SelectedAppearance = OriginalAppearance;
+	OriginalPawnLocation = ArmoryPawn.Location;
+	OriginalAttitude = ArmoryUnit.GetPersonalityTemplate();
+
+	PawnLocation = OriginalPawnLocation;
+	PawnLocation.X += 20; // Nudge the soldier pawn to the left a little
+	ArmoryPawn.SetLocation(PawnLocation);
+}
+
 simulated function UpdateData()
 {
 	local XComGameState_Unit CPUnit;
-	
 	local int i;
 
 	super.UpdateData();
+
+	UniformIndices.Length = 0;
+	List.ClearItems();
 
 	//GetListItem(0).UpdateDataDescription("NO CHANGE"); 
 
@@ -119,7 +125,6 @@ simulated function UpdateData()
 			SoldierCheckboxChanged, 
 			none);
 	
-	UniformIndices.Length = 0;
 
 	foreach PoolMgr.CharacterPool(CPUnit, i)
 	{
@@ -314,7 +319,6 @@ simulated private function OptionCheckboxChanged(UICheckbox CheckBox)
 	UpdateUnitAppearance();
 }
 
-//simulated function OnUnitSelected(UIList ContainerList, int ItemIndex)
 simulated private function OnUnitSelected(int ItemIndex)
 {
 	local XComGameState_Unit CPUnit;
@@ -370,13 +374,12 @@ simulated private function UpdateUnitAppearance()
 
 simulated function UnitClicked(UIList ContainerList, int ItemIndex)
 {
-	//bPlayerClickedOnUnit = true;
-	//CloseScreen();
 	SoldierCheckboxChanged(GetListItem(ItemIndex).Checkbox);
 }
 
 simulated function CloseScreen()
 {	
+/*
 	if (!bPlayerClickedOnUnit)
 	{
 		ArmoryPawn.SetAppearance(OriginalAppearance);
@@ -386,7 +389,7 @@ simulated function CloseScreen()
 	{
 		CustomizeManager.UpdatedUnitState.SetTAppearance(ArmoryPawn.m_kAppearance);
 		CustomizeManager.UpdatedUnitState.StoreAppearance();
-	}
+	}*/
 	ArmoryPawn.SetLocation(OriginalPawnLocation);
 	super.CloseScreen();
 }
@@ -785,3 +788,16 @@ class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Voice]=VOICE
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Gender]=GENDER
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Race]=RACE
 */
+
+simulated static function CycleToSoldier(StateObjectReference NewRef)
+{
+	local UICustomize_CPExtended CustomizeScreen;
+	super.CycleToSoldier(NewRef);
+
+	CustomizeScreen = UICustomize_CPExtended(`SCREENSTACK.GetFirstInstanceOf(class'UICustomize_CPExtended'));
+	if (CustomizeScreen != none)
+	{
+		CustomizeScreen.CacheArmoryUnitData();
+		CustomizeScreen.UpdateOptionsList();
+	}
+}

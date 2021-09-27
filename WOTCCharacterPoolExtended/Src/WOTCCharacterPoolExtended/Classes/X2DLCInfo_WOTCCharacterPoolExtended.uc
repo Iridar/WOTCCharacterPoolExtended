@@ -7,7 +7,7 @@ static function OnPreCreateTemplates()
 	LocalEngine = `XENGINE;
 	LocalEngine.m_CharacterPoolManager = new class'CharacterPoolManagerExtended';
 }
-
+/*
 exec function SetLoc(int X, int Y)
 {
 	local UICustomize_CPExtended CPExtended;
@@ -28,7 +28,7 @@ exec function SetSize(int X, int Y)
 	{
 		CPExtended.OptionsContainer.SetSize(X, Y);
 	}
-}
+}*/
 
 /// <summary>
 /// This method is run if the player loads a saved game that was created prior to this DLC / Mod being installed, and allows the 

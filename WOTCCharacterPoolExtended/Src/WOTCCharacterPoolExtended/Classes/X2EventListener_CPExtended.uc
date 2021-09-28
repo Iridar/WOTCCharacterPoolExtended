@@ -5,9 +5,43 @@ static function array<X2DataTemplate> CreateTemplates()
 	local array<X2DataTemplate> Templates;
 
 	Templates.AddItem(Create_ListenerTemplate());
+	Templates.AddItem(Create_StrategyListenerTemplate());
 
 	return Templates;
 }
+
+static function CHEventListenerTemplate Create_StrategyListenerTemplate()
+{
+	local CHEventListenerTemplate Template;
+
+	`CREATE_X2TEMPLATE(class'CHEventListenerTemplate', Template, 'IRI_XYM_X2EventListener_CPExtended_Strategy');
+
+	Template.RegisterInStrategy = true;
+
+	Template.AddCHEvent('OverrideCharCustomizationScale', OnOverrideCharCustomizationScale, ELD_Immediate, 50);
+
+	return Template;
+}
+
+// See comments in UICustomize_CPExtended::UpdateUnitAppearance() as to why this is necessary
+static function EventListenerReturn OnOverrideCharCustomizationScale(Object EventData, Object EventSource, XComGameState NewGameState, Name Event, Object CallbackData)
+{
+	local UIScreenStack ScreenStack;
+	local UICustomize_CPExtended CPExtendedScreen;
+
+	ScreenStack = `SCREENSTACK;
+	if (ScreenStack != none)
+	{
+		CPExtendedScreen = UICustomize_CPExtended(ScreenStack.GetFirstInstanceOf(class'UICustomize_CPExtended'));
+		if (CPExtendedScreen != none)
+		{
+			CPExtendedScreen.OnRefreshPawn();
+		}
+	}
+
+	return ELR_NoInterrupt;
+}
+
 
 static function CHEventListenerTemplate Create_ListenerTemplate()
 {

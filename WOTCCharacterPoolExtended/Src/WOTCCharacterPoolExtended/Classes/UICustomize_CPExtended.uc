@@ -328,6 +328,7 @@ simulated private function OnUnitSelected(int ItemIndex)
 
 	UpdateOptionsList();
 	UpdateUnitAppearance();	
+	UpdatePawnAttitudeAnimation();
 }
 
 simulated private function UpdateUnitAppearance()
@@ -339,7 +340,7 @@ simulated private function UpdateUnitAppearance()
 
 	ArmoryPawn.SetAppearance(NewAppearance);
 	ArmoryUnit.SetTAppearance(NewAppearance);
-	CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, NewAppearance.iWeaponTint);
+	//CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, NewAppearance.iWeaponTint);
 
 	if (bRefreshPawn)
 	{
@@ -350,10 +351,6 @@ simulated private function UpdateUnitAppearance()
 		//OnRefreshPawn();
 		bRefreshPawn = false;
 	}	
-	else
-	{
-		UpdatePawnAttitudeAnimation();
-	}
 }
 
 // Called from X2EventListener_CPExtended
@@ -374,13 +371,16 @@ simulated private function UpdatePawnAttitudeAnimation()
 
 	if (IsCheckboxChecked('iAttitude'))
 	{
-		ArmoryPawn.PlayHQIdleAnim(SelectedAttitude.IdleAnimName);
-		ArmoryPawn.CustomizationIdleAnim = SelectedAttitude.IdleAnimName;
+		IdleAnimName = SelectedAttitude.IdleAnimName;
 	}
 	else
 	{
-		ArmoryPawn.PlayHQIdleAnim(OriginalAttitude.IdleAnimName);
-		ArmoryPawn.CustomizationIdleAnim = OriginalAttitude.IdleAnimName;
+		IdleAnimName = OriginalAttitude.IdleAnimName;
+	}
+	if (!ArmoryPawn.GetAnimTreeController().IsPlayingCurrentAnimation(IdleAnimName))
+	{
+		ArmoryPawn.PlayHQIdleAnim(IdleAnimName);
+		ArmoryPawn.CustomizationIdleAnim = IdleAnimName;
 	}
 }
 

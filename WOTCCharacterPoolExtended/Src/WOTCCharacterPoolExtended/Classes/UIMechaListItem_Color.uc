@@ -36,10 +36,12 @@ simulated function UIMechaListItem UpdateDataColorChip(string _Desc,
 	Color1_Text.InitText('ColorChip1TextMC');
 	Color1_Text.SetPosition(ColorChip.X, 5);
 	Color1_Text.SetCenteredText(strColorText_1, ColorChip);
+	Color1_Text.bAnimateOnInit = false;
 	
 	ArrowText = Spawn(class'UIText', self);
 	ArrowText.InitText('ColorArrowTextMC', "->");
 	ArrowText.SetPosition(width / 2 + ColorChip.Width + 3, 0);
+	ArrowText.bAnimateOnInit = false;
 
 	if( ColorChip2 == none )
 	{
@@ -54,6 +56,7 @@ simulated function UIMechaListItem UpdateDataColorChip(string _Desc,
 		Color2_Text.InitText('ColorChip2TextMC');
 		Color2_Text.SetPosition(ColorChip2.X, 5);
 		Color2_Text.SetCenteredText(strColorText_2, ColorChip2);
+		Color2_Text.bAnimateOnInit = false;
 	}
 
 	ColorChip2.SetColor(HTMLColorChip2);

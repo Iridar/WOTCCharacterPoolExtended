@@ -11,6 +11,7 @@ class UICustomize_CPExtended extends UICustomize;
 var private CharacterPoolManagerExtended		PoolMgr;
 var private X2BodyPartTemplateManager			BodyPartMgr;
 var private X2StrategyElementTemplateManager	StratMgr;
+var private	XComGameStateHistory				History;
 var private bool								bRefreshPawn;
 
 var private array<int> UniformIndices; // Array of CP.CharacterPool indices of units displayed in the list after filtering
@@ -51,6 +52,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 
 	BodyPartMgr = class'X2BodyPartTemplateManager'.static.GetBodyPartTemplateManager();
 	StratMgr = class'X2StrategyElementTemplateManager'.static.GetStrategyElementTemplateManager();
+	History = `XCOMHISTORY;
 
 	CacheArmoryUnitData();
 
@@ -108,7 +110,7 @@ simulated private function CreateFiltersList()
 	FiltersList.SetWidth(542);
 	FiltersList.SetHeight(260);
 	FiltersList.Navigator.LoopSelection = true;
-	FiltersList.OnItemClicked = FiltersListItemClicked;
+	//FiltersList.OnItemClicked = FiltersListItemClicked;
 	
 	FiltersBG.ProcessMouseEvents(FiltersList.OnChildMouseEvent);
 
@@ -139,7 +141,7 @@ simulated private function FilterCheckboxChanged(UICheckbox CheckBox)
 {
 	UpdateSoldierList();
 }
-
+/*
 simulated function FiltersListItemClicked(UIList ContainerList, int ItemIndex)
 {
 	local UIMechaListItem ListItem;
@@ -150,7 +152,7 @@ simulated function FiltersListItemClicked(UIList ContainerList, int ItemIndex)
 		ListItem.Checkbox.SetChecked(!ListItem.Checkbox.bChecked, true);
 		//UpdateSoldierList();
 	}
-}
+}*/
 
 simulated function CacheArmoryUnitData()
 {
@@ -203,7 +205,8 @@ simulated function UpdateData()
 
 simulated function UpdateSoldierList()
 {
-	local XComGameState_Unit CPUnit;
+	local XComGameState_Unit	CPUnit;
+	local string				UnitName;
 	local int i;
 
 	UniformIndices.Length = 0;
@@ -233,7 +236,13 @@ simulated function UpdateSoldierList()
 	
 	for (i = 1; i < UniformIndices.Length + 1; i++)
 	{
-		GetListItem(i).UpdateDataCheckbox(PoolMgr.GetUnitFullNameExtraData(UniformIndices[i - 1]), "", false, SoldierCheckboxChanged, none);
+		UnitName = PoolMgr.GetUnitFullNameExtraData(UniformIndices[i - 1]);
+		CPUnit = PoolMgr.CharacterPool[i - 1];
+		if (IsUnitPresentInCampaign(CPUnit))
+		{
+			UnitName = class'UIUtilities_Text'.static.GetColoredText(UnitName, eUIState_Good);
+		}
+		GetListItem(i).UpdateDataCheckbox(UnitName, "", false, SoldierCheckboxChanged, none);
 	}
 
 	//for (i = 1; i < 25; i++)
@@ -241,6 +250,23 @@ simulated function UpdateSoldierList()
 	//	GetListItem(i).UpdateDataDescription("Mockup entry" @ i);
 	//}
 }
+
+simulated function bool IsUnitPresentInCampaign(const XComGameState_Unit CheckUnit)
+{
+	local XComGameState_Unit CycleUnit;
+
+	foreach History.IterateByClassType(class'XComGameState_Unit', CycleUnit)
+	{
+		if (CycleUnit.GetFirstName() == CheckUnit.GetFirstName() &&
+			CycleUnit.GetLastName() == CheckUnit.GetLastName())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+
 
 simulated function bool GetFilterStatus(name FilterName)
 {

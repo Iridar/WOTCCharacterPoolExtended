@@ -25,6 +25,7 @@ var private array<int> UniformIndices; // Array of CP.CharacterPool indices of u
 // Info about selected CP unit
 var private TAppearance						SelectedAppearance;
 var private X2SoldierPersonalityTemplate	SelectedAttitude;
+var private XComGameState_Unit				SelectedUnit;
 
 // Info about Armory unit
 var private XComHumanPawn					ArmoryPawn;
@@ -208,7 +209,7 @@ simulated function UpdateData()
 	UpdateSoldierList();
 	UpdateOptionsList();
 }
-
+/*
 simulated function UpdateNavHelp()
 {
 	super.UpdateNavHelp();
@@ -230,7 +231,7 @@ simulated private function OnUniformButtonClicked()
 	UpdateUnitAppearance();	
 	UpdatePawnAttitudeAnimation();
 }
-
+*/
 simulated private function OnEntireUnitButtonClicked()
 {
 	SetCheckbox('nmHead', true);
@@ -407,8 +408,6 @@ simulated function UpdatePawnLocation()
 
 simulated private function OnUnitSelected(int ItemIndex)
 {
-	local XComGameState_Unit CPUnit;
-
 	if (ItemIndex == INDEX_NONE || ItemIndex - 1 > UniformIndices.Length - 1)
 		return;
 	
@@ -418,18 +417,18 @@ simulated private function OnUnitSelected(int ItemIndex)
 	}
 	else
 	{
-		CPUnit = PoolMgr.CharacterPool[UniformIndices[ItemIndex - 1]];
+		SelectedUnit = PoolMgr.CharacterPool[UniformIndices[ItemIndex - 1]];
 
-		if (ArmorTemplateName != '' && CPUnit.HasStoredAppearance(CPUnit.kAppearance.iGender, ArmorTemplateName))
+		if (ArmorTemplateName != '' && SelectedUnit.HasStoredAppearance(SelectedUnit.kAppearance.iGender, ArmorTemplateName))
 		{
-			CPUnit.GetStoredAppearance(SelectedAppearance, CPUnit.kAppearance.iGender, ArmorTemplateName);
+			SelectedUnit.GetStoredAppearance(SelectedAppearance, SelectedUnit.kAppearance.iGender, ArmorTemplateName);
 		}
 		else
 		{
-			SelectedAppearance = CPUnit.kAppearance;
+			SelectedAppearance = SelectedUnit.kAppearance;
 		}
 
-		SelectedAttitude = CPUnit.GetPersonalityTemplate();
+		SelectedAttitude = SelectedUnit.GetPersonalityTemplate();
 	}
 
 	//if (ArmoryPawn.m_kAppearance == SelectedAppearance)
@@ -674,6 +673,11 @@ simulated function UpdateOptionsList()
 	if (OriginalAppearance.nmFlag != SelectedAppearance.nmFlag)								CreateOptionCountryName(OriginalAppearance.nmFlag, SelectedAppearance.nmFlag);
 	if (OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage)						CreateOptionName('nmLanguage', OriginalAppearance.nmLanguage, SelectedAppearance.nmLanguage);
 
+	MaybeCreateOptionFirstName();
+	MaybeCreateOptionNickName();
+	MaybeCreateOptionLastName();
+	MaybeCreateOptionBiography();
+
 	ActivatePreset();
 }
 
@@ -749,7 +753,11 @@ simulated private function bool ShouldShowPersonalityCategory()
 	return	OriginalAppearance.iAttitude != SelectedAppearance.iAttitude ||
 			OriginalAppearance.nmVoice != SelectedAppearance.nmVoice ||		
 			OriginalAppearance.nmFlag != SelectedAppearance.nmFlag ||
-			OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage;				
+			OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage ||
+			ArmoryUnit.GetFirstName() == SelectedUnit.GetFirstName() ||
+			ArmoryUnit.GetLastName() == SelectedUnit.GetLastName() ||
+			ArmoryUnit.GetNickName() == SelectedUnit.GetNickName() ||
+			ArmoryUnit.GetBackground() == SelectedUnit.GetBackground();				
 }
 simulated private function CreateOptionName(name OptionName, name CosmeticTemplateName, name NewCosmeticTemplateName)
 {
@@ -781,6 +789,77 @@ simulated private function CreateOptionCountryName(name CountryTemplateName, nam
 			none);
 }
 
+simulated private function MaybeCreateOptionFirstName()
+{
+	local UIMechaListItem SpawnedItem;
+
+	if (ArmoryUnit.GetFirstName() == SelectedUnit.GetFirstName())
+		return;
+
+	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('FirstName');
+
+	SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strFirstNameLabel $ ":" @ ArmoryUnit.GetFirstName() @ "->" @ SelectedUnit.GetFirstName(), 
+			"",
+			true, // bIsChecked
+			OptionCheckboxChanged, 
+			none);
+}
+
+simulated private function MaybeCreateOptionLastName()
+{
+	local UIMechaListItem SpawnedItem;
+
+	if (ArmoryUnit.GetLastName() == SelectedUnit.GetLastName())
+		return;
+
+	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('LastName');
+
+	SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strLastNameLabel $ ":" @ ArmoryUnit.GetLastName() @ "->" @ SelectedUnit.GetLastName(), 
+			"",
+			true, // bIsChecked
+			OptionCheckboxChanged, 
+			none);
+}
+
+simulated private function MaybeCreateOptionNickname()
+{
+	local UIMechaListItem SpawnedItem;
+
+	if (ArmoryUnit.GetNickName() == SelectedUnit.GetNickName())
+		return;
+
+	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('Nickname');
+
+	SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strNicknameLabel $ ":" @ ArmoryUnit.GetNickName() @ "->" @ SelectedUnit.GetNickName(), 
+			"",
+			true, // bIsChecked
+			OptionCheckboxChanged, 
+			none);
+}
+
+simulated private function MaybeCreateOptionBiography()
+{
+	local UIMechaListItem SpawnedItem;
+
+	if (ArmoryUnit.GetBackground() == SelectedUnit.GetBackground())
+		return;
+
+	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('Biography');
+
+	SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strEditBiography, 
+			"",
+			true, // bIsChecked
+			OptionCheckboxChanged, 
+			none);
+}
 
 simulated private function CreateOptionInt(name OptionName, int iValue, int iNewValue)
 {
@@ -936,6 +1015,9 @@ simulated private function ActivatePreset()
 simulated function OptionsListItemClicked(UIList ContainerList, int ItemIndex)
 {
 	local UIMechaListItem ListItem;
+
+	if (ItemIndex > 3)
+		return;
 	
 	ListItem = UIMechaListItem(OptionsList.GetItem(ItemIndex));
 	if (ListItem != none)
@@ -994,6 +1076,10 @@ simulated private function ActivatePresetUniform()
 	SetCheckbox('nmShins', true);
 	SetCheckbox('nmTorsoDeco', true);
 	SetCheckbox('bGhostPawn', true);
+	SetCheckbox('FirstName', false);
+	SetCheckbox('Nickname', false);
+	SetCheckbox('LastName', false);
+	SetCheckbox('Biography', false);
 
 	UpdateUnitAppearance();
 }
@@ -1048,6 +1134,10 @@ simulated private function ActivatePresetEntireUnit()
 	SetCheckbox('nmShins', true);
 	SetCheckbox('nmTorsoDeco', true);
 	SetCheckbox('bGhostPawn', true);
+	SetCheckbox('FirstName', true);
+	SetCheckbox('Nickname', true);
+	SetCheckbox('LastName', true);
+	SetCheckbox('Biography', true);
 
 	UpdateUnitAppearance();
 }

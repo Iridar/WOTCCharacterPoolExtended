@@ -282,7 +282,7 @@ simulated private function OnEntireUnitButtonClicked()
 	SetCheckbox('bGhostPawn', true);
 
 	UpdateUnitAppearance();	
-	UpdatePawnAttitudeAnimation();
+	//UpdatePawnAttitudeAnimation();
 }
 
 // ================================================================================================================================================
@@ -441,7 +441,7 @@ simulated private function OnUnitSelected(int ItemIndex)
 
 	UpdateOptionsList();
 	UpdateUnitAppearance();	
-	UpdatePawnAttitudeAnimation();
+	//UpdatePawnAttitudeAnimation();
 }
 
 simulated private function UpdateUnitAppearance()
@@ -464,6 +464,12 @@ simulated private function UpdateUnitAppearance()
 		//OnRefreshPawn();
 		bRefreshPawn = false;
 	}	
+	else
+	{
+		UpdatePawnAttitudeAnimation();
+	}
+
+	UpdateHeader();
 }
 
 // Called from X2EventListener_CPExtended
@@ -861,6 +867,65 @@ simulated private function MaybeCreateOptionBiography()
 			none);
 }
 
+simulated private function UpdateHeader()
+{
+	local string strFirstName;
+	local string strNickname;
+	local string strLastName;
+	local string strBiography;
+	local string StatusTimeValue;
+	local string StatusTimeLabel;
+	local string StatusDesc;
+	local string strDisplayName;
+	local string flagIcon;
+	local X2CountryTemplate	CountryTemplate;
+
+	if (IsCheckboxChecked('FirstName'))
+		strFirstName = SelectedUnit.GetFirstName();
+	else
+		strFirstName = ArmoryUnit.GetFirstName();
+
+	if (IsCheckboxChecked('Nickname'))
+		strNickname = SelectedUnit.GetNickName();
+	else
+		strNickname = ArmoryUnit.GetNickName();
+
+	if (IsCheckboxChecked('LastName'))
+		strLastName = SelectedUnit.GetLastName();
+	else
+		strLastName = ArmoryUnit.GetLastName();
+
+	//if (IsCheckboxChecked('Biography'))
+	//	strBiography = SelectedUnit.GetBackground();
+	//else
+	//	strBiography = ArmoryUnit.GetBackground();
+
+	if (IsCheckboxChecked('nmFlag'))
+		CountryTemplate = X2CountryTemplate(StratMgr.FindStrategyElementTemplate(SelectedAppearance.nmFlag));
+	else
+		CountryTemplate = X2CountryTemplate(StratMgr.FindStrategyElementTemplate(OriginalAppearance.nmFlag));
+	
+	if (CountryTemplate!= none)
+	{
+		flagIcon = CountryTemplate.FlagImage;
+	}
+
+	class'UIUtilities_Strategy'.static.GetPersonnelStatusSeparate(ArmoryUnit, StatusDesc, StatusTimeLabel, StatusTimeValue, , true); 
+	
+	if (strNickname == "")
+		strDisplayName = strFirstName @ strLastName;
+	else
+		strDisplayName = strFirstName @ "'" $ strNickname $ "'" @ strLastName;
+
+	Header.SetSoldierInfo( Caps(strDisplayName),
+						Header.m_strStatusLabel, StatusDesc,
+						Header.m_strMissionsLabel, string(Unit.GetNumMissions()),
+						Header.m_strKillsLabel, string(Unit.GetNumKills()),
+						Unit.GetSoldierClassIcon(), Caps(ArmoryUnit.GetSoldierClassDisplayName()),
+						Unit.GetSoldierRankIcon(), Caps(ArmoryUnit.GetSoldierRankName()),
+						flagIcon, ArmoryUnit.ShowPromoteIcon(), StatusTimeValue @ StatusTimeLabel);
+}
+
 simulated private function CreateOptionInt(name OptionName, int iValue, int iNewValue)
 {
 	local UIMechaListItem SpawnedItem;
@@ -943,11 +1008,6 @@ simulated private function CreateOptionAttitude()
 simulated private function OptionCheckboxChanged(UICheckbox CheckBox)
 {
 	UpdateUnitAppearance();
-
-	if (UIMechaListItem(CheckBox.GetParent(class'UIMechaListItem')).MCName == 'iAttitude')
-	{
-		UpdatePawnAttitudeAnimation();
-	}
 }
 
 simulated private function CreateOptionCategory(string strText)

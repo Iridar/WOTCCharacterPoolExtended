@@ -7,12 +7,18 @@ class UICustomize_CPExtended extends UICustomize;
 // Quick import: uniform
 // Accept changes
 
+// Default
+// Entire Unit = default + name + bio
+// Uniform
+
 // Internal cached info
 var private CharacterPoolManagerExtended		PoolMgr;
 var private X2BodyPartTemplateManager			BodyPartMgr;
 var private X2StrategyElementTemplateManager	StratMgr;
 var private	XComGameStateHistory				History;
 var private bool								bRefreshPawn;
+var private bool								bUniformMode;
+var private name								CurrentPreset;
 
 var private array<int> UniformIndices; // Array of CP.CharacterPool indices of units displayed in the list after filtering
 
@@ -75,19 +81,22 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		MouseGuard.bIsIn3D = true;
 		MouseGuard.SetAlpha(0);
 	}
+
+	Header.SetPosition(20 + Header.Width, 20);
 	
 	// Create left list	
-	OptionsBG = Spawn(class'UIBGBox', self).InitBG('LeftOptionsListBG', 100, 280);
+	OptionsBG = Spawn(class'UIBGBox', self).InitBG('LeftOptionsListBG', 20, 180);
 	OptionsBG.SetAlpha(80);
 	OptionsBG.SetWidth(582);
-	OptionsBG.SetHeight(725);
+	OptionsBG.SetHeight(1080 - 100 - OptionsBG.Y);
 
 	OptionsList = Spawn(class'UIList', self);
 	OptionsList.bAnimateOnInit = false;
-	OptionsList.InitList('LeftOptionsList', 110, 290);
+	OptionsList.InitList('LeftOptionsList', 30, 190);
 	OptionsList.SetWidth(542);
-	OptionsList.SetHeight(705);
+	OptionsList.SetHeight(1080 - 110 - OptionsList.Y);
 	OptionsList.Navigator.LoopSelection = true;
+	OptionsList.OnItemClicked = OptionsListItemClicked;
 	
 	OptionsBG.ProcessMouseEvents(List.OnChildMouseEvent);
 
@@ -200,6 +209,81 @@ simulated function UpdateData()
 	UpdateOptionsList();
 }
 
+simulated function UpdateNavHelp()
+{
+	super.UpdateNavHelp();
+
+	NavHelp.AddLeftHelp("UNIFORM MODE:" $ bUniformMode ? "ON" : "OFF",			
+				class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ class'UIUtilities_Input'.const.ICON_RT_R2, 
+				OnUniformButtonClicked,
+				false,
+				"Tooltip placeholder",
+				class'UIUtilities'.const.ANCHOR_BOTTOM_CENTER);
+}
+
+simulated private function OnUniformButtonClicked()
+{
+	bUniformMode = !bUniformMode;
+	UpdateNavHelp();
+
+	UpdateOptionsList();
+	UpdateUnitAppearance();	
+	UpdatePawnAttitudeAnimation();
+}
+
+simulated private function OnEntireUnitButtonClicked()
+{
+	SetCheckbox('nmHead', true);
+	SetCheckbox('iGender', true);
+	SetCheckbox('iRace', true);
+	SetCheckbox('nmHaircut', true);
+	SetCheckbox('iHairColor', true);
+	SetCheckbox('iFacialHair', true);
+	SetCheckbox('nmBeard', true);
+	SetCheckbox('iSkinColor', true);
+	SetCheckbox('iEyeColor', true);
+	SetCheckbox('nmFlag', true);
+	SetCheckbox('iVoice', true);
+	SetCheckbox('iAttitude', true);
+	SetCheckbox('iArmorDeco', true);
+	SetCheckbox('iArmorTint', true);
+	SetCheckbox('iArmorTintSecondary', true);
+	SetCheckbox('iWeaponTint', true);
+	SetCheckbox('iTattooTint', true);
+	SetCheckbox('nmWeaponPattern', true);
+	SetCheckbox('nmTorso', true);
+	SetCheckbox('nmArms', true);
+	SetCheckbox('nmLegs', true);
+	SetCheckbox('nmHelmet', true);
+	SetCheckbox('nmEye', true);
+	SetCheckbox('nmTeeth', true);
+	SetCheckbox('nmFacePropLower', true);
+	SetCheckbox('nmFacePropUpper', true);
+	SetCheckbox('nmPatterns', true);
+	SetCheckbox('nmVoice', true);
+	SetCheckbox('nmLanguage', true);
+	SetCheckbox('nmTattoo_LeftArm', true);
+	SetCheckbox('nmTattoo_RightArm', true);
+	SetCheckbox('nmScars', true);
+	SetCheckbox('nmTorso_Underlay', true);
+	SetCheckbox('nmArms_Underlay', true);
+	SetCheckbox('nmLegs_Underlay', true);
+	SetCheckbox('nmFacePaint', true);
+	SetCheckbox('nmLeftArm', true);
+	SetCheckbox('nmRightArm', true);
+	SetCheckbox('nmLeftArmDeco', true);
+	SetCheckbox('nmRightArmDeco', true);
+	SetCheckbox('nmLeftForearm', true);
+	SetCheckbox('nmRightForearm', true);
+	SetCheckbox('nmThighs', true);
+	SetCheckbox('nmShins', true);
+	SetCheckbox('nmTorsoDeco', true);
+	SetCheckbox('bGhostPawn', true);
+
+	UpdateUnitAppearance();	
+	UpdatePawnAttitudeAnimation();
+}
+
 // ================================================================================================================================================
 // LIVE UPDATE FUNCTIONS - called when toggling checkboxes or selecting a new CP unit.
 
@@ -238,10 +322,13 @@ simulated function UpdateSoldierList()
 	{
 		UnitName = PoolMgr.GetUnitFullNameExtraData(UniformIndices[i - 1]);
 		CPUnit = PoolMgr.CharacterPool[i - 1];
+
+		// If unit was already drawn from the CP, color their entry green.
 		if (IsUnitPresentInCampaign(CPUnit))
 		{
 			UnitName = class'UIUtilities_Text'.static.GetColoredText(UnitName, eUIState_Good);
 		}
+
 		GetListItem(i).UpdateDataCheckbox(UnitName, "", false, SoldierCheckboxChanged, none);
 	}
 
@@ -251,6 +338,7 @@ simulated function UpdateSoldierList()
 	//}
 }
 
+// Don't look at me, that's how CP itself does this check :shrug:
 simulated function bool IsUnitPresentInCampaign(const XComGameState_Unit CheckUnit)
 {
 	local XComGameState_Unit CycleUnit;
@@ -491,18 +579,33 @@ simulated private function bool IsCheckboxChecked(name OptionName)
 	return ListItem != none && ListItem.Checkbox.bChecked;
 }
 
+simulated private function SetCheckbox(name OptionName, bool bChecked)
+{
+	local UIMechaListItem ListItem;
+
+	ListItem = UIMechaListItem(OptionsList.GetChildByName(OptionName, false));
+
+	if (ListItem != none)
+	{
+		ListItem.Checkbox.SetChecked(bChecked, false);
+	}
+}
+
 simulated function UpdateOptionsList()
 {
 	OptionsList.ClearItems();
 
+	// PRESETS
+	CreateOptionCategory(class'UIOptionsPCScreen'.default.m_strGraphicsLabel_Preset); 
+
+	`LOG(GetFuncName() @ `showvar(CurrentPreset),, 'IRITEST');
+
+	CreateOptionPreset('PresetDefault', "DEFAULT", "", CurrentPreset == 'PresetDefault');
+	CreateOptionPreset('PresetUniform', "UNIFORM", "", CurrentPreset == 'PresetUniform');
+	CreateOptionPreset('PresetEntireUnit', "ENTIRE UNIT", "", CurrentPreset == 'PresetEntireUnit');
+	
 	if (SelectedAppearance == OriginalAppearance)
-	{
-		OptionsList.Hide();
-	}
-	else if (!OptionsList.bIsVisible)
-	{
-		OptionsList.Show();
-	}
+		return;
 
 	// HEAD
 	if (ShouldShowHeadCategory()) CreateOptionCategory(class'UICustomize_Menu'.default.m_strEditHead); 
@@ -570,6 +673,8 @@ simulated function UpdateOptionsList()
 	if (OriginalAppearance.nmVoice != SelectedAppearance.nmVoice)							CreateOptionName('nmVoice', OriginalAppearance.nmVoice, SelectedAppearance.nmVoice);
 	if (OriginalAppearance.nmFlag != SelectedAppearance.nmFlag)								CreateOptionCountryName(OriginalAppearance.nmFlag, SelectedAppearance.nmFlag);
 	if (OriginalAppearance.nmLanguage != SelectedAppearance.nmLanguage)						CreateOptionName('nmLanguage', OriginalAppearance.nmLanguage, SelectedAppearance.nmLanguage);
+
+	ActivatePreset();
 }
 
 simulated private function bool ShouldShowHeadCategory()
@@ -786,6 +891,167 @@ simulated private function string GetHTMLColor(LinearColor ParamColor)
 	return ColorString;
 }
 
+
+simulated private function CreateOptionPreset(name OptionName, string strText, string strTooltip, optional bool bChecked)
+{
+	local UIMechaListItem SpawnedItem;
+
+	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem(OptionName);
+
+	SpawnedItem.UpdateDataCheckbox(strText, strTooltip, bChecked, OptionPresetCheckboxChanged, none);
+}
+
+simulated private function OptionPresetCheckboxChanged(UICheckbox CheckBox)
+{
+	CurrentPreset = UIMechaListItem(CheckBox.GetParent(class'UIMechaListItem')).MCName;
+	UpdateOptionsList();
+	UpdateUnitAppearance();
+}
+
+simulated private function ActivatePreset()
+{
+	`LOG(GetFuncName() @ `showvar(CurrentPreset),, 'IRITEST');
+	switch (CurrentPreset)
+	{
+		case 'PresetDefault':
+			SetCheckbox('PresetUniform', false);
+			SetCheckbox('PresetEntireUnit', false);
+			return;
+		case 'PresetUniform':
+			SetCheckbox('PresetDefault', false);
+			SetCheckbox('PresetEntireUnit', false);
+			ActivatePresetUniform();
+			return;
+		case 'PresetEntireUnit':
+			SetCheckbox('PresetDefault', false);
+			SetCheckbox('PresetUniform', false);
+			ActivatePresetEntireUnit();
+		default:
+			return;
+	}
+}
+
+simulated function OptionsListItemClicked(UIList ContainerList, int ItemIndex)
+{
+	local UIMechaListItem ListItem;
+	
+	ListItem = UIMechaListItem(OptionsList.GetItem(ItemIndex));
+	if (ListItem != none)
+	{
+		OptionPresetCheckboxChanged(ListItem.Checkbox);
+	}
+}
+
+simulated private function ActivatePresetUniform()
+{
+	`LOG(GetFuncName(),, 'IRITEST');
+
+	SetCheckbox('nmHead', false);
+	SetCheckbox('iGender', false);
+	SetCheckbox('iRace', false);
+	SetCheckbox('nmHaircut', false);
+	SetCheckbox('iHairColor', false);
+	SetCheckbox('iFacialHair', false);
+	SetCheckbox('nmBeard', false);
+	SetCheckbox('iSkinColor', false);
+	SetCheckbox('iEyeColor', false);
+	SetCheckbox('nmFlag', false);
+	SetCheckbox('iVoice', false);
+	SetCheckbox('iAttitude', false);
+	SetCheckbox('iArmorDeco', true);
+	SetCheckbox('iArmorTint', true);
+	SetCheckbox('iArmorTintSecondary', true);
+	SetCheckbox('iWeaponTint', true);
+	SetCheckbox('iTattooTint', true);
+	SetCheckbox('nmWeaponPattern', true);
+	SetCheckbox('nmTorso', true);
+	SetCheckbox('nmArms', true);
+	SetCheckbox('nmLegs', true);
+	SetCheckbox('nmHelmet', false);
+	SetCheckbox('nmEye', false);
+	SetCheckbox('nmTeeth', false);
+	SetCheckbox('nmFacePropLower', false);
+	SetCheckbox('nmFacePropUpper', false);
+	SetCheckbox('nmPatterns', true);
+	SetCheckbox('nmVoice', false);
+	SetCheckbox('nmLanguage', false);
+	SetCheckbox('nmTattoo_LeftArm', false);
+	SetCheckbox('nmTattoo_RightArm', false);
+	SetCheckbox('nmScars', false);
+	SetCheckbox('nmTorso_Underlay', true);
+	SetCheckbox('nmArms_Underlay', true);
+	SetCheckbox('nmLegs_Underlay', true);
+	SetCheckbox('nmFacePaint', false);
+	SetCheckbox('nmLeftArm', true);
+	SetCheckbox('nmRightArm', true);
+	SetCheckbox('nmLeftArmDeco', true);
+	SetCheckbox('nmRightArmDeco', true);
+	SetCheckbox('nmLeftForearm', true);
+	SetCheckbox('nmRightForearm', true);
+	SetCheckbox('nmThighs', true);
+	SetCheckbox('nmShins', true);
+	SetCheckbox('nmTorsoDeco', true);
+	SetCheckbox('bGhostPawn', true);
+
+	UpdateUnitAppearance();
+}
+
+simulated private function ActivatePresetEntireUnit()
+{
+	`LOG(GetFuncName(),, 'IRITEST');
+
+	SetCheckbox('nmHead', true);
+	SetCheckbox('iGender', true);
+	SetCheckbox('iRace', true);
+	SetCheckbox('nmHaircut', true);
+	SetCheckbox('iHairColor', true);
+	SetCheckbox('iFacialHair', true);
+	SetCheckbox('nmBeard', true);
+	SetCheckbox('iSkinColor', true);
+	SetCheckbox('iEyeColor', true);
+	SetCheckbox('nmFlag', true);
+	SetCheckbox('iVoice', true);
+	SetCheckbox('iAttitude', true);
+	SetCheckbox('iArmorDeco', true);
+	SetCheckbox('iArmorTint', true);
+	SetCheckbox('iArmorTintSecondary', true);
+	SetCheckbox('iWeaponTint', true);
+	SetCheckbox('iTattooTint', true);
+	SetCheckbox('nmWeaponPattern', true);
+	SetCheckbox('nmTorso', true);
+	SetCheckbox('nmArms', true);
+	SetCheckbox('nmLegs', true);
+	SetCheckbox('nmHelmet', true);
+	SetCheckbox('nmEye', true);
+	SetCheckbox('nmTeeth', true);
+	SetCheckbox('nmFacePropLower', true);
+	SetCheckbox('nmFacePropUpper', true);
+	SetCheckbox('nmPatterns', true);
+	SetCheckbox('nmVoice', true);
+	SetCheckbox('nmLanguage', true);
+	SetCheckbox('nmTattoo_LeftArm', true);
+	SetCheckbox('nmTattoo_RightArm', true);
+	SetCheckbox('nmScars', true);
+	SetCheckbox('nmTorso_Underlay', true);
+	SetCheckbox('nmArms_Underlay', true);
+	SetCheckbox('nmLegs_Underlay', true);
+	SetCheckbox('nmFacePaint', true);
+	SetCheckbox('nmLeftArm', true);
+	SetCheckbox('nmRightArm', true);
+	SetCheckbox('nmLeftArmDeco', true);
+	SetCheckbox('nmRightArmDeco', true);
+	SetCheckbox('nmLeftForearm', true);
+	SetCheckbox('nmRightForearm', true);
+	SetCheckbox('nmThighs', true);
+	SetCheckbox('nmShins', true);
+	SetCheckbox('nmTorsoDeco', true);
+	SetCheckbox('bGhostPawn', true);
+
+	UpdateUnitAppearance();
+}
+
 // ================================================================================================================================================
 // LOCALIZATION HELPERS
 
@@ -972,3 +1238,8 @@ class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Voice]=VOICE
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Gender]=GENDER
 class'UIArmory_Customize'.default.m_strBaseLabels[eUICustomizeBase_Race]=RACE
 */
+
+defaultproperties
+{
+	CurrentPreset = "PresetDefault"
+}

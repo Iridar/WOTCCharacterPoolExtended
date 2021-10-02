@@ -1,0 +1,3 @@
+class UIMechaListItem_Soldier extends UIMechaListItem;
+
+var XComGameState_Unit UnitState;

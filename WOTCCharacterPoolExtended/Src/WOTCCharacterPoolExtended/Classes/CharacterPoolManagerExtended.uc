@@ -206,13 +206,19 @@ final function CPUnitData GetUnitData()
 
 final function string GetUnitFullNameExtraData(const int Index)
 {
-	local XComGameState_Unit		CPUnit;
-	local string					SoldierString;
-	local X2SoldierClassTemplate	ClassTemplate;
+	local XComGameState_Unit UnitState;
+	
+	UnitState = CharacterPool[Index];
 
-	CPUnit = CharacterPool[Index];
+	return GetUnitStateFullNameExtraData(UnitState);
+}
 
-	ClassTemplate = CPUnit.GetSoldierClassTemplate();
+static final function string GetUnitStateFullNameExtraData(const XComGameState_Unit UnitState)
+{
+	local X2SoldierClassTemplate ClassTemplate;
+	local string SoldierString;
+
+	ClassTemplate = UnitState.GetSoldierClassTemplate();
 	if (ClassTemplate != none)
 	{
 		SoldierString = ClassTemplate.DisplayName $ ": ";
@@ -222,15 +228,14 @@ final function string GetUnitFullNameExtraData(const int Index)
 		SoldierString = "";
 	}
 
-	if (CPUnit.GetNickName() != "")
+	if (UnitState.GetNickName() != "")
 	{
-		SoldierString $= CPUnit.GetFirstName() @ "\"" $ CPUnit.GetNickName() $ "\"" @ CPUnit.GetLastName();
+		SoldierString $= UnitState.GetFirstName() @ "\"" $ UnitState.GetNickName() $ "\"" @ UnitState.GetLastName();
 	}
 	else
 	{
-		SoldierString $= CPUnit.GetFirstName() @ CPUnit.GetLastName();
+		SoldierString $= UnitState.GetFirstName() @ UnitState.GetLastName();
 	}
-
 	return SoldierString;
 }
 

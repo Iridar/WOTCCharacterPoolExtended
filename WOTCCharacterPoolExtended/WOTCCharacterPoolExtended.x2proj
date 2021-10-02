@@ -53,6 +53,9 @@
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UIMechaListItem_Color.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\WOTCCharacterPoolExtended\Classes\UIMechaListItem_Soldier.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UISL_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>

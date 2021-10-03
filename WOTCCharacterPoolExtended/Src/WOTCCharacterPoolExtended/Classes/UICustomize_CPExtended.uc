@@ -1,17 +1,11 @@
 class UICustomize_CPExtended extends UICustomize;
 
-//TODO: Make clicking an item toggle its checkbox
+// TODO: Make clicking an item toggle its checkbox
 // TODO: Copy appearance store mode: no copy, append, override
-// Preview background change
+// Preview background (biography) change
 // Uniform manager functionality
 // Save presets in config. Then you can use Uniform preset for determining which parts are copied via uniform manager.
-
-// Filter checkboxes or toggle buttons: gender, stored appearance (always off when using UC), class
-// Quick import: uniform
-// Accept changes
-
-// Default
-// Uniform
+// Save checkbox positions for default
 
 // Internal cached info
 var private CharacterPoolManagerExtended		PoolMgr;
@@ -460,17 +454,21 @@ simulated function bool GetFilterStatus(name FilterName)
 
 simulated private function SoldierCheckboxChanged(UICheckbox CheckBox)
 {
+	local UIMechaListItem ListItem;
 	local int Index;
 	local int i;
 
-	// TODO: Rework this function so it doesn't undisable disabled list members
 	Index = List.GetItemIndex(CheckBox.ParentPanel);
 	for (i = 0; i < List.ItemCount; i++)
 	{
-		if (i == Index || GetListItem(i).Checkbox == none)
+		if (i == Index)
 			continue;
 
-		GetListItem(i).Checkbox.SetChecked(false, false);
+		ListItem = UIMechaListItem(List.GetItem(i));
+		if (ListItem == none || ListItem.Checkbox == none)
+			continue;
+
+		ListItem.Checkbox.SetChecked(false, false);
 	}
 
 	CheckBox.SetChecked(true, false);

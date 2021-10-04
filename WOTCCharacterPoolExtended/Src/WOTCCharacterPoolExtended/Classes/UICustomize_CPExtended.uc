@@ -1,6 +1,16 @@
 class UICustomize_CPExtended extends UICustomize;
 
+struct CheckboxPresetStruct
+{
+	var name Preset;
+	var name CheckboxName;
+	var bool bChecked;
+};
+var config(CharacterPoolExtended_DEFAULT) array<CheckboxPresetStruct> CheckboxPresetsDefaults;
+var config(CharacterPoolExtended_NULLCONFIG) array<CheckboxPresetStruct> CheckboxPresets;
+
 // TODO: Make clicking an item toggle its checkbox
+// Fix weapons / Dual Wielding not working in CP?
 // TODO: Copy appearance store mode: no copy, append, override
 // Preview background (biography) change
 // Uniform manager functionality
@@ -605,8 +615,94 @@ simulated function CloseScreen()
 		CancelChanges();
 	}
 	ArmoryPawn.SetLocation(OriginalPawnLocation);
+	SavePresetCheckboxPositions();
 	super.CloseScreen();
 }
+
+simulated private function SavePresetCheckboxPositions()
+{
+	local CheckboxPresetStruct	NewStruct;
+	local UIMechaListItem		ListItem;
+	local int					Index;
+	local bool					bFound;
+	local int i;
+
+	`LOG(GetFuncName() @  OptionsList.ItemCount @ CheckboxPresets.Length,, 'IRITEST');
+
+	NewStruct.Preset = CurrentPreset;
+	for (i = 4; i < OptionsList.ItemCount; i++) // TODO: Replace 3 with NumPresets
+	{
+		ListItem = UIMechaListItem(OptionsList.GetItem(i));
+		if (ListItem == none || ListItem.Checkbox == none)
+			continue;
+
+		`LOG("List item:" @ ListItem.MCName,, 'IRITEST');
+
+		bFound = false;
+		for (Index = 0; Index < CheckboxPresets.Length; Index++)
+		{
+			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
+				CheckboxPresets[Index].Preset == CurrentPreset)
+			{
+				CheckboxPresets[Index].bChecked = ListItem.Checkbox.bChecked;
+				bFound = true;
+				`LOG("Found existing entry, updating" @ ListItem.Checkbox.bChecked,, 'IRITEST');
+				break;
+			}
+		}
+
+		if (!bFound)
+		{
+			NewStruct.CheckboxName = ListItem.MCName;
+			NewStruct.bChecked = ListItem.Checkbox.bChecked;
+			CheckboxPresets.AddItem(NewStruct);
+			`LOG("Creating a new entry for the array:" @ CheckboxPresets.Length @ ListItem.Checkbox.bChecked,, 'IRITEST');
+		}
+	}
+	SaveConfig();
+}
+
+simulated private function LoadPresetCheckboxPositions()
+{
+	local UIMechaListItem		ListItem;
+	local int					Index;
+	local bool					bFound;
+	local int i;
+
+	for (i = 4; i < OptionsList.ItemCount; i++) // TODO: Replace 3 with NumPresets
+	{
+		ListItem = UIMechaListItem(OptionsList.GetItem(i));
+		if (ListItem == none || ListItem.Checkbox == none)
+			continue;
+
+		bFound = false;
+		for (Index = 0; Index < CheckboxPresets.Length; Index++)
+		{
+			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
+				CheckboxPresets[Index].Preset == CurrentPreset)
+			{
+				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
+				bFound = true;
+				break;
+			}
+		}
+
+		if (!bFound)
+		{
+			for (Index = 0; Index < CheckboxPresetsDefaults.Length; Index++)
+			{
+				if (CheckboxPresetsDefaults[Index].CheckboxName == ListItem.MCName &&
+					CheckboxPresetsDefaults[Index].Preset == CurrentPreset)
+				{
+					ListItem.Checkbox.SetChecked(CheckboxPresetsDefaults[Index].bChecked, false);
+					break;
+				}
+			}
+		}
+	}
+	SavePresetCheckboxPositions();
+}
+
 
 simulated function ApplyChanges()
 {
@@ -766,6 +862,7 @@ simulated private function SetCheckbox(name OptionName, bool bChecked)
 
 simulated function UpdateOptionsList()
 {
+	SavePresetCheckboxPositions();
 	OptionsList.ClearItems();
 
 	// PRESETS
@@ -1234,6 +1331,7 @@ simulated private function OptionPresetCheckboxChanged(UICheckbox CheckBox)
 simulated private function ActivatePreset()
 {
 	`LOG(GetFuncName() @ `showvar(CurrentPreset),, 'IRITEST');
+	LoadPresetCheckboxPositions();
 	switch (CurrentPreset)
 	{
 		case 'PresetDefault':
@@ -1243,12 +1341,12 @@ simulated private function ActivatePreset()
 		case 'PresetUniform':
 			SetCheckbox('PresetDefault', false);
 			SetCheckbox('PresetEntireUnit', false);
-			ActivatePresetUniform();
+			//ActivatePresetUniform();
 			return;
 		case 'PresetEntireUnit':
 			SetCheckbox('PresetDefault', false);
 			SetCheckbox('PresetUniform', false);
-			ActivatePresetEntireUnit();
+			//ActivatePresetEntireUnit();
 		default:
 			return;
 	}

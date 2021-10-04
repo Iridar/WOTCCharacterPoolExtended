@@ -9,6 +9,8 @@ struct CheckboxPresetStruct
 var config(CharacterPoolExtended_DEFAULT) array<CheckboxPresetStruct> CheckboxPresetsDefaults;
 var config(CharacterPoolExtended_NULLCONFIG) array<CheckboxPresetStruct> CheckboxPresets;
 
+var config(CharacterPoolExtended_DEFAULT) array<name> Presets;
+
 // TODO: Make clicking an item toggle its checkbox
 // Fix weapons / Dual Wielding not working in CP?
 // TODO: Copy appearance store mode: no copy, append, override
@@ -54,6 +56,8 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 {
 	local UIScreen	   CycleScreen;
 	local UIMouseGuard MouseGuard;
+
+	`LOG(GetFuncName() @ CheckboxPresets.Length @ default.CheckboxPresets.Length,, 'IRITEST');
 
 	super.InitScreen(InitController, InitMovie, InitName);
 
@@ -608,7 +612,7 @@ simulated function CloseScreen()
 {	
 	if (SelectedUnit != none)
 	{
-		ApplyChanges();
+		//ApplyChanges(); //DISABLED FOR DEBUG ONLY
 	}
 	else
 	{
@@ -627,16 +631,24 @@ simulated private function SavePresetCheckboxPositions()
 	local bool					bFound;
 	local int i;
 
-	`LOG(GetFuncName() @  OptionsList.ItemCount @ CheckboxPresets.Length,, 'IRITEST');
+	`LOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length,, 'IRITEST');
 
 	NewStruct.Preset = CurrentPreset;
-	for (i = 4; i < OptionsList.ItemCount; i++) // TODO: Replace 3 with NumPresets
+
+	if (Presets.Length > 0)
+	{
+		i = Presets.Length + 1;
+	}
+	for (i = i; i < OptionsList.ItemCount; i++) // "i = i" bypasses compile error. Just need to have something in there.
 	{
 		ListItem = UIMechaListItem(OptionsList.GetItem(i));
 		if (ListItem == none || ListItem.Checkbox == none)
 			continue;
 
-		`LOG("List item:" @ ListItem.MCName,, 'IRITEST');
+		//if (InStr(string(ListItem.MCName), "UIMechaListItem") != INDEX_NONE)
+		//	continue;
+
+		`LOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked,, 'IRITEST');
 
 		bFound = false;
 		for (Index = 0; Index < CheckboxPresets.Length; Index++)
@@ -646,7 +658,6 @@ simulated private function SavePresetCheckboxPositions()
 			{
 				CheckboxPresets[Index].bChecked = ListItem.Checkbox.bChecked;
 				bFound = true;
-				`LOG("Found existing entry, updating" @ ListItem.Checkbox.bChecked,, 'IRITEST');
 				break;
 			}
 		}
@@ -656,9 +667,10 @@ simulated private function SavePresetCheckboxPositions()
 			NewStruct.CheckboxName = ListItem.MCName;
 			NewStruct.bChecked = ListItem.Checkbox.bChecked;
 			CheckboxPresets.AddItem(NewStruct);
-			`LOG("Creating a new entry for the array:" @ CheckboxPresets.Length @ ListItem.Checkbox.bChecked,, 'IRITEST');
 		}
 	}
+	
+	default.CheckboxPresets = CheckboxPresets; // This is actually necessary
 	SaveConfig();
 }
 
@@ -669,11 +681,19 @@ simulated private function LoadPresetCheckboxPositions()
 	local bool					bFound;
 	local int i;
 
-	for (i = 4; i < OptionsList.ItemCount; i++) // TODO: Replace 3 with NumPresets
+	`LOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length,, 'IRITEST');
+
+	if (Presets.Length > 0)
+	{
+		i = Presets.Length + 1;
+	}
+	for (i = i; i < OptionsList.ItemCount; i++) 
 	{
 		ListItem = UIMechaListItem(OptionsList.GetItem(i));
 		if (ListItem == none || ListItem.Checkbox == none)
 			continue;
+
+		`LOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked,, 'IRITEST');
 
 		bFound = false;
 		for (Index = 0; Index < CheckboxPresets.Length; Index++)
@@ -683,6 +703,7 @@ simulated private function LoadPresetCheckboxPositions()
 			{
 				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
 				bFound = true;
+				`LOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked,, 'IRITEST');
 				break;
 			}
 		}
@@ -695,12 +716,64 @@ simulated private function LoadPresetCheckboxPositions()
 					CheckboxPresetsDefaults[Index].Preset == CurrentPreset)
 				{
 					ListItem.Checkbox.SetChecked(CheckboxPresetsDefaults[Index].bChecked, false);
+					`LOG(i @ "Found default entry:" @ CheckboxPresetsDefaults[Index].bChecked,, 'IRITEST');
 					break;
 				}
 			}
 		}
 	}
-	SavePresetCheckboxPositions();
+	//SavePresetCheckboxPositions();
+}
+
+simulated private function ApplyPresetCheckboxPositions()
+{
+	local UIMechaListItem		ListItem;
+	local int					Index;
+	local bool					bFound;
+	local int i;
+
+	`LOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length,, 'IRITEST');
+
+	if (Presets.Length > 0)
+	{
+		i = Presets.Length + 1;
+	}
+	for (i = i; i < OptionsList.ItemCount; i++) 
+	{
+		ListItem = UIMechaListItem(OptionsList.GetItem(i));
+		if (ListItem == none || ListItem.Checkbox == none)
+			continue;
+
+		`LOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked,, 'IRITEST');
+
+		bFound = false;
+		for (Index = 0; Index < CheckboxPresets.Length; Index++)
+		{
+			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
+				CheckboxPresets[Index].Preset == CurrentPreset)
+			{
+				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
+				bFound = true;
+				`LOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked,, 'IRITEST');
+				break;
+			}
+		}
+
+		if (!bFound)
+		{
+			for (Index = 0; Index < CheckboxPresetsDefaults.Length; Index++)
+			{
+				if (CheckboxPresetsDefaults[Index].CheckboxName == ListItem.MCName &&
+					CheckboxPresetsDefaults[Index].Preset == CurrentPreset)
+				{
+					ListItem.Checkbox.SetChecked(CheckboxPresetsDefaults[Index].bChecked, false);
+					`LOG(i @ "Found default entry:" @ CheckboxPresetsDefaults[Index].bChecked,, 'IRITEST');
+					break;
+				}
+			}
+		}
+	}
+	//SavePresetCheckboxPositions();
 }
 
 
@@ -866,13 +939,7 @@ simulated function UpdateOptionsList()
 	OptionsList.ClearItems();
 
 	// PRESETS
-	CreateOptionCategory(class'UIOptionsPCScreen'.default.m_strGraphicsLabel_Preset); 
-
-	`LOG(GetFuncName() @ `showvar(CurrentPreset),, 'IRITEST');
-
-	CreateOptionPreset('PresetDefault', "DEFAULT", "", CurrentPreset == 'PresetDefault');
-	CreateOptionPreset('PresetUniform', "UNIFORM", "", CurrentPreset == 'PresetUniform');
-	CreateOptionPreset('PresetEntireUnit', "ENTIRE UNIT", "", CurrentPreset == 'PresetEntireUnit');
+	CreateOptionPresets();
 	
 	if (SelectedAppearance == OriginalAppearance)
 		return;
@@ -950,7 +1017,49 @@ simulated function UpdateOptionsList()
 	MaybeCreateOptionBiography();
 	//MaybeCreateOptionAppearanceStore();
 
+	//LogAllOptions();
+
 	ActivatePreset();
+}
+
+simulated private function LogAllOptions()
+{
+	local UIMechaListItem		ListItem;
+	local int i;
+
+	`LOG(GetFuncName() @  OptionsList.ItemCount,, 'IRITEST');
+	`LOG("----------------------------------------------------------",, 'IRITEST');
+
+	for (i = 0; i < OptionsList.ItemCount; i++)
+	{
+		ListItem = UIMechaListItem(OptionsList.GetItem(i));
+		if (ListItem == none)
+			continue;
+			
+		`LOG("List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ ListItem.Checkbox != none,, 'IRITEST');
+	}
+	`LOG("----------------------------------------------------------",, 'IRITEST');
+}
+
+simulated private function CreateOptionPresets()
+{
+	local string strFriendlyPresetName;
+	local int i;
+
+	if (Presets.Length == 0)
+		return;
+
+	CreateOptionCategory(class'UIOptionsPCScreen'.default.m_strGraphicsLabel_Preset); 
+	`LOG(GetFuncName() @ `showvar(CurrentPreset),, 'IRITEST');
+
+	for (i = 0; i < Presets.Length; i++)
+	{
+		strFriendlyPresetName = Localize("UICustomize_CPExtended", string(Presets[i]), "WOTCCharacterPoolExtended");
+		if (strFriendlyPresetName == "")
+			strFriendlyPresetName = string(Presets[i]);
+
+		CreateOptionPreset(Presets[i], strFriendlyPresetName, "", CurrentPreset == Presets[i]);
+	}
 }
 
 simulated private function bool ShouldShowHeadCategory()
@@ -1324,39 +1433,28 @@ simulated private function CreateOptionPreset(name OptionName, string strText, s
 simulated private function OptionPresetCheckboxChanged(UICheckbox CheckBox)
 {
 	CurrentPreset = UIMechaListItem(CheckBox.GetParent(class'UIMechaListItem')).MCName;
-	UpdateOptionsList();
+	UpdateOptionsList(); // This will call ActivatePreset()
 	UpdateUnitAppearance();
 }
 
 simulated private function ActivatePreset()
 {
+	local name Preset;
+
 	`LOG(GetFuncName() @ `showvar(CurrentPreset),, 'IRITEST');
-	LoadPresetCheckboxPositions();
-	switch (CurrentPreset)
+	
+	foreach Presets(Preset)
 	{
-		case 'PresetDefault':
-			SetCheckbox('PresetUniform', false);
-			SetCheckbox('PresetEntireUnit', false);
-			return;
-		case 'PresetUniform':
-			SetCheckbox('PresetDefault', false);
-			SetCheckbox('PresetEntireUnit', false);
-			//ActivatePresetUniform();
-			return;
-		case 'PresetEntireUnit':
-			SetCheckbox('PresetDefault', false);
-			SetCheckbox('PresetUniform', false);
-			//ActivatePresetEntireUnit();
-		default:
-			return;
+		SetCheckbox(Preset, Preset == CurrentPreset);
 	}
+	ApplyPresetCheckboxPositions();
 }
 
 simulated function OptionsListItemClicked(UIList ContainerList, int ItemIndex)
 {
 	local UIMechaListItem ListItem;
 
-	if (ItemIndex > 3)
+	if (ItemIndex > Presets.Length)
 		return;
 	
 	ListItem = UIMechaListItem(OptionsList.GetItem(ItemIndex));
@@ -1364,124 +1462,6 @@ simulated function OptionsListItemClicked(UIList ContainerList, int ItemIndex)
 	{
 		OptionPresetCheckboxChanged(ListItem.Checkbox);
 	}
-}
-
-simulated private function ActivatePresetUniform()
-{
-	`LOG(GetFuncName(),, 'IRITEST');
-
-	SetCheckbox('nmHead', false);
-	SetCheckbox('iGender', false);
-	SetCheckbox('iRace', false);
-	SetCheckbox('nmHaircut', false);
-	SetCheckbox('iHairColor', false);
-	SetCheckbox('iFacialHair', false);
-	SetCheckbox('nmBeard', false);
-	SetCheckbox('iSkinColor', false);
-	SetCheckbox('iEyeColor', false);
-	SetCheckbox('nmFlag', false);
-	SetCheckbox('iVoice', false);
-	SetCheckbox('iAttitude', false);
-	SetCheckbox('iArmorDeco', true);
-	SetCheckbox('iArmorTint', true);
-	SetCheckbox('iArmorTintSecondary', true);
-	SetCheckbox('iWeaponTint', true);
-	SetCheckbox('iTattooTint', true);
-	SetCheckbox('nmWeaponPattern', true);
-	SetCheckbox('nmTorso', true);
-	SetCheckbox('nmArms', true);
-	SetCheckbox('nmLegs', true);
-	SetCheckbox('nmHelmet', false);
-	SetCheckbox('nmEye', false);
-	SetCheckbox('nmTeeth', false);
-	SetCheckbox('nmFacePropLower', false);
-	SetCheckbox('nmFacePropUpper', false);
-	SetCheckbox('nmPatterns', true);
-	SetCheckbox('nmVoice', false);
-	SetCheckbox('nmLanguage', false);
-	SetCheckbox('nmTattoo_LeftArm', false);
-	SetCheckbox('nmTattoo_RightArm', false);
-	SetCheckbox('nmScars', false);
-	SetCheckbox('nmTorso_Underlay', true);
-	SetCheckbox('nmArms_Underlay', true);
-	SetCheckbox('nmLegs_Underlay', true);
-	SetCheckbox('nmFacePaint', false);
-	SetCheckbox('nmLeftArm', true);
-	SetCheckbox('nmRightArm', true);
-	SetCheckbox('nmLeftArmDeco', true);
-	SetCheckbox('nmRightArmDeco', true);
-	SetCheckbox('nmLeftForearm', true);
-	SetCheckbox('nmRightForearm', true);
-	SetCheckbox('nmThighs', true);
-	SetCheckbox('nmShins', true);
-	SetCheckbox('nmTorsoDeco', true);
-	SetCheckbox('bGhostPawn', true);
-	SetCheckbox('FirstName', false);
-	SetCheckbox('Nickname', false);
-	SetCheckbox('LastName', false);
-	SetCheckbox('Biography', false);
-	//SetCheckbox('AppearanceStore', false);
-
-	UpdateUnitAppearance();
-}
-
-simulated private function ActivatePresetEntireUnit()
-{
-	`LOG(GetFuncName(),, 'IRITEST');
-
-	SetCheckbox('nmHead', true);
-	SetCheckbox('iGender', true);
-	SetCheckbox('iRace', true);
-	SetCheckbox('nmHaircut', true);
-	SetCheckbox('iHairColor', true);
-	SetCheckbox('iFacialHair', true);
-	SetCheckbox('nmBeard', true);
-	SetCheckbox('iSkinColor', true);
-	SetCheckbox('iEyeColor', true);
-	SetCheckbox('nmFlag', true);
-	SetCheckbox('iVoice', true);
-	SetCheckbox('iAttitude', true);
-	SetCheckbox('iArmorDeco', true);
-	SetCheckbox('iArmorTint', true);
-	SetCheckbox('iArmorTintSecondary', true);
-	SetCheckbox('iWeaponTint', true);
-	SetCheckbox('iTattooTint', true);
-	SetCheckbox('nmWeaponPattern', true);
-	SetCheckbox('nmTorso', true);
-	SetCheckbox('nmArms', true);
-	SetCheckbox('nmLegs', true);
-	SetCheckbox('nmHelmet', true);
-	SetCheckbox('nmEye', true);
-	SetCheckbox('nmTeeth', true);
-	SetCheckbox('nmFacePropLower', true);
-	SetCheckbox('nmFacePropUpper', true);
-	SetCheckbox('nmPatterns', true);
-	SetCheckbox('nmVoice', true);
-	SetCheckbox('nmLanguage', true);
-	SetCheckbox('nmTattoo_LeftArm', true);
-	SetCheckbox('nmTattoo_RightArm', true);
-	SetCheckbox('nmScars', true);
-	SetCheckbox('nmTorso_Underlay', true);
-	SetCheckbox('nmArms_Underlay', true);
-	SetCheckbox('nmLegs_Underlay', true);
-	SetCheckbox('nmFacePaint', true);
-	SetCheckbox('nmLeftArm', true);
-	SetCheckbox('nmRightArm', true);
-	SetCheckbox('nmLeftArmDeco', true);
-	SetCheckbox('nmRightArmDeco', true);
-	SetCheckbox('nmLeftForearm', true);
-	SetCheckbox('nmRightForearm', true);
-	SetCheckbox('nmThighs', true);
-	SetCheckbox('nmShins', true);
-	SetCheckbox('nmTorsoDeco', true);
-	SetCheckbox('bGhostPawn', true);
-	SetCheckbox('FirstName', true);
-	SetCheckbox('Nickname', true);
-	SetCheckbox('LastName', true);
-	SetCheckbox('Biography', true);
-	//SetCheckbox('AppearanceStore', true);
-
-	UpdateUnitAppearance();
 }
 
 // ================================================================================================================================================

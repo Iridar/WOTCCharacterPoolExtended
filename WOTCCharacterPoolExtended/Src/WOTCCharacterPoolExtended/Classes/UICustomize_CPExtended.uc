@@ -74,11 +74,11 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 
 	List.OnItemClicked = SoldierListItemClicked;
 
-	List.SetPosition(1920 - List.Width - 70, 280);
-	ListBG.SetPosition(List.X, 280);
+	List.SetPosition(1920 - List.Width - 70, 360);
+	List.SetHeight(300);
 
-	List.SetPosition(List.X + 15, List.Y + 15);
-	ListBG.SetHeight(725);
+	ListBG.SetPosition(1920 - List.Width - 80, 345);
+	ListBG.SetHeight(730);
 
 	// Mouse guard dims the entire screen when this UIScreen is spawned, not sure why.
 	// Setting it to 3D seems to fix it.
@@ -98,13 +98,13 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	OptionsBG = Spawn(class'UIBGBox', self).InitBG('LeftOptionsListBG', 20, 180);
 	OptionsBG.SetAlpha(80);
 	OptionsBG.SetWidth(582);
-	OptionsBG.SetHeight(1080 - 100 - OptionsBG.Y);
+	OptionsBG.SetHeight(1080 - 70 - OptionsBG.Y);
 
 	OptionsList = Spawn(class'UIList', self);
 	OptionsList.bAnimateOnInit = false;
 	OptionsList.InitList('LeftOptionsList', 30, 190);
 	OptionsList.SetWidth(542);
-	OptionsList.SetHeight(1080 - 110 - OptionsList.Y);
+	OptionsList.SetHeight(1080 - 80 - OptionsList.Y);
 	OptionsList.Navigator.LoopSelection = true;
 	OptionsList.OnItemClicked = OptionsListItemClicked;
 	
@@ -121,13 +121,13 @@ simulated private function CreateFiltersList()
 	FiltersBG = Spawn(class'UIBGBox', self).InitBG('UpperRightFiltersListBG', ListBG.X, 10);
 	FiltersBG.SetAlpha(80);
 	FiltersBG.SetWidth(582);
-	FiltersBG.SetHeight(270);
+	FiltersBG.SetHeight(330);
 
 	FiltersList = Spawn(class'UIList', self);
 	FiltersList.bAnimateOnInit = false;
 	FiltersList.InitList('UpperRightFiltersList', List.X, 20);
 	FiltersList.SetWidth(542);
-	FiltersList.SetHeight(260);
+	FiltersList.SetHeight(310);
 	FiltersList.Navigator.LoopSelection = true;
 	//FiltersList.OnItemClicked = FiltersListItemClicked;
 	
@@ -137,7 +137,29 @@ simulated private function CreateFiltersList()
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem();
 	SpawnedItem.SetDisabled(true);
-	SpawnedItem.UpdateDataDescription(class'UICharacterPool'.default.m_strTitle);
+	SpawnedItem.UpdateDataDescription("APPLY TO"); // TODO: Localize
+
+	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('ApplyToThisUnit');
+	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("This unit"), "", true, ApplyToCheckboxChanged, none);
+
+	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('ApplyToSquad');
+	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("squad"), "", false, ApplyToCheckboxChanged, none);
+
+	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('ApplyToBarracks');
+	SpawnedItem.SetDisabled(ArmorTemplateName == '', "No armor template on the unit" @ ArmoryUnit.GetFullName());
+	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("barracks"), "", true, ApplyToCheckboxChanged, none);
+
+	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem();
+	SpawnedItem.SetDisabled(true);
+	SpawnedItem.UpdateDataDescription("FILTERS"); // TODO: Localize
 
 	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
@@ -154,6 +176,11 @@ simulated private function CreateFiltersList()
 	SpawnedItem.InitListItem('FilterArmor');
 	SpawnedItem.SetDisabled(ArmorTemplateName == '', "No armor template on the unit" @ ArmoryUnit.GetFullName());
 	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS(class'UIArmory_Loadout'.default.m_strInventoryLabels[eInvSlot_Armor]), "", true, FilterCheckboxChanged, none);
+}
+
+simulated private function ApplyToCheckboxChanged(UICheckbox CheckBox)
+{
+	UpdateSoldierList();
 }
 
 simulated private function FilterCheckboxChanged(UICheckbox CheckBox)
@@ -310,6 +337,12 @@ simulated function UpdateSoldierList()
 	local int i;
 
 	List.ClearItems();
+
+	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem();
+	SpawnedItem.UpdateDataDescription("SELECT UNIT"); // TODO: Localize
+	SpawnedItem.SetDisabled(true); 
 
 	// First entry is always "No change"
 	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);

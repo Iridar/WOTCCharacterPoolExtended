@@ -2,6 +2,8 @@ class UISL_CPExtended extends UIScreenListener;
 
 // This UISL adds a "LOADOUT" button to the character customization screen while in Character Pool.
 
+var localized string strUniform;
+
 event OnInit(UIScreen Screen)
 {
 	local UICustomize_Menu	CustomizeMenuScreen;
@@ -97,14 +99,36 @@ simulated function AddLoadoutButton()
 		NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
 		NewListItem.bAnimateOnInit = false;
 		NewListItem.InitListItem();
-		NewListItem.UpdateDataDescription(class'UIArmory_MainMenu'.default.m_strLoadout, OnLoadout);
+		NewListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked);
 		CustomizeScreen.ShowListItems();
+
+		NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+		NewListItem.bAnimateOnInit = false;
+		NewListItem.InitListItem();
+		NewListItem.UpdateDataDescription(class'UIArmory_MainMenu'.default.m_strLoadout, OnLoadout);
 	}
 
 	CustomizeScreen.SetTimer(0.1f, false, nameof(AddLoadoutButton), self);
 }
 
-simulated function OnLoadout()
+simulated private function OnUniformButtonClicked(UIButton ButtonSource)
+{
+	local UICustomize_Menu CustomizeScreen;
+
+	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
+	if (CustomizeScreen == none)
+		return;
+
+	CustomizeScreen.CustomizeManager.UpdatedUnitState.SetCharacterName(strUniform, "", "");
+	CustomizeScreen.CustomizeManager.UpdatedUnitState.kAppearance.iAttitude = 0; // Set by the Book attitude so the soldier stops squirming.
+	CustomizeScreen.CustomizeManager.UpdatedUnitState.UpdatePersonalityTemplate();
+	CustomizeScreen.CustomizeManager.CommitChanges();
+	CustomizeScreen.CustomizeManager.SubmitUnitCustomizationChanges();
+	CustomizeScreen.CustomizeManager.ReCreatePawnVisuals(CustomizeScreen.CustomizeManager.ActorPawn, true);
+	CustomizeScreen.UpdateData();
+}
+
+simulated private function OnLoadout()
 {
 	local UICustomize_Menu				CustomizeScreen;
 	local UIScreenStack					ScreenStack;

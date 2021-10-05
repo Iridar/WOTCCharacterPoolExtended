@@ -17,7 +17,8 @@ var config(CharacterPoolExtended_DEFAULT) array<name> Presets;
 // Preview background (biography) change
 // Uniform manager functionality
 // Save presets in config. Then you can use Uniform preset for determining which parts are copied via uniform manager.
-// Save checkbox positions for default
+// TODO: Apply to squad button
+// Apply to barracks button? 
 
 // Internal cached info
 var private CharacterPoolManagerExtended		PoolMgr;
@@ -1612,6 +1613,31 @@ simulated private function string GetColorFriendlyText(coerce string strText, Li
 {
 	return "<font color='#" $ GetHTMLColor(ParamColor) $ "'>" $ strText $ "</font>";
 }
+
+
+static final function bool ShouldCopyUniformPiece(const name UniformPiece)
+{
+	local CheckboxPresetStruct CheckboxPreset;
+
+	foreach default.CheckboxPresets(CheckboxPreset)
+	{
+		if (CheckboxPreset.CheckboxName == UniformPiece &&
+			CheckboxPreset.Preset == 'PresetUniform')
+		{
+			return CheckboxPreset.bChecked;
+		}
+	}
+	foreach default.CheckboxPresetsDefaults(CheckboxPreset)
+	{
+		if (CheckboxPreset.CheckboxName == UniformPiece &&
+			CheckboxPreset.Preset == 'PresetUniform')
+		{
+			return CheckboxPreset.bChecked;
+		}
+	}	
+	return false;
+}
+
 
 /*class'UICustomize_Info'.default.m_strFirstNameLabel=First Name
 class'UICustomize_Info'.default.m_strLastNameLabel=Last Name

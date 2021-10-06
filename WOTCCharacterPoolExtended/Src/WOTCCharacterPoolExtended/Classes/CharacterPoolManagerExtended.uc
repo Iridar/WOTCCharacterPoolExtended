@@ -7,19 +7,50 @@ var string CharPoolExtendedFilePath;
 // ============================================================================
 // OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
 
+event InitSoldierOld(XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData)
+{
+	local XGCharacterGenerator CharacterGenerator;
+	local TSoldier             CharacterGeneratorResult;
+
+	`LOG(GetFuncName() @ "called for unit:" @ Unit.GetFullName(),, 'IRITEST');
+
+	Unit.SetSoldierClassTemplate(CharacterPoolData.m_SoldierClassTemplateName);
+	Unit.SetCharacterName(CharacterPoolData.strFirstName, CharacterPoolData.strLastName, CharacterPoolData.strNickName);
+	Unit.SetTAppearance(CharacterPoolData.kAppearance);
+	Unit.SetCountry(CharacterPoolData.Country);
+	Unit.SetBackground(CharacterPoolData.BackgroundText);
+
+	Unit.bAllowedTypeSoldier = CharacterPoolData.AllowedTypeSoldier;
+	Unit.bAllowedTypeVIP = CharacterPoolData.AllowedTypeVIP;
+	Unit.bAllowedTypeDarkVIP = CharacterPoolData.AllowedTypeDarkVIP;
+
+	Unit.PoolTimestamp = CharacterPoolData.PoolTimestamp;
+
+	if (!(Unit.bAllowedTypeSoldier || Unit.bAllowedTypeVIP || Unit.bAllowedTypeDarkVIP))
+		Unit.bAllowedTypeSoldier = true;
+
+	//No longer re-creates the entire character, just set the invalid attributes to the first element
+	//if (!ValidateAppearance(CharacterPoolData.kAppearance))
+	if (!`XENGINE.bReviewFlagged) // TODO: Add MCM flags here.
+		return;
+
+	if (!FixAppearanceOfInvalidAttributes(Unit.kAppearance))
+	{
+		//This should't fail now that we attempt to fix invalid attributes
+		CharacterGenerator = `XCOMGRI.Spawn(Unit.GetMyTemplate().CharacterGeneratorClass);
+		`assert(CharacterGenerator != none);
+		CharacterGeneratorResult = CharacterGenerator.CreateTSoldierFromUnit(Unit, none);
+		Unit.SetTAppearance(CharacterGeneratorResult.kAppearance);
+	}
+}
+
 event InitSoldier( XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData )
 {
 	`LOG(GetFuncName() @ "called for unit:" @ Unit.GetFullName(),, 'IRITEST');
 
-	super.InitSoldier(Unit, CharacterPoolData);
-	
+	InitSoldierOld(Unit, CharacterPoolData);
 	GetUnitData();
 	UnitData.ApplyAppearanceStore(Unit);
-}
-
-event InitSoldierOld(XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData)
-{
-	super.InitSoldier(Unit, CharacterPoolData);
 }
 
 function SaveCharacterPool()
@@ -237,6 +268,23 @@ static final function string GetUnitStateFullNameExtraData(const XComGameState_U
 		SoldierString $= UnitState.GetFirstName() @ UnitState.GetLastName();
 	}
 	return SoldierString;
+}
+
+simulated final function ValidateUnitAppearance(XComGameState_Unit UnitState)
+{
+	local XGCharacterGenerator CharacterGenerator;
+	local TSoldier             CharacterGeneratorResult;
+
+	if (!FixAppearanceOfInvalidAttributes(UnitState.kAppearance))
+	{
+		//This should't fail now that we attempt to fix invalid attributes
+		CharacterGenerator = `XCOMGRI.Spawn(UnitState.GetMyTemplate().CharacterGeneratorClass);
+		if (CharacterGenerator != none)
+		{
+			CharacterGeneratorResult = CharacterGenerator.CreateTSoldierFromUnit(UnitState, none);
+			UnitState.SetTAppearance(CharacterGeneratorResult.kAppearance);
+		}
+	}
 }
 
 // ============================================================================

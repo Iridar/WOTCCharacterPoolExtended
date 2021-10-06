@@ -26,27 +26,32 @@ simulated function UpdateLockerList()
 	local TUILockerItem			LockerItem;
 
 	local X2ItemTemplateManager			ItemMgr;
-	local array<X2EquipmentTemplate>	ArmorTemplates;
-	local X2EquipmentTemplate			ArmorTemplate;
+	local X2EquipmentTemplate			EqTemplate;
+	local X2DataTemplate				DataTemplate;
 
 	local XComGameStateHistory					History;	
 	local XComGameState							TempGameState;
 	local XComGameStateContext_ChangeContainer	TempContainer;
+	local XComGameState_Unit					UnitState;
 
+	UnitState = GetUnit();
 	SelectedSlot = GetSelectedSlot();
 	LocTag.StrValue0 = class'CHItemSlot'.static.SlotGetName(SelectedSlot);
 	MC.FunctionString("setRightPanelTitle", `XEXPAND.ExpandString(m_strLockerTitle));
 		
 	ItemMgr = class'X2ItemTemplateManager'.static.GetItemTemplateManager();
-	ArmorTemplates = ItemMgr.GetAllArmorTemplates();
 
 	History = `XCOMHISTORY;
 	TempContainer = class'XComGameStateContext_ChangeContainer'.static.CreateEmptyChangeContainer("Fake Loadout");
 	TempGameState = History.CreateNewGameState(true, TempContainer);
 	
-	foreach ArmorTemplates(ArmorTemplate)
+	foreach ItemMgr.IterateTemplates(DataTemplate)
 	{
-		Item = ArmorTemplate.CreateInstanceFromTemplate(TempGameState);
+		EqTemplate = X2EquipmentTemplate(DataTemplate);
+		if (EqTemplate == none || !UnitState.CanAddItemToInventory(EqTemplate, SelectedSlot, TempGameState))
+			continue;
+
+		Item = EqTemplate.CreateInstanceFromTemplate(TempGameState);
 		if (ShowInLockerList(Item, SelectedSlot))
 		{
 			LockerItem.Item = Item;
@@ -95,7 +100,7 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 	local UIPawnMgr								PawnMgr;
 	local XComPresentationLayerBase				PresBase;
 	local TAppearance							NewAppearance;
-
+	//local UIArmory_LoadoutItem					LIstItem;
 
 	`LOG("Attempting to equip item:" @ Item.ItemTemplate.DataName @ "into slot:" @ GetSelectedSlot(),, 'IRITEST');
 	if (Item.ItemTemplate == none)
@@ -106,13 +111,14 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 
 	`LOG("Initial checks done, proceeding",, 'IRITEST');
 
-	PrintTorsoOptions("Before anything is done");
+	//PrintTorsoOptions("Before anything is done");
 
 	History = `XCOMHISTORY;
 	TempContainer = class'XComGameStateContext_ChangeContainer'.static.CreateEmptyChangeContainer("Fake Loadout");
 	TempGameState = History.CreateNewGameState(true, TempContainer);
 
-	CustomizationManager.UpdatedUnitState.ApplyInventoryLoadout(TempGameState);
+	//CustomizationManager.UpdatedUnitState.ApplyInventoryLoadout(TempGameState); //TEST
+
 	NewItem = CustomizationManager.UpdatedUnitState.GetItemInSlot(GetSelectedSlot(), TempGameState);
 	if (NewItem != none)
 	{
@@ -157,6 +163,13 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 	
 	UnitPawn = XComUnitPawn(CustomizationManager.ActorPawn);
 
+	// Doesn't seem to work.
+	//if (EquipSucceeded)
+	//{
+	//	LIstItem = UIArmory_LoadoutItem(LockerList.GetItem(1));
+	//	LIstItem.InitLoadoutItem(NewItem, GetSelectedSlot(), true);
+	//}
+
 	if (UnitPawn == none)
 		`LOG("Error, no Unit Pawn",, 'IRITEST');
 
@@ -175,14 +188,14 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 
 	CustomizationManager.UpdatedUnitState.EmptyInventoryItems();
 
-	PrintTorsoOptions("Past item equipped" @ CustomizationManager.UpdatedUnitState.kAppearance.nmTorso);
+	//PrintTorsoOptions("Past item equipped" @ CustomizationManager.UpdatedUnitState.kAppearance.nmTorso);
 	
 	NewAppearance = CustomizationManager.UpdatedUnitState.kAppearance;
 	XComUnitPawn(CustomizationManager.ActorPawn).SetAppearance(NewAppearance);
 
 	CharPoolMgr.SaveCharacterPool();
 
-	PrintTorsoOptions("Past Refresh" @ CustomizationManager.UpdatedUnitState.kAppearance.nmTorso);
+	//PrintTorsoOptions("Past Refresh" @ CustomizationManager.UpdatedUnitState.kAppearance.nmTorso);
 
 	return EquipSucceeded;
 }

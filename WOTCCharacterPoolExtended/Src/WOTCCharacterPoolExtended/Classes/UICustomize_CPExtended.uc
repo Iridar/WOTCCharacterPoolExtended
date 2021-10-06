@@ -14,28 +14,31 @@ var config(CharacterPoolExtended_DEFAULT) array<name> Presets;
 // TODO:
 /*
 Pick up CP files from mods
+Works with Unrestricted Customization?
 
-1. Works with Unrestricted Customization?
-3. Allow replacing weapon?
+MCM Option to skip appearance validation: CharacterPoolManagerExtended.InitSoldierOld
 
-5. "Import unit from CP" button in the armory
-6. Import gear only
 
-MCM Option to skip appearance validation
+Make clicking an item toggle its checkbox?
+Fix weapons / Dual Wielding not working in CP?
+Appearance store management? Copy appearance store mode: no copy, append, override
+Search bar for CP units?
+Preview background (biography) change
 
 ## Checks:
 1. Check if you can customize a unit with all armors in the campaign, then save them into CP, and that they will actually have all that appearance in the next campaign
 
 ## Finalization
+0. Clean up everything. Commentate. Add private/final.
+0.5 Localize stuff.
 1. Get rid of the logs or clean them up and turn them off
 2. Fix log error spam.
+
+## Ideas for later
+1. Equipping weapons in CP will reskin them automatically with XSkin (RustyDios). Probably use a Tuple.
 */
 
-// TODO: Make clicking an item toggle its checkbox
-// Fix weapons / Dual Wielding not working in CP?
-// TODO: Appearance store management? Copy appearance store mode: no copy, append, override
-// Search bar?
-// Preview background (biography) change
+
 
 
 

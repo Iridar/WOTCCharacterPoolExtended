@@ -99,9 +99,18 @@ simulated function AddLoadoutButton()
 		NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
 		NewListItem.bAnimateOnInit = false;
 		NewListItem.InitListItem();
-		NewListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked);
+		NewListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
 		CustomizeScreen.ShowListItems();
 
+		// TODO: MCM check here
+		if (true)
+		{
+			NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+			NewListItem.bAnimateOnInit = false;
+			NewListItem.InitListItem();
+			NewListItem.UpdateDataButton("Validate Appearance", "Validate", OnValidateButtonClicked); // TODO: Localize
+			CustomizeScreen.ShowListItems();
+		}
 		NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
 		NewListItem.bAnimateOnInit = false;
 		NewListItem.InitListItem();
@@ -127,6 +136,24 @@ simulated private function OnUniformButtonClicked(UIButton ButtonSource)
 	CustomizeScreen.CustomizeManager.ReCreatePawnVisuals(CustomizeScreen.CustomizeManager.ActorPawn, true);
 	CustomizeScreen.UpdateData();
 }
+
+simulated private function OnValidateButtonClicked(UIButton ButtonSource)
+{
+	local UICustomize_Menu CustomizeScreen;
+	local CharacterPoolManagerExtended CharPool;
+
+	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
+	if (CustomizeScreen == none)
+		return;
+
+	CharPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
+	CharPool.ValidateUnitAppearance(CustomizeScreen.CustomizeManager.UpdatedUnitState);	
+	CustomizeScreen.CustomizeManager.CommitChanges();
+	CustomizeScreen.CustomizeManager.SubmitUnitCustomizationChanges();
+	CustomizeScreen.CustomizeManager.ReCreatePawnVisuals(CustomizeScreen.CustomizeManager.ActorPawn, true);
+	CustomizeScreen.UpdateData();
+}
+
 
 simulated private function OnLoadout()
 {

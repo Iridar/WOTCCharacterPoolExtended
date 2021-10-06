@@ -164,14 +164,14 @@ static private function MaybeApplyCharacterPoolAppearance(XComGameState_Unit Uni
 	foreach CharacterPool.CharacterPool(CPUnitState)
 	{
 		if (CPUnitState.GetFirstName() == class'UISL_CPExtended'.default.strUniform &&
-			CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName))
+			CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName)) // TODO: Add soldier class check here
 		{
 			`LOG("Found uniform unit:" @ CPUnitState.GetFullName() @ "using its appearance",, 'IRITEST');
 
 			CPUnitState.GetStoredAppearance(CPAppearance, UnitState.kAppearance.iGender, ArmorTemplateName);
 
 			NewAppearance = UnitState.kAppearance;
-			CopyUniformAppearance(NewAppearance, CPAppearance);
+			class'UICustomize_CPExtended'.static.CopyAppearance_Static(NewAppearance, CPAppearance, 'PresetUniform');
 
 			UnitState.SetTAppearance(NewAppearance);
 			UnitState.StoreAppearance(UnitState.kAppearance.iGender, ArmorTemplateName);
@@ -180,53 +180,3 @@ static private function MaybeApplyCharacterPoolAppearance(XComGameState_Unit Uni
 	}
 }
 
-static private function CopyUniformAppearance(out TAppearance NewAppearance, const TAppearance UniformAppearance)
-{
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmHead')) NewAppearance.nmHead = UniformAppearance.nmHead;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iGender')) NewAppearance.iGender = UniformAppearance.iGender;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iRace')) NewAppearance.iRace = UniformAppearance.iRace;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmHaircut')) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iHairColor')) NewAppearance.iHairColor = UniformAppearance.iHairColor;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iFacialHair')) NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmBeard')) NewAppearance.nmBeard = UniformAppearance.nmBeard;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iSkinColor')) NewAppearance.iSkinColor = UniformAppearance.iSkinColor;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iEyeColor')) NewAppearance.iEyeColor = UniformAppearance.iEyeColor;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmFlag')) NewAppearance.nmFlag = UniformAppearance.nmFlag;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iVoice')) NewAppearance.iVoice = UniformAppearance.iVoice;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iAttitude')) NewAppearance.iAttitude = UniformAppearance.iAttitude;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iArmorDeco')) NewAppearance.iArmorDeco = UniformAppearance.iArmorDeco;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iArmorTint')) NewAppearance.iArmorTint = UniformAppearance.iArmorTint;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iArmorTintSecondary')) NewAppearance.iArmorTintSecondary = UniformAppearance.iArmorTintSecondary;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iWeaponTint')) NewAppearance.iWeaponTint = UniformAppearance.iWeaponTint;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('iTattooTint')) NewAppearance.iTattooTint = UniformAppearance.iTattooTint;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmWeaponPattern')) NewAppearance.nmWeaponPattern = UniformAppearance.nmWeaponPattern;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmPawn')) NewAppearance.nmPawn = UniformAppearance.nmPawn;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmTorso')) NewAppearance.nmTorso = UniformAppearance.nmTorso;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmArms')) NewAppearance.nmArms = UniformAppearance.nmArms;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmLegs')) NewAppearance.nmLegs = UniformAppearance.nmLegs;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmHelmet')) NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmEye')) NewAppearance.nmEye = UniformAppearance.nmEye;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmTeeth')) NewAppearance.nmTeeth = UniformAppearance.nmTeeth;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmFacePropLower')) NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmFacePropUpper')) NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmPatterns')) NewAppearance.nmPatterns = UniformAppearance.nmPatterns;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmVoice')) NewAppearance.nmVoice = UniformAppearance.nmVoice;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmLanguage')) NewAppearance.nmLanguage = UniformAppearance.nmLanguage;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmTattoo_LeftArm')) NewAppearance.nmTattoo_LeftArm = UniformAppearance.nmTattoo_LeftArm;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmTattoo_RightArm')) NewAppearance.nmTattoo_RightArm = UniformAppearance.nmTattoo_RightArm;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmScars')) NewAppearance.nmScars = UniformAppearance.nmScars;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmTorso_Underlay')) NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmArms_Underlay')) NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmLegs_Underlay')) NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmFacePaint')) NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmLeftArm')) NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmRightArm')) NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmLeftArmDeco')) NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmRightArmDeco')) NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmLeftForearm')) NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmRightForearm')) NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmThighs')) NewAppearance.nmThighs = UniformAppearance.nmThighs;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmShins')) NewAppearance.nmShins = UniformAppearance.nmShins;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('nmTorsoDeco')) NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
-	if (class'UICustomize_CPExtended'.static.ShouldCopyUniformPiece('bGhostPawn')) NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
-}

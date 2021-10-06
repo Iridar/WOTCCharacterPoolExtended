@@ -218,3 +218,137 @@ simulated function UpdateData(optional bool bRefreshPawn)
 	UpdateEquippedList();
 	Header.PopulateData(GetUnit());
 }
+
+simulated function UpdateEquippedList()
+{
+	//local int i, numUtilityItems; // Issue #118, unneeded
+	local UIArmory_LoadoutItem Item;
+	//ocal array<XComGameState_Item> UtilityItems; // Issue #118, unneeded
+	local XComGameState_Unit UpdatedUnit;
+	local int prevIndex;
+	local CHUIItemSlotEnumerator En; // Variable for Issue #118
+	local X2ItemTemplate		ItemTemplate;
+
+
+	prevIndex = EquippedList.SelectedIndex;
+	UpdatedUnit = GetUnit();
+	EquippedList.ClearItems();
+
+	// Clear out tooltips from removed list items
+	Movie.Pres.m_kTooltipMgr.RemoveTooltipsByPartialPath(string(EquippedList.MCPath));
+
+	// Issue #171 Start
+	// Realize Inventory so mods changing utility slots get updated faster
+	UpdatedUnit.RealizeItemSlotsCount(CheckGameState);
+	// Issue #171 End
+
+	// Issue #118 Start
+	// Here used to be a lot of code handling individual slots, this has been abstracted in CHItemSlot (and the Enumerator)
+	//CreateEnumerator(XComGameState_Unit _UnitState, optional XComGameState _CheckGameState, optional array<CHSlotPriority> _SlotPriorities, optional bool _UseUnlockHints, optional array<EInventorySlot> _OverrideSlotsList)
+	En = class'CHUIItemSlotEnumerator'.static.CreateEnumerator(UpdatedUnit, CheckGameState);
+	while (En.HasNext())
+	{
+		En.Next();
+		Item = UIArmory_LoadoutItem(EquippedList.CreateItem(class'UIArmory_LoadoutItem'));
+		if (CannotEditSlotsList.Find(En.Slot) != INDEX_NONE)
+			Item.InitLoadoutItem(En.ItemState, En.Slot, true, m_strCannotEdit);
+		else if (En.IsLocked)
+			Item.InitLoadoutItem(En.ItemState, En.Slot, true, En.LockedReason);
+		else
+			Item.InitLoadoutItem(En.ItemState, En.Slot, true);
+
+		if (En.Slot == eInvSlot_Armor)
+		{
+			ItemTemplate = GetItemTemplateFromCosmeticTorso(UpdatedUnit.kAppearance.nmTorso);
+			if (ItemTemplate != none)
+			{
+				SetItemImage(Item, ItemTemplate);
+				Item.SetTitle(ItemTemplate.GetItemFriendlyName());
+				Item.SetSubTitle(ItemTemplate.GetLocalizedCategory());
+			}
+		}
+	}
+	EquippedList.SetSelectedIndex(prevIndex < EquippedList.ItemCount ? prevIndex : 0);
+	// Force item into view
+	EquippedList.NavigatorSelectionChanged(EquippedList.SelectedIndex);
+	// Issue #118 End
+}
+
+static final function X2ItemTemplate GetItemTemplateFromCosmeticTorso(const name nmTorso)
+{
+	local name						ArmorTemplateName;
+	local X2BodyPartTemplate		ArmorPartTemplate;
+	local X2BodyPartTemplateManager BodyPartMgr;
+	local X2ItemTemplateManager		ItemMgr;
+
+	BodyPartMgr = class'X2BodyPartTemplateManager'.static.GetBodyPartTemplateManager();
+	ArmorPartTemplate = BodyPartMgr.FindUberTemplate("Torso", nmTorso);
+	if (ArmorPartTemplate != none)
+	{
+		ArmorTemplateName = ArmorPartTemplate.ArmorTemplate;
+		if (ArmorTemplateName != '')
+		{
+			ItemMgr = class'X2ItemTemplateManager'.static.GetItemTemplateManager();
+			return ItemMgr.FindItemTemplate(ArmorTemplateName);
+		}
+	}
+	return none;
+}
+
+
+
+simulated function SetItemImage(UIArmory_LoadoutItem LoadoutItem, X2ItemTemplate ItemTemplate)
+{
+	local int i;
+	local bool bUpdate;
+	local array<string> NewImages;
+	// Issue #171 variables
+	local array<X2DownloadableContentInfo> DLCInfos;
+
+	if(ItemTemplate.strImage == "")
+	{
+		LoadoutItem.MC.FunctionVoid("setImages");
+		return;
+	}
+
+	NewImages.AddItem(ItemTemplate.strImage);
+
+	// Start Issue #171
+	DLCInfos = `ONLINEEVENTMGR.GetDLCInfos(false);
+	for(i = 0; i < DLCInfos.Length; ++i)
+	{
+		// Single line for Issue #962 - pass on Item State.
+		DLCInfos[i].OverrideItemImage_Improved(NewImages, LoadoutItem.EquipmentSlot, ItemTemplate, UIArmory(LoadoutItem.Screen).GetUnit(), none);
+	}
+	// End Issue #171
+
+	bUpdate = false;
+	for( i = 0; i < NewImages.Length; i++ )
+	{
+		if( LoadoutItem.Images.Length <= i || LoadoutItem.Images[i] != NewImages[i] )
+		{
+			bUpdate = true;
+			break;
+		}
+	}
+
+	//If no image at all is defined, mark it as empty 
+	if( NewImages.length == 0 )
+	{
+		NewImages.AddItem("");
+		bUpdate = true;
+	}
+
+	if(bUpdate)
+	{
+		LoadoutItem.Images = NewImages;
+		
+		LoadoutItem.MC.BeginFunctionOp("setImages");
+		LoadoutItem.MC.QueueBoolean(false); // always first
+
+		for( i = 0; i < LoadoutItem.Images.Length; i++ )
+			LoadoutItem.MC.QueueString(LoadoutItem.Images[i]); 
+
+		LoadoutItem.MC.EndOp();
+	}
+}

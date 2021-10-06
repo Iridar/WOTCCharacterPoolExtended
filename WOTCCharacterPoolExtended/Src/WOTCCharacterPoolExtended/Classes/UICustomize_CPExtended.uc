@@ -11,14 +11,33 @@ var config(CharacterPoolExtended_NULLCONFIG) array<CheckboxPresetStruct> Checkbo
 
 var config(CharacterPoolExtended_DEFAULT) array<name> Presets;
 
+// TODO:
+/*
+Pick up CP files from mods
+
+1. Works with Unrestricted Customization?
+3. Allow replacing weapon?
+
+5. "Import unit from CP" button in the armory
+6. Import gear only
+
+MCM Option to skip appearance validation
+
+## Checks:
+1. Check if you can customize a unit with all armors in the campaign, then save them into CP, and that they will actually have all that appearance in the next campaign
+
+## Finalization
+1. Get rid of the logs or clean them up and turn them off
+2. Fix log error spam.
+*/
+
 // TODO: Make clicking an item toggle its checkbox
 // Fix weapons / Dual Wielding not working in CP?
-// TODO: Copy appearance store mode: no copy, append, override
+// TODO: Appearance store management? Copy appearance store mode: no copy, append, override
+// Search bar?
 // Preview background (biography) change
-// Uniform manager functionality
-// Save presets in config. Then you can use Uniform preset for determining which parts are copied via uniform manager.
-// TODO: Apply to squad button
-// Apply to barracks button? 
+
+
 
 // Internal cached info
 var private CharacterPoolManagerExtended		PoolMgr;
@@ -142,18 +161,18 @@ simulated private function CreateFiltersList()
 	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem('ApplyToThisUnit');
-	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("This unit"), "", true, ApplyToCheckboxChanged, none);
+	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("This unit"), "", true, none, none);
 
 	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem('ApplyToSquad');
-	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("squad"), "", false, ApplyToCheckboxChanged, none);
+	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("squad"), "", false, none, none);
 
 	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem('ApplyToBarracks');
 	SpawnedItem.SetDisabled(ArmorTemplateName == '', "No armor template on the unit" @ ArmoryUnit.GetFullName());
-	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("barracks"), "", true, ApplyToCheckboxChanged, none);
+	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("barracks"), "", false, none, none);
 
 	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
@@ -173,14 +192,9 @@ simulated private function CreateFiltersList()
 
 	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
-	SpawnedItem.InitListItem('FilterArmor');
+	SpawnedItem.InitListItem('FilterStoredAppearance');
 	SpawnedItem.SetDisabled(ArmorTemplateName == '', "No armor template on the unit" @ ArmoryUnit.GetFullName());
-	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS(class'UIArmory_Loadout'.default.m_strInventoryLabels[eInvSlot_Armor]), "", true, FilterCheckboxChanged, none);
-}
-
-simulated private function ApplyToCheckboxChanged(UICheckbox CheckBox)
-{
-	UpdateSoldierList();
+	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("Stored appearance"), "", true, FilterCheckboxChanged, none); // TODO: Localize
 }
 
 simulated private function FilterCheckboxChanged(UICheckbox CheckBox)
@@ -454,22 +468,38 @@ simulated private function array<XComGameState_Unit> GetDeadSoldiers(XComGameSta
 
 simulated private function bool DoesUnitPassActiveFilters(const XComGameState_Unit UnitState)
 {
-	// Filter out SPARKs and other non-soldier units.
-	if (ArmoryUnit.UnitSize != UnitState.UnitSize)
+	if (!IsUnitSameType(UnitState))
+		return false;
+
+	if (GetFilterListCheckboxStatus('FilterGender') && OriginalAppearance.iGender != UnitState.kAppearance.iGender)
+		return false;
+
+	if (GetFilterListCheckboxStatus('FilterStoredAppearance') && ArmorTemplateName != '' && !UnitState.HasStoredAppearance(OriginalAppearance.iGender, ArmorTemplateName))
+		return false;
+
+	if (GetFilterListCheckboxStatus('FilterClass') && ArmoryUnit.GetSoldierClassTemplateName() != UnitState.GetSoldierClassTemplateName())
+		return false;
+
+	return true;
+}
+
+simulated private function bool IsUnitSameType(const XComGameState_Unit UnitState)
+{	
+	// TODO: Use this check if Unrestricted Customization is not active
+	if (true)
+	{
+		if (UnitState.GetMyTemplateName() != ArmoryUnit.GetMyTemplateName())
 			return false;
+	}
+	else
+	{
+		// Filter out SPARKs and other non-soldier units.
+		if (ArmoryUnit.UnitSize != UnitState.UnitSize)
+				return false;
 
-	if (ArmoryUnit.UnitHeight != UnitState.UnitHeight)
-		return false;
-
-	if (GetFilterStatus('FilterGender') && OriginalAppearance.iGender != UnitState.kAppearance.iGender)
-		return false;
-
-	if (GetFilterStatus('FilterArmor') && ArmorTemplateName != '' && !UnitState.HasStoredAppearance(OriginalAppearance.iGender, ArmorTemplateName))
-		return false;
-
-	if (GetFilterStatus('FilterClass') && ArmoryUnit.GetSoldierClassTemplateName() != UnitState.GetSoldierClassTemplateName())
-		return false;
-
+		if (ArmoryUnit.UnitHeight != UnitState.UnitHeight)
+			return false;
+	}
 	return true;
 }
 
@@ -491,7 +521,7 @@ simulated function bool IsUnitPresentInCampaign(const XComGameState_Unit CheckUn
 
 
 
-simulated function bool GetFilterStatus(name FilterName)
+simulated function bool GetFilterListCheckboxStatus(name FilterName)
 {
 	local UIMechaListItem ListItem;
 
@@ -588,7 +618,7 @@ simulated private function UpdateUnitAppearance()
 	local TAppearance NewAppearance;
 
 	NewAppearance = OriginalAppearance;
-	CopyUniformAppearance(NewAppearance, SelectedAppearance);
+	CopyAppearance(NewAppearance, SelectedAppearance);
 
 	ArmoryPawn.SetAppearance(NewAppearance);
 	//ArmoryUnit.SetTAppearance(NewAppearance);
@@ -646,7 +676,7 @@ simulated function CloseScreen()
 {	
 	if (SelectedUnit != none)
 	{
-		//ApplyChanges(); //DISABLED FOR DEBUG ONLY
+		ApplyChanges();
 	}
 	else
 	{
@@ -810,8 +840,93 @@ simulated private function ApplyPresetCheckboxPositions()
 	//SavePresetCheckboxPositions();
 }
 
+simulated private function ApplyChanges()
+{
+	local XComGameState_HeadquartersXCom	XComHQ;
+	local StateObjectReference				SquadUnitRef;
+	local array<XComGameState_Unit>			UnitStates;
+	local XComGameState_Unit				UnitState;
+	local XComGameState						NewGameState;
 
-simulated function ApplyChanges()
+	// Current Unit
+	if (GetFilterListCheckboxStatus('ApplyToThisUnit'))
+	{
+		ApplyChangesToArmoryUnit();
+	}
+
+	XComHQ = class'UIUtilities_Strategy'.static.GetXComHQ(true);
+	if (XComHQ == none)
+		return;
+
+	// Squad
+	if (GetFilterListCheckboxStatus('ApplyToSquad'))
+	{
+		NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("Apply appearance changes to squad");
+		foreach XComHQ.Squad(SquadUnitRef)
+		{
+			UnitState = XComGameState_Unit(History.GetGameStateForObjectID(SquadUnitRef.ObjectID));
+			if (UnitState == none || UnitState.IsDead() || !IsUnitSameType(UnitState))
+				continue;
+
+			UnitState = XComGameState_Unit(NewGameState.ModifyStateObject(UnitState.Class, UnitState.ObjectID));
+			ApplyChangesToUnit(UnitState);
+		}
+		`GAMERULES.SubmitGameState(NewGameState);
+	}
+	// Barracks except for squad and soldiers away on Covert Action
+	if (GetFilterListCheckboxStatus('ApplyToBarracks'))
+	{
+		UnitStates = XComHQ.GetSoldiers(true, true);
+
+		NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("Apply appearance changes to barracks");
+		foreach UnitStates(UnitState)
+		{
+			UnitState = XComGameState_Unit(NewGameState.ModifyStateObject(UnitState.Class, UnitState.ObjectID));
+			ApplyChangesToUnit(UnitState);
+		}
+		`GAMERULES.SubmitGameState(NewGameState);
+	}
+}
+
+simulated private function ApplyChangesToUnit(XComGameState_Unit UnitState)
+{
+	local TAppearance CurrentAppearance;
+	local string strFirstName;
+	local string strNickname;
+	local string strLastName;
+
+	if (IsCheckboxChecked('FirstName'))
+		strFirstName = SelectedUnit.GetFirstName();
+	else
+		strFirstName = UnitState.GetFirstName();
+
+	if (IsCheckboxChecked('Nickname'))
+		strNickname = SelectedUnit.GetNickName();
+	else
+		strNickname = UnitState.GetNickName();
+
+	if (IsCheckboxChecked('LastName'))
+		strLastName = SelectedUnit.GetLastName();
+	else
+		strLastName = UnitState.GetLastName();
+
+	if (IsCheckboxChecked('nmFlag'))
+		UnitState.SetCountry(ArmoryPawn.m_kAppearance.nmFlag);
+
+	UnitState.SetCharacterName(strFirstName, strLastName, strNickname);
+
+	if (IsCheckboxChecked('Biography'))
+		UnitState.SetBackground(SelectedUnit.GetBackground());
+
+	CurrentAppearance = UnitState.kAppearance;
+	CopyAppearance(CurrentAppearance, SelectedAppearance);
+
+	UnitState.SetTAppearance(CurrentAppearance);
+	UnitState.UpdatePersonalityTemplate();
+	UnitState.StoreAppearance();
+}
+
+simulated private function ApplyChangesToArmoryUnit()
 {
 	local XComGameState NewGameState;
 	local string strFirstName;
@@ -894,7 +1009,7 @@ simulated function CancelChanges()
 // ================================================================================================================================================
 // OPTIONS LIST - List of checkboxes on the left that determines which parts of the appearance should be copied from CP unit to Armory unit.
 
-simulated private function CopyUniformAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
+simulated private function CopyAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
 {
 	//NewAppearance = UniformAppearance;
 
@@ -1648,14 +1763,14 @@ simulated private function string GetColorFriendlyText(coerce string strText, Li
 }
 
 
-static final function bool ShouldCopyUniformPiece(const name UniformPiece)
+static private function bool ShouldCopyUniformPiece(const name UniformPiece, const name PresetName)
 {
 	local CheckboxPresetStruct CheckboxPreset;
 
 	foreach default.CheckboxPresets(CheckboxPreset)
 	{
 		if (CheckboxPreset.CheckboxName == UniformPiece &&
-			CheckboxPreset.Preset == 'PresetUniform')
+			CheckboxPreset.Preset == PresetName)
 		{
 			return CheckboxPreset.bChecked;
 		}
@@ -1663,12 +1778,63 @@ static final function bool ShouldCopyUniformPiece(const name UniformPiece)
 	foreach default.CheckboxPresetsDefaults(CheckboxPreset)
 	{
 		if (CheckboxPreset.CheckboxName == UniformPiece &&
-			CheckboxPreset.Preset == 'PresetUniform')
+			CheckboxPreset.Preset == PresetName)
 		{
 			return CheckboxPreset.bChecked;
 		}
 	}	
 	return false;
+}
+
+static final function CopyAppearance_Static(out TAppearance NewAppearance, const TAppearance UniformAppearance, const name PresetName)
+{
+	if (ShouldCopyUniformPiece('nmHead', PresetName)) NewAppearance.nmHead = UniformAppearance.nmHead;
+	if (ShouldCopyUniformPiece('iGender', PresetName)) NewAppearance.iGender = UniformAppearance.iGender;
+	if (ShouldCopyUniformPiece('iRace', PresetName)) NewAppearance.iRace = UniformAppearance.iRace;
+	if (ShouldCopyUniformPiece('nmHaircut', PresetName)) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
+	if (ShouldCopyUniformPiece('iHairColor', PresetName)) NewAppearance.iHairColor = UniformAppearance.iHairColor;
+	if (ShouldCopyUniformPiece('iFacialHair', PresetName)) NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
+	if (ShouldCopyUniformPiece('nmBeard', PresetName)) NewAppearance.nmBeard = UniformAppearance.nmBeard;
+	if (ShouldCopyUniformPiece('iSkinColor', PresetName)) NewAppearance.iSkinColor = UniformAppearance.iSkinColor;
+	if (ShouldCopyUniformPiece('iEyeColor', PresetName)) NewAppearance.iEyeColor = UniformAppearance.iEyeColor;
+	if (ShouldCopyUniformPiece('nmFlag', PresetName)) NewAppearance.nmFlag = UniformAppearance.nmFlag;
+	if (ShouldCopyUniformPiece('iVoice', PresetName)) NewAppearance.iVoice = UniformAppearance.iVoice;
+	if (ShouldCopyUniformPiece('iAttitude', PresetName)) NewAppearance.iAttitude = UniformAppearance.iAttitude;
+	if (ShouldCopyUniformPiece('iArmorDeco', PresetName)) NewAppearance.iArmorDeco = UniformAppearance.iArmorDeco;
+	if (ShouldCopyUniformPiece('iArmorTint', PresetName)) NewAppearance.iArmorTint = UniformAppearance.iArmorTint;
+	if (ShouldCopyUniformPiece('iArmorTintSecondary', PresetName)) NewAppearance.iArmorTintSecondary = UniformAppearance.iArmorTintSecondary;
+	if (ShouldCopyUniformPiece('iWeaponTint', PresetName)) NewAppearance.iWeaponTint = UniformAppearance.iWeaponTint;
+	if (ShouldCopyUniformPiece('iTattooTint', PresetName)) NewAppearance.iTattooTint = UniformAppearance.iTattooTint;
+	if (ShouldCopyUniformPiece('nmWeaponPattern', PresetName)) NewAppearance.nmWeaponPattern = UniformAppearance.nmWeaponPattern;
+	if (ShouldCopyUniformPiece('nmPawn', PresetName)) NewAppearance.nmPawn = UniformAppearance.nmPawn;
+	if (ShouldCopyUniformPiece('nmTorso', PresetName)) NewAppearance.nmTorso = UniformAppearance.nmTorso;
+	if (ShouldCopyUniformPiece('nmArms', PresetName)) NewAppearance.nmArms = UniformAppearance.nmArms;
+	if (ShouldCopyUniformPiece('nmLegs', PresetName)) NewAppearance.nmLegs = UniformAppearance.nmLegs;
+	if (ShouldCopyUniformPiece('nmHelmet', PresetName)) NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
+	if (ShouldCopyUniformPiece('nmEye', PresetName)) NewAppearance.nmEye = UniformAppearance.nmEye;
+	if (ShouldCopyUniformPiece('nmTeeth', PresetName)) NewAppearance.nmTeeth = UniformAppearance.nmTeeth;
+	if (ShouldCopyUniformPiece('nmFacePropLower', PresetName)) NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
+	if (ShouldCopyUniformPiece('nmFacePropUpper', PresetName)) NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
+	if (ShouldCopyUniformPiece('nmPatterns', PresetName)) NewAppearance.nmPatterns = UniformAppearance.nmPatterns;
+	if (ShouldCopyUniformPiece('nmVoice', PresetName)) NewAppearance.nmVoice = UniformAppearance.nmVoice;
+	if (ShouldCopyUniformPiece('nmLanguage', PresetName)) NewAppearance.nmLanguage = UniformAppearance.nmLanguage;
+	if (ShouldCopyUniformPiece('nmTattoo_LeftArm', PresetName)) NewAppearance.nmTattoo_LeftArm = UniformAppearance.nmTattoo_LeftArm;
+	if (ShouldCopyUniformPiece('nmTattoo_RightArm', PresetName)) NewAppearance.nmTattoo_RightArm = UniformAppearance.nmTattoo_RightArm;
+	if (ShouldCopyUniformPiece('nmScars', PresetName)) NewAppearance.nmScars = UniformAppearance.nmScars;
+	if (ShouldCopyUniformPiece('nmTorso_Underlay', PresetName)) NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
+	if (ShouldCopyUniformPiece('nmArms_Underlay', PresetName)) NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
+	if (ShouldCopyUniformPiece('nmLegs_Underlay', PresetName)) NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
+	if (ShouldCopyUniformPiece('nmFacePaint', PresetName)) NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
+	if (ShouldCopyUniformPiece('nmLeftArm', PresetName)) NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
+	if (ShouldCopyUniformPiece('nmRightArm', PresetName)) NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
+	if (ShouldCopyUniformPiece('nmLeftArmDeco', PresetName)) NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
+	if (ShouldCopyUniformPiece('nmRightArmDeco', PresetName)) NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
+	if (ShouldCopyUniformPiece('nmLeftForearm', PresetName)) NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
+	if (ShouldCopyUniformPiece('nmRightForearm', PresetName)) NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
+	if (ShouldCopyUniformPiece('nmThighs', PresetName)) NewAppearance.nmThighs = UniformAppearance.nmThighs;
+	if (ShouldCopyUniformPiece('nmShins', PresetName)) NewAppearance.nmShins = UniformAppearance.nmShins;
+	if (ShouldCopyUniformPiece('nmTorsoDeco', PresetName)) NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
+	if (ShouldCopyUniformPiece('bGhostPawn', PresetName)) NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
 }
 
 

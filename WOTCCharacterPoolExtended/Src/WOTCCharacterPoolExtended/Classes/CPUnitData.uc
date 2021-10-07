@@ -1,7 +1,5 @@
 class CPUnitData extends Object;
 
-const CharPoolExtendedImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
-
 struct CPExtendedStruct
 {
 	// Stores most of the info regarding character pool unit: name, bio, current appearance.
@@ -79,11 +77,6 @@ private function CharacterPoolDataElement GetCharacterPoolDataFromUnit(XComGameS
 	CharacterPoolSerializeHelper.BackgroundText = Unit.GetBackground();
 
 	return CharacterPoolSerializeHelper;
-}
-
-final function string GetImportPath(string strFileName)
-{
-	return class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedImportFolderPath $ strFileName $ ".bin";
 }
 
 final function int GetNumUnits()

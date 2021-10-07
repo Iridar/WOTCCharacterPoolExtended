@@ -1,22 +1,110 @@
 class UICharacterPool_ListPools_CPExtended extends UICharacterPool_ListPools;
 
-struct ModAddPoolStruct
+// Mod-added pools - located in their respective mods' folders.
+struct PoolInfoStruct
 {
 	var name DLCName;
 	var name PoolName;
+	var string FilePath;
+	var string FriendlyName;
 };
+var private config(CharacterPoolExtended_DEFAULT) array<PoolInfoStruct> DefaultCharacterPoolFiles;
+var private config(CharacterPoolExtended_NULLCONFIG) array<PoolInfoStruct> CharacterPoolFiles;
 
-var private CPUnitData UnitData; // Current pool we're exporting into or importing from.
+const CharPoolExtendedImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
 
-var private config(CharacterPoolExtended_NULLCONFIG) array<string> PoolFileNames; // List of all pools added previously.
-
-var private array<string> ReadFailPoolFileNames; // List of pools that couldn't be read from the disk. 
-
-var config(CharacterPoolExtended_DEFAULT) array<ModAddPoolStruct> ModAddPools;
+// Current pool we're exporting into or importing from.
+var private CPUnitData		UnitData; 
+var private PoolInfoStruct	CurrentPoolInfo;
 
 // ============================================================================
 // OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
 
+simulated function InitScreen(XComPlayerController InitController, UIMovie InitMovie, optional name InitName)
+{
+	super.InitScreen(InitController, InitMovie, InitName);
+	BuildCharacterPoolFilesList();
+}
+
+simulated private function BuildCharacterPoolFilesList()
+{
+	local PoolInfoStruct PoolInfo;
+	local int Index;
+
+	`LOG(GetFuncName(),, 'IRITEST');
+
+	foreach DefaultCharacterPoolFiles(PoolInfo)
+	{
+		`LOG(PoolInfo.DLCName @ PoolInfo.PoolName @ PoolInfo.FilePath @ PoolInfo.FriendlyName,, 'IRITEST');
+
+		Index = CharacterPoolFiles.Find('PoolName', PoolInfo.PoolName);
+
+		`LOG(`showvar(Index),, 'IRITEST');
+		if (Index != INDEX_NONE)
+		{	
+			if (LoadPool(CharacterPoolFiles[Index]))
+			{
+				`LOG("This pool is already in the saved list and can be loaded, skipping",, 'IRITEST');
+				continue;
+			}
+			else
+			{
+				`LOG("This pool is already in the saved list, but I couldn't load it:",, 'IRITEST');
+				`LOG(CharacterPoolFiles[Index].DLCName @ CharacterPoolFiles[Index].PoolName @ CharacterPoolFiles[Index].FilePath @ CharacterPoolFiles[Index].FriendlyName,, 'IRITEST');
+			}
+		}
+
+		if (PoolInfo.DLCName != '')
+		{
+			`LOG("This is a mod pool",, 'IRITEST');
+			if (PoolInfo.PoolName != '' && FillDLCPoolFilePathAndValidate(PoolInfo))
+			{
+				FillPoolFriendlyName(PoolInfo);
+				CharacterPoolFiles.AddItem(PoolInfo);
+
+				`LOG("Filled out and added to the list.",, 'IRITEST');
+				`LOG(PoolInfo.DLCName @ PoolInfo.PoolName @ PoolInfo.FilePath @ PoolInfo.FriendlyName,, 'IRITEST');
+			}
+		}
+		else
+		{
+			if (PoolInfo.PoolName != '' && FillPlayerPoolFilePathAndValidate(PoolInfo))
+			{	
+				FillPoolFriendlyName(PoolInfo);
+				CharacterPoolFiles.AddItem(PoolInfo);
+			}
+		}
+	}
+	default.CharacterPoolFiles = CharacterPoolFiles;
+	SaveConfig();
+}
+
+simulated private function bool FillDLCPoolFilePathAndValidate(out PoolInfoStruct PoolInfo)
+{
+	local DownloadableContentEnumerator DLCEnum;
+	local OnlineContent Item;
+
+	DLCEnum = class'Engine'.static.GetEngine().GetDLCEnumerator();
+
+	foreach DLCEnum.DLCBundles(Item)
+	{	
+		if (Item.Filename == string(PoolInfo.DLCName))
+		{
+			PoolInfo.FilePath = Item.ContentPath $ "\\Content\\" $ PoolInfo.PoolName $ ".bin";
+			PoolInfo.FilePath = Repl(PoolInfo.FilePath, "\\", "\\\\");
+			`LOG("Generated path:" @ PoolInfo.FilePath,, 'IRITEST');
+			return LoadPool(PoolInfo);
+		}
+	}
+	return false;
+}
+
+simulated private function bool FillPlayerPoolFilePathAndValidate(out PoolInfoStruct PoolInfo)
+{
+	PoolInfo.FilePath = class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedImportFolderPath $ PoolInfo.PoolName $ ".bin";
+
+	return LoadPool(PoolInfo);
+}
 
 simulated function UpdateData( bool _bIsExporting )
 {
@@ -25,16 +113,16 @@ simulated function UpdateData( bool _bIsExporting )
 
 	`LOG(GetFuncName() @ bIsExporting,, 'IRITEST');
 
-	if( bIsExporting )
+	if (bIsExporting)
 	{
 		TitleHeader.SetText(m_strTitle, m_strExportSubtitle);
 		Data = GetListOfPools(); 
 	}
 	else
 	{
-		if( bHasSelectedImportLocation )
+		if (bHasSelectedImportLocation)
 		{
-			TitleHeader.SetText(m_strTitleImportPoolCharacter, SelectedFriendlyName);
+			TitleHeader.SetText(m_strTitleImportPoolCharacter, CurrentPoolInfo.FriendlyName);
 			Data = GetListOfImportableUnitsFromSelectedPool();
 		}
 		else
@@ -88,11 +176,9 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 		else
 		{
 			// Player selected an existing pool
-			if (LoadPool(PoolFileNames[iItemIndex-1]))
+			if (LoadPool(CharacterPoolFiles[iItemIndex-1]))
 			{
-				SelectedFilename = PoolFileNames[iItemIndex-1];
-				SelectedFriendlyName = SelectedFilename;
-
+				CurrentPoolInfo = CharacterPoolFiles[iItemIndex-1];
 				OnExportCharacters();
 			}
 			else
@@ -111,11 +197,10 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 			}
 			else
 			{
-				if (LoadPool(PoolFileNames[iItemIndex-1]))
+				if (LoadPool(CharacterPoolFiles[iItemIndex-1]))
 				{
 					bHasSelectedImportLocation = true; 
-					SelectedFilename = PoolFileNames[iItemIndex-1];
-					SelectedFriendlyName = SelectedFilename;
+					CurrentPoolInfo = CharacterPoolFiles[iItemIndex-1];
 
 					UpdateData(false); // We're not exporting
 				}
@@ -128,9 +213,9 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 		else
 		{
 			if (iItemIndex == 0) //"all" case
-				DoImportAllCharacters(SelectedFilename);
+				DoImportAllCharacters("");
 			else
-				DoImportCharacter(SelectedFilename, iItemIndex-1);
+				DoImportCharacter("", iItemIndex-1);
 
 			bHasSelectedImportLocation = false;  // This will allow us to exit the screen 
 			OnCancel();
@@ -187,9 +272,10 @@ simulated function UpdateDisplay()
 	}
 	
 	// Display delete buttons on pools except the first one, since the first one is "add new pool" option.
+	// Also not adding a delete button to mod-added pools, since deleting them would be weird and pointless even if we could.
 	for( i = 0; i < Data.Length; i++ )
 	{
-		if (((!bHasSelectedImportLocation || bIsExporting) && i != 0) && !`ISCONTROLLERACTIVE)
+		if (((!bHasSelectedImportLocation || bIsExporting) && i != 0 && CharacterPoolFiles[i-1].DLCName == '') && !`ISCONTROLLERACTIVE)
 		{
 			UIMechaListItem(List.GetItem(i)).UpdateDataButton(Data[i], class'UISaveLoadGameListItem'.default.m_sDeleteLabel, OnDeletePool);
 		}
@@ -206,11 +292,10 @@ simulated function OnDeletePool(UIButton Button)
 
 	Index = List.GetItemIndex(Button);
 
-	if(Index != INDEX_NONE)
+	if (Index != INDEX_NONE)
 	{
 		Index -= 1;
-		SelectedFilename = PoolFileNames[Index];
-		SelectedFriendlyName = SelectedFilename;
+		CurrentPoolInfo = CharacterPoolFiles[Index];
 		OnConfirmDeletePool();
 	}
 }
@@ -221,7 +306,7 @@ simulated function OnConfirmDeletePool()
 	local TDialogueBoxData  DialogData;
 
 	kTag = XGParamTag(`XEXPANDCONTEXT.FindTag("XGParam"));
-	kTag.StrValue0 = SelectedFilename;
+	kTag.StrValue0 = CurrentPoolInfo.FriendlyName;
 
 	DialogData.strTitle = m_strDeletePoolDialogueTitle;
 	DialogData.strText = `XEXPAND.ExpandString(m_strDeletePoolDialogueBody);
@@ -236,17 +321,18 @@ simulated function OnConfirmDeletePool()
 simulated public function OnConfirmDeletePoolCallback(Name eAction)
 {
 	local CharacterPoolManager CharacterPool;
+	local PoolInfoStruct EmptyPoolInfo;
 
 	if (eAction == 'eUIAction_Accept')
 	{
 		CharacterPool = new class'CharacterPoolManager';
-		CharacterPool.PoolFileName = "CharacterPool\\CharacterPoolExtended\\" $ SelectedFilename $ ".bin";
+		CharacterPool.PoolFileName = "CharacterPool\\CharacterPoolExtended\\" $ CurrentPoolInfo.PoolName $ ".bin";
 		CharacterPool.DeleteCharacterPool();
 
-		PoolFileNames.RemoveItem(SelectedFilename);
-		default.PoolFileNames = PoolFileNames;
+		CharacterPoolFiles.RemoveItem(CurrentPoolInfo);
+		default.CharacterPoolFiles = CharacterPoolFiles;
 		SaveConfig();
-		SelectedFilename = "";
+		CurrentPoolInfo = EmptyPoolInfo;
 
 		UpdateData(bIsExporting);
 	}
@@ -279,139 +365,86 @@ simulated function DoImportAllCharacters(string FilenameForImport)
 	CharacterPool.SaveCharacterPool();
 }
 */
-private function OnAddNewPoolInputBoxAccepted(string strFileName)
+private function OnAddNewPoolInputBoxAccepted(string strPoolName)
 {
-	local CPUnitData NewUnitData;
+	local PoolInfoStruct	NewPoolInfo;
+	local int				Index;
 
-	if (string(name(strFileName)) != strFileName)
-	{
-		ShowInfoPopup("Warning!", "Illegal characters in the filename. Please use only letters and numbers.", eDialog_Alert);
-		return;
-	}
+	NewPoolInfo.PoolName = name(strPoolName);
 
-	if (PoolFileNames.Find(strFileName) != INDEX_NONE)
+	// Check if the pool is already in the list.
+	Index = CharacterPoolFiles.Find('PoolName', NewPoolInfo.PoolName);
+	if (Index != INDEX_NONE && LoadPool(CharacterPoolFiles[Index]))
 	{
-		// This pool already exists!
 		ShowInfoPopup("Warning!", "A pool with this filename already exists in the list. Aborting.", eDialog_Alert);
 		return;
 	}
 
-	NewUnitData = new class'CPUnitData';
-	
-	if (class'Engine'.static.BasicLoadObject(NewUnitData, NewUnitData.GetImportPath(strFileName), false, 1))
+	if (FillPlayerPoolFilePathAndValidate(NewPoolInfo))
 	{
-		// Loaded pool successfully!
-		PoolFileNames.AddItem(strFileName);
-		default.PoolFileNames = PoolFileNames;
+		// Loaded existing pool successfully!
+		FillPoolFriendlyName(NewPoolInfo);
+		CharacterPoolFiles.AddItem(NewPoolInfo);
+		default.CharacterPoolFiles = CharacterPoolFiles;
 		self.SaveConfig();
 		UpdateData(bIsExporting);
 		ShowInfoPopup("Importing existing pool", "A pool with this filename already exists. Adding it to the list.");
+		
 	}
-	else if (class'Engine'.static.BasicSaveObject(NewUnitData, NewUnitData.GetImportPath(strFileName), false, 1))
+	else 
 	{
-		// Created new pool successfully!
-		PoolFileNames.AddItem(strFileName);
-		default.PoolFileNames = PoolFileNames;
-		self.SaveConfig();
-		UpdateData(bIsExporting);
-		ShowInfoPopup("Success", "Created new pool successfully. Adding it to the list.");
-	}
-	else
-	{
-		// ERROR! Failed to save pool.
-		ShowInfoPopup("ERROR!", "Warning! Failed to write the new pool to the disk.", eDialog_Warning);
+		CurrentPoolInfo = NewPoolInfo;
+		if (SaveCurrentlyOpenPool())
+		{
+			// Created new pool successfully!
+			
+			FillPoolFriendlyName(NewPoolInfo);
+			CharacterPoolFiles.AddItem(NewPoolInfo);
+			default.CharacterPoolFiles = CharacterPoolFiles;
+			self.SaveConfig();
+			UpdateData(bIsExporting);
+			ShowInfoPopup("Success", "Created new pool successfully. Adding it to the list.");
+		}
+		else
+		{
+			// ERROR! Failed to save pool.
+			ShowInfoPopup("ERROR!", "Warning! Failed to write the new pool to the disk.", eDialog_Warning);
+		}
 	}
 }
 
 // ============================================================================
 // INTERNAL FUNCTIONS
 
+simulated private function FillPoolFriendlyName(out PoolInfoStruct PoolInfo)
+{
+	PoolInfo.FriendlyName = Localize("UICharacterPool_ListPools_CPExtended", string(PoolInfo.PoolName), "WOTCCharacterPoolExtended");
+	if (Left(PoolInfo.FriendlyName, 5) == "?INT?")
+		PoolInfo.FriendlyName = string(PoolInfo.PoolName);
+	
+}
+
 simulated function array<string> GetListOfPools()
 {
 	local array<string> Items; 
-	local string PoolFileName;
-	local ModAddPoolStruct ModAddPool;
+	local PoolInfoStruct PoolInfo;
 
-	ReadFailPoolFileNames.Length = 0;
-	Items.AddItem("ADD NEW POOL");
+	Items.AddItem("ADD NEW POOL"); // TODO: Localize
 
-	foreach PoolFileNames(PoolFileName)
+	foreach CharacterPoolFiles(PoolInfo)
 	{
-		if (LoadPool(PoolFileName))
-		{
-			Items.AddItem(PoolFileName $ ":" @ UnitData.GetNumUnits() @ "units"); // TODO: Localize
+		if (LoadPool(PoolInfo))
+		{	
+			Items.AddItem(PoolInfo.FriendlyName $ ":" @ UnitData.GetNumUnits() @ "units"); // TODO: Localize
 		}
 		else
 		{
-			Items.AddItem(PoolFileName @ "FILE ACCESS ERROR!");
-			ReadFailPoolFileNames.AddItem(PoolFileName);
-		}
-	}
-	`LOG("Mod added pools:" @ ModAddPools.Length,, 'IRITEST');
-	foreach ModAddPools(ModAddPool)
-	{
-		if (LoadModPool(ModAddPool))
-		{
-			Items.AddItem(ModAddPool.PoolName $ ":" @ UnitData.GetNumUnits() @ "units"); // TODO: Localize
-		}
-		else
-		{
-			Items.AddItem(ModAddPool.PoolName @ "FILE ACCESS ERROR!");
-			//ReadFailPoolFileNames.AddItem(ModAddPool.PoolName);
+			Items.AddItem(PoolInfo.FriendlyName @ "FILE ACCESS ERROR!");
 		}
 	}
 	
 	return Items; 
 }
-
-simulated private function bool LoadModPool(ModAddPoolStruct ModAddPool)
-{
-	local DownloadableContentEnumerator DLCEnum;
-	local OnlineContent Item;
-
-	DLCEnum = class'Engine'.static.GetEngine().GetDLCEnumerator();
-
-	//`log("======================================================= BEGIN",, GetFuncName());
-
-	foreach DLCEnum.DLCBundles(Item)
-	{	
-		if (Item.Filename == string(ModAddPool.DLCName))
-		{
-			UnitData = new class'CPUnitData';
-
-			`LOG("Attempting to load file:" @ Item.ContentPath $ "\\Content\\" $ ModAddPool.PoolName $ ".bin",, 'IRITEST');
-
-			return class'Engine'.static.BasicLoadObject(UnitData, Item.ContentPath $ "\\Content\\" $ ModAddPool.PoolName $ ".bin", false, 1);
-		}
-
-		/*
-		`log("=============",, GetFuncName());
-
-		`log(`showvar(Item.ContentType),, GetFuncName());
-		`log(`showvar(Item.FriendlyName),, GetFuncName());
-		`log(`showvar(Item.Filename),, GetFuncName());
-						`log(`showvar(Item.ContentPath),, GetFuncName());
-		`log(`showvar(Item.bIsCorrupt),, GetFuncName());
-		`log(`showvar(Item.ContentPackages.Length),, GetFuncName());
-		`log(`showvar(Item.ContentFiles.Length),, GetFuncName());
-		
-		`log("=============",, GetFuncName());*/
-	}
-
-	//`log("======================================================= END",, GetFuncName());
-	return false;
-}
-/*
-[0053.83] LoadModPool: =============
-[0053.83] LoadModPool: Item.ContentType:'OCT_Downloaded_Mod'
-[0053.83] LoadModPool: Item.FriendlyName:''
-[0053.83] LoadModPool: Item.Filename:'WOTCCharacterPoolTest'
-[0053.83] LoadModPool: Item.ContentPath:'F:\Games\steamapps\common\XCOM 2\XCom2-WarOfTheChosen\XComGame\Mods\WOTCCharacterPoolTest'
-[0053.83] LoadModPool: Item.bIsCorrupt:'False'
-[0053.83] LoadModPool: Item.ContentPackages.Length:'1'
-[0053.83] LoadModPool: Item.ContentFiles.Length:'9'
-[0053.83] LoadModPool: =============
-*/
 
 
 simulated function array<string> GetListOfImportableUnitsFromSelectedPool()
@@ -436,7 +469,7 @@ private simulated function AddNewPoolInputBox()
 
 	kData.strTitle = "Enter pool file name:";
 	kData.iMaxChars = 99;
-	kData.strInputBoxText = "CPExtendedImport";
+	kData.strInputBoxText = "CPOverhaulImport";
 	kData.fnCallbackAccepted = OnAddNewPoolInputBoxAccepted;
 
 	Movie.Pres.UIInputDialog(kData);
@@ -457,16 +490,16 @@ simulated private function ShowInfoPopup(string strTitle, string strText, option
 	Movie.Pres.UIRaiseDialog(kDialogData);
 }
 
-simulated private function bool LoadPool(string strFileName)
+simulated private function bool LoadPool(PoolInfoStruct PoolInfo)
 {
 	UnitData = new class'CPUnitData';
 
-	return class'Engine'.static.BasicLoadObject(UnitData, UnitData.GetImportPath(strFileName), false, 1);
+	return class'Engine'.static.BasicLoadObject(UnitData, PoolInfo.FilePath, false, 1);
 }
 
 simulated private function bool SaveCurrentlyOpenPool()
 {
-	return class'Engine'.static.BasicSaveObject(UnitData, UnitData.GetImportPath(SelectedFilename), false, 1);
+	return class'Engine'.static.BasicSaveObject(UnitData, CurrentPoolInfo.FilePath, false, 1);
 }
 
 /*
@@ -486,7 +519,7 @@ simulated private function ValidatePools()
 	TestUnitData = new class'CPUnitData';
 	for (i = PoolFileNames.Length - 1; i >= 0; i--)
 	{
-		if (!class'Engine'.static.BasicLoadObject(TestUnitData, TestUnitData.GetImportPath(PoolFileNames[i]), false, 1))
+		if (!class'Engine'.static.BasicLoadObject(TestUnitData, TestGetImportPath(PoolFileNames[i]), false, 1))
 		{
 			PoolFileNames.Remove(i, 1);
 		}
@@ -599,7 +632,7 @@ local TInputDialogData kData;
 
 	kData.strTitle = "Enter pool file name";
 	kData.iMaxChars = 99;
-	kData.strInputBoxText = "CPExtendedImport";
+	kData.strInputBoxText = "CPOverhaulImport";
 	kData.fnCallback = OnCPE_ImportInputBoxAccepted;
 
 	Movie.Pres.UIInputDialog(kData);
@@ -611,7 +644,7 @@ function OnCPE_ImportInputBoxAccepted(string strFileName)
 
 	ImportUnitData = new class'CPUnitData';
 	
-	if (class'Engine'.static.BasicLoadObject(ImportUnitData, ImportUnitData.GetImportPath(strFileName), false, 1))
+	if (class'Engine'.static.BasicLoadObject(ImportUnitData, ImportGetImportPath(strFileName), false, 1))
 	{
 		
 
@@ -631,7 +664,7 @@ local TInputDialogData kData;
 	{
 		kData.strTitle = "Enter pool file name";
 		kData.iMaxChars = 99;
-		kData.strInputBoxText = "CPExtendedImport";
+		kData.strInputBoxText = "CPOverhaulImport";
 		kData.fnCallback = OnCPE_ExportInputBoxAccepted;
 
 		Movie.Pres.UIInputDialog(kData);
@@ -644,7 +677,7 @@ function OnCPE_ExportInputBoxAccepted(string strFileName)
 
 	ExportUnitData = new class'CPUnitData';
 	
-	if (class'Engine'.static.BasicLoadObject(ExportUnitData, ExportUnitData.GetImportPath(strFileName), false, 1))
+	if (class'Engine'.static.BasicLoadObject(ExportUnitData, ExportGetImportPath(strFileName), false, 1))
 	{
 		// TODO: Ask: Update, Replace, Cancel?
 	}
@@ -654,7 +687,7 @@ function OnCPE_ExportInputBoxAccepted(string strFileName)
 		ExportUnitData.UpdateOrAddUnit(SelectedCharacter);
 	}
 
-	if (class'Engine'.static.BasicSaveObject(ExportUnitData, ExportUnitData.GetImportPath(strFileName), false, 1))
+	if (class'Engine'.static.BasicSaveObject(ExportUnitData, ExportGetImportPath(strFileName), false, 1))
 	{
 		// TODO: Saved success popup with filepath
 	}

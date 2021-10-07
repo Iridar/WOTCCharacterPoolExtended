@@ -8,58 +8,61 @@ var localized string strUniform;
 
 event OnInit(UIScreen Screen)
 {
-	local UICustomize_Menu	CustomizeMenuScreen;
-	local UICustomize		CustomizeScreen;
-
-	//`LOG("Screen init:" @ Screen.Class.Name,, 'IRITEST');
-
-	CustomizeScreen = UICustomize(Screen);
-	if (CustomizeScreen == none || CustomizeScreen.Class == class'UICustomize_CPExtended')
-		return;
-		
-	if (CustomizeScreen.bInArmory)
-	{
-		AddNavHelpButtons();
-		return;
-	}
+	local UICustomize_Menu CustomizeMenuScreen;
 
 	CustomizeMenuScreen = UICustomize_Menu(Screen);
 	if (CustomizeMenuScreen != none)
 	{
-		AddLoadoutButton();
+		if (CustomizeMenuScreen.bInArmory)
+		{
+			AddImportFromCharacterPoolButton();
+		}
+		else
+		{
+			AddLoadoutButton();
+		}
 	}
-	//`LOG(GetFuncName() @ "Adding button into list of members:" @ CustomizeScreen.List.ItemCount,, 'IRITEST');
-
 }
 
 event OnReceiveFocus(UIScreen Screen)
 {
-	//`LOG(GetFuncName() @ Screen.Class.Name,, 'IRITEST');
-
 	OnInit(Screen);
 }
 
-simulated function AddNavHelpButtons()
+simulated function AddImportFromCharacterPoolButton()
 {
-	local UICustomize CustomizeScreen;
+	local UICustomize_Menu	CustomizeMenuScreen;;
+	local UIMechaListItem	ListItem;
+	local bool				bListItemAlreadyExists;
+	local int i;
 
-	CustomizeScreen = UICustomize(`SCREENSTACK.GetCurrentScreen());
-	if (CustomizeScreen == none || CustomizeScreen.Class == class'UICustomize_CPExtended')
+	CustomizeMenuScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
+	if (CustomizeMenuScreen == none)
 		return;
 
-	if (CustomizeScreen.NavHelp.m_arrButtonClickDelegates.Find(OnImportUnitButtonClicked) == INDEX_NONE)
+	for (i = CustomizeMenuScreen.List.ItemCount - 1; i >= 0; i--)
 	{
-		CustomizeScreen.NavHelp.AddRightHelp("CPE IMPORT",			
-				class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ class'UIUtilities_Input'.const.ICON_RT_R2, 
-				OnImportUnitButtonClicked,
-				false,
-				"Tooltip placeholder",
-				class'UIUtilities'.const.ANCHOR_BOTTOM_CENTER);
+		ListItem = UIMechaListItem(CustomizeMenuScreen.List.GetItem(i));
+		if (string(ListItem.OnClickDelegate) == string(OnImportFromCharacterPoolButtonClicked))
+		{
+			ListItem.Show();
+			bListItemAlreadyExists = true;
+			break;
+		}
 	}
-	CustomizeScreen.SetTimer(0.1f, false, nameof(AddNavHelpButtons), self);
+	if (!bListItemAlreadyExists)
+	{	
+		ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+		ListItem.bAnimateOnInit = false;
+		ListItem.InitListItem();
+		ListItem.UpdateDataDescription("Import from Character Pool", OnImportFromCharacterPoolButtonClicked);
+
+		// TODO: Maybe add "reskin armor" button here?
+	}
+	CustomizeMenuScreen.SetTimer(0.1f, false, nameof(AddImportFromCharacterPoolButton), self);
 }
 
-simulated private function OnImportUnitButtonClicked()
+simulated private function OnImportFromCharacterPoolButtonClicked()
 {
 	local UICustomize_CPExtended	CustomizeScreen;
 	local XComHQPresentationLayer	HQPresLayer;
@@ -76,8 +79,8 @@ simulated private function OnImportUnitButtonClicked()
 simulated function AddLoadoutButton()
 {
 	local UICustomize_Menu	CustomizeScreen;
-	local bool				bItemAlreadyExists;
-	local UIMechaListItem	NewListItem;
+	local bool				bListItemAlreadyExists;
+	local UIMechaListItem	ListItem;
 	local int i;
 
 	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
@@ -86,38 +89,36 @@ simulated function AddLoadoutButton()
 
 	for (i = 0; i < CustomizeScreen.List.ItemCount; i++)
 	{
-		NewListItem = UIMechaListItem(CustomizeScreen.List.GetItem(i));
-		//`LOG(i @ string(NewListItem.OnClickDelegate),, 'IRITEST');
-		if (string(NewListItem.OnClickDelegate) ~= string(OnLoadout))
+		ListItem = UIMechaListItem(CustomizeScreen.List.GetItem(i));
+		if (string(ListItem.OnClickDelegate) ~= string(OnLoadout))
 		{
-			//`LOG(GetFuncName() @ "item already exists, exiting",, 'IRITEST');
-			bItemAlreadyExists = true;
+			bListItemAlreadyExists = true;
 			CustomizeScreen.ShowListItems();
 			break;
 		}
 	}
-	if (!bItemAlreadyExists)
+	if (!bListItemAlreadyExists)
 	{
-		NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
-		NewListItem.bAnimateOnInit = false;
-		NewListItem.InitListItem();
-		NewListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
+		ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+		ListItem.bAnimateOnInit = false;
+		ListItem.InitListItem();
+		ListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
 		CustomizeScreen.ShowListItems();
 
 		// Add validate appearance button if we're skipping appearance validation
 		if (!`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG) || 
-		`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
+			`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
 		{
-			NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
-			NewListItem.bAnimateOnInit = false;
-			NewListItem.InitListItem();
-			NewListItem.UpdateDataButton("Validate Appearance", "Validate", OnValidateButtonClicked); // TODO: Localize
+			ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+			ListItem.bAnimateOnInit = false;
+			ListItem.InitListItem();
+			ListItem.UpdateDataButton("Validate Appearance", "Validate", OnValidateButtonClicked); // TODO: Localize
 			CustomizeScreen.ShowListItems();
 		}
-		NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
-		NewListItem.bAnimateOnInit = false;
-		NewListItem.InitListItem();
-		NewListItem.UpdateDataDescription(class'UIArmory_MainMenu'.default.m_strLoadout, OnLoadout);
+		ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+		ListItem.bAnimateOnInit = false;
+		ListItem.InitListItem();
+		ListItem.UpdateDataDescription(class'UIArmory_MainMenu'.default.m_strLoadout, OnLoadout);
 	}
 
 	CustomizeScreen.SetTimer(0.1f, false, nameof(AddLoadoutButton), self);
@@ -178,12 +179,33 @@ simulated private function OnLoadout()
 	Pres = XComShellPresentationLayer(CustomizeScreen.Movie.Pres);
 	UnitState = CustomizeScreen.GetUnit(); 
 
-	`LOG("Opening loadout screen for unit:" @ UnitState.GetFullName(),, 'IRITEST');
+	`CPOLOG("Opening loadout screen for Character Pool unit:" @ UnitState.GetFullName());
 
 	ArmoryScreen = UIArmory_Loadout_CPExtended(ScreenStack.Push(Pres.Spawn(class'UIArmory_Loadout_CPExtended', Pres), Pres.Get3DMovie()));
 	ArmoryScreen.CustomizationManager = Pres.GetCustomizeManager();
-	//ArmoryScreen.CannotEditSlotsList = CannotEditSlots;
 	ArmoryScreen.InitArmory(UnitState.GetReference());
 
 	`XSTRATEGYSOUNDMGR.PlaySoundEvent("Play_MenuSelect");
 }
+
+/*
+simulated function AddNavHelpButtons()
+{
+	local UICustomize CustomizeScreen;
+
+	CustomizeScreen = UICustomize(`SCREENSTACK.GetCurrentScreen());
+	if (CustomizeScreen == none || CustomizeScreen.Class == class'UICustomize_CPExtended')
+		return;
+
+	if (CustomizeScreen.NavHelp.m_arrButtonClickDelegates.Find(OnImportFromCharacterPoolButtonClicked) == INDEX_NONE)
+	{
+		CustomizeScreen.NavHelp.AddRightHelp("CPE IMPORT",			
+				class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ class'UIUtilities_Input'.const.ICON_RT_R2, 
+				OnImportFromCharacterPoolButtonClicked,
+				false,
+				"Tooltip placeholder",
+				class'UIUtilities'.const.ANCHOR_BOTTOM_CENTER);
+	}
+	CustomizeScreen.SetTimer(0.1f, false, nameof(AddNavHelpButtons), self);
+}
+*/

@@ -16,6 +16,7 @@ simulated function UIMechaListItem UpdateDataColorChip(string _Desc,
 										String _HTMLColorChip,
 										optional delegate<OnClickDelegate> _OnClickDelegate = none)
 {
+	// Widget type will actually be "checkbox". The intent is to call 'UpdateDataColorChip' after 'UpdateDataCheckbox'.
 	//SetWidgetType(EUILineItemType_ColorChip);
 
 	if( ColorChip == none )

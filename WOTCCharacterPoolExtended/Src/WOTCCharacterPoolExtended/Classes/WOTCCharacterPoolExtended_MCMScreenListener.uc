@@ -1,9 +1,3 @@
-//-----------------------------------------------------------
-//	Class:	WOTCCharacterPoolExtended_MCMScreenListener
-//	Author: Iridar
-//	
-//-----------------------------------------------------------
-
 class WOTCCharacterPoolExtended_MCMScreenListener extends UIScreenListener;
 
 event OnInit(UIScreen Screen)

@@ -15,14 +15,16 @@ var config(WOTCCharacterPoolExtended_DEFAULT) array<name> Presets;
 /*
 Works with Unrestricted Customization?
 
-MCM Option to skip appearance validation: CharacterPoolManagerExtended.InitSoldierOld
-
-
 Make clicking an item toggle its checkbox?
 Fix weapons / Dual Wielding not working in CP?
 Appearance store management? Copy appearance store mode: no copy, append, override
 Search bar for CP units?
 Preview background (biography) change
+Soldier Class filtering for uniforms (maybe add "universal uniform" checbox? Store status as unit value?
+Maybe add "reskin armor" button?
+Scars and beards (facial hair) had none -> none conversions, fix it.
+
+// Classes up to UICustomize_CPExtended (not counting) are licked up.
 
 ## Checks:
 1. Check if you can customize a unit with all armors in the campaign, then save them into CP, and that they will actually have all that appearance in the next campaign
@@ -37,10 +39,6 @@ Preview background (biography) change
 ## Ideas for later
 1. Equipping weapons in CP will reskin them automatically with XSkin (RustyDios). Probably use a Tuple.
 */
-
-
-
-
 
 // Internal cached info
 var private CharacterPoolManagerExtended		PoolMgr;

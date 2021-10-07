@@ -291,6 +291,17 @@ simulated final function ValidateUnitAppearance(XComGameState_Unit UnitState)
 	}
 }
 
+simulated final function bool IsUnitUniform(const XComGameState_Unit UnitState)
+{
+	return UnitState.GetFirstName() == class'UISL_CPExtended'.default.strUniform;
+}
+
+simulated final function bool IsUniformValidForUnit(const XComGameState_Unit UnitState, const XComGameState_Unit UniformUnit)
+{	
+	// TODO: Add soldier class check here
+	return true;
+}
+
 // ============================================================================
 // INTERNAL HELPERS
 

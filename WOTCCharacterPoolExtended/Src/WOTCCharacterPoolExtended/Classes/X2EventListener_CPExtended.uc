@@ -20,6 +20,7 @@ static function CHEventListenerTemplate Create_ListenerTemplate_Strategy()
 	Template.RegisterInStrategy = true;
 
 	Template.AddCHEvent('OverrideCharCustomizationScale', OnOverrideCharCustomizationScale, ELD_Immediate, 50);
+	//'PostInventoryLoadoutApplied' doesn't seem to trigger for CP units.
 
 	return Template;
 }
@@ -43,6 +44,11 @@ static function EventListenerReturn OnOverrideCharCustomizationScale(Object Even
 	return ELR_NoInterrupt;
 }
 
+// ItemAddedToSlot listeners are responsible for two things:
+// 1. CP Appearance Store support.
+// 2. CP Uniforms support.
+// If a unit equips an armor they don't have stored appearance for, the mod will check if this unit exists in the character pool, and attempt to load CP unit's stored appearance for that armor.
+// If that fails, the mod will look for an appropriate uniform for this soldier.
 
 static function CHEventListenerTemplate Create_ListenerTemplate_StrategyAndTactical()
 {
@@ -50,8 +56,7 @@ static function CHEventListenerTemplate Create_ListenerTemplate_StrategyAndTacti
 
 	`CREATE_X2TEMPLATE(class'CHEventListenerTemplate', Template, 'IRI_XYM_X2EventListener_CPExtended_StrategyAndTactical');
 
-	// Units shouldn't be able to swap armor mid-mission, but you never know
-	Template.RegisterInTactical = true; 
+	Template.RegisterInTactical = true; // Units shouldn't be able to swap armor mid-mission, but you never know
 	Template.RegisterInStrategy = true;
 
 	Template.AddCHEvent('ItemAddedToSlot', OnItemAddedToSlot, ELD_Immediate, 50);
@@ -91,7 +96,7 @@ static function EventListenerReturn OnItemAddedToSlot(Object EventData, Object E
 	if (UnitState == none)
 		return ELR_NoInterrupt;
 
-	`LOG(GetFuncName() @ ItemState.GetMyTemplateName() @ "equipped on:" @ UnitState.GetFullName(),, 'IRITEST');
+	`CPOLOG(UnitState.GetFullName() @ "equipped armor:" @ ItemState.GetMyTemplateName());
 
 	MaybeApplyCharacterPoolAppearance(UnitState, ItemState.GetMyTemplateName());
 
@@ -114,8 +119,8 @@ static function EventListenerReturn OnItemAddedToSlot_CampaignStart(Object Event
 	UnitState = XComGameState_Unit(NewGameState.GetGameStateForObjectID(UnitState.ObjectID));
 	if (UnitState == none)
 		return ELR_NoInterrupt;
-
-	`LOG(GetFuncName() @ ItemState.GetMyTemplateName() @ "equipped on:" @ UnitState.GetFullName(),, 'IRITEST');
+	
+	`CPOLOG(UnitState.GetFullName() @ "equipped armor:" @ ItemState.GetMyTemplateName());
 
 	// Even the Campaign Start listener is too late - units already have stored appearance for Kevlar Armor.
 	// However, we can allow ourselves to ignore this at campaign start. 
@@ -128,45 +133,46 @@ static function EventListenerReturn OnItemAddedToSlot_CampaignStart(Object Event
 
 static private function MaybeApplyCharacterPoolAppearance(XComGameState_Unit UnitState, name ArmorTemplateName, optional bool bSkipStoredAppearanceCheck = false)
 {
-	local XComGameState_Unit	CPUnitState;
-	local CharacterPoolManager	CharacterPool;
-	local TAppearance			CPAppearance;
-	local TAppearance			NewAppearance;
+	local XComGameState_Unit			CPUnitState;
+	local CharacterPoolManagerExtended	CharacterPool;
+	local TAppearance					CPAppearance;
+	local TAppearance					NewAppearance;
 
 	if (!bSkipStoredAppearanceCheck)
 	{
 		if (UnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName))
 		{
-			`LOG("Unit already has stored appearance for this armor, exiting",, 'IRITEST');
+			`CPOLOG(UnitState.GetFullName() @ "already has stored appearance for" @ ArmorTemplateName $ ", exiting.");
 			return;
 		}
 	}
 	
-	CharacterPool = `CHARACTERPOOLMGR;
+	CharacterPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
+	if (CharacterPool == none)
+		return;
+
 	CPUnitState = CharacterPool.GetCharacter(UnitState.GetFullName());
 	if (CPUnitState != none)
 	{
-		`LOG("This unit is present in CP.",, 'IRITEST');
+		`CPOLOG(UnitState.GetFullName() @ "is present in Character Pool.");
+		if (CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName))
+		{
+			`CPOLOG(UnitState.GetFullName() @ "in Character Pool has stored appearance for" @ ArmorTemplateName $ ", importing it.");
+
+			CPUnitState.GetStoredAppearance(CPAppearance, UnitState.kAppearance.iGender, ArmorTemplateName);
+			UnitState.SetTAppearance(CPAppearance);
+			UnitState.StoreAppearance(UnitState.kAppearance.iGender, ArmorTemplateName);
+			return;
+		}
+		`CPOLOG(UnitState.GetFullName() @ "in Character Pool has no stored appearance for" @ ArmorTemplateName $ ".");
 	}
-
-	if (CPUnitState != none && CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName))
-	{
-		`LOG("CP unit has stored appearance for this armor, restoring.",, 'IRITEST');
-
-		CPUnitState.GetStoredAppearance(CPAppearance, UnitState.kAppearance.iGender, ArmorTemplateName);
-		UnitState.SetTAppearance(CPAppearance);
-		UnitState.StoreAppearance(UnitState.kAppearance.iGender, ArmorTemplateName);
-		return;
-	}
-
-	`LOG("CP unit has no stored appearance for this armor",, 'IRITEST');
 
 	foreach CharacterPool.CharacterPool(CPUnitState)
 	{
-		if (CPUnitState.GetFirstName() == class'UISL_CPExtended'.default.strUniform &&
-			CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName)) // TODO: Add soldier class check here
+		if (CharacterPool.IsUnitUniform(CPUnitState) && CharacterPool.IsUniformValidForUnit(UnitState, CPUnitState) &&
+			CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName)) 
 		{
-			`LOG("Found uniform unit:" @ CPUnitState.GetFullName() @ "using its appearance",, 'IRITEST');
+			`CPOLOG("Found uniform unit:" @ CPUnitState.GetFullName() $ ", importing their appearance.");
 
 			CPUnitState.GetStoredAppearance(CPAppearance, UnitState.kAppearance.iGender, ArmorTemplateName);
 

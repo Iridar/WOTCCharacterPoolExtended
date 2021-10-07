@@ -131,6 +131,9 @@ simulated private function OnUniformButtonClicked(UIButton ButtonSource)
 	CustomizeScreen.CustomizeManager.UpdatedUnitState.SetCharacterName(strUniform, "", "");
 	CustomizeScreen.CustomizeManager.UpdatedUnitState.kAppearance.iAttitude = 0; // Set by the Book attitude so the soldier stops squirming.
 	CustomizeScreen.CustomizeManager.UpdatedUnitState.UpdatePersonalityTemplate();
+	CustomizeScreen.CustomizeManager.UpdatedUnitState.bAllowedTypeSoldier = false;
+	CustomizeScreen.CustomizeManager.UpdatedUnitState.bAllowedTypeVIP = false;
+	CustomizeScreen.CustomizeManager.UpdatedUnitState.bAllowedTypeDarkVIP = false;
 	CustomizeScreen.CustomizeManager.CommitChanges();
 	CustomizeScreen.CustomizeManager.SubmitUnitCustomizationChanges();
 	CustomizeScreen.CustomizeManager.ReCreatePawnVisuals(CustomizeScreen.CustomizeManager.ActorPawn, true);

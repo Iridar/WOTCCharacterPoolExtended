@@ -1,10 +1,18 @@
 class UICharacterPool_ListPools_CPExtended extends UICharacterPool_ListPools;
 
+struct ModAddPoolStruct
+{
+	var name DLCName;
+	var name PoolName;
+};
+
 var private CPUnitData UnitData; // Current pool we're exporting into or importing from.
 
 var private config(CharacterPoolExtended_NULLCONFIG) array<string> PoolFileNames; // List of all pools added previously.
 
 var private array<string> ReadFailPoolFileNames; // List of pools that couldn't be read from the disk. 
+
+var config(CharacterPoolExtended_DEFAULT) array<ModAddPoolStruct> ModAddPools;
 
 // ============================================================================
 // OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
@@ -13,6 +21,9 @@ var private array<string> ReadFailPoolFileNames; // List of pools that couldn't 
 simulated function UpdateData( bool _bIsExporting )
 {
 	bIsExporting = _bIsExporting; 
+	
+
+	`LOG(GetFuncName() @ bIsExporting,, 'IRITEST');
 
 	if( bIsExporting )
 	{
@@ -319,6 +330,7 @@ simulated function array<string> GetListOfPools()
 {
 	local array<string> Items; 
 	local string PoolFileName;
+	local ModAddPoolStruct ModAddPool;
 
 	ReadFailPoolFileNames.Length = 0;
 	Items.AddItem("ADD NEW POOL");
@@ -335,9 +347,72 @@ simulated function array<string> GetListOfPools()
 			ReadFailPoolFileNames.AddItem(PoolFileName);
 		}
 	}
+	`LOG("Mod added pools:" @ ModAddPools.Length,, 'IRITEST');
+	foreach ModAddPools(ModAddPool)
+	{
+		if (LoadModPool(ModAddPool))
+		{
+			Items.AddItem(ModAddPool.PoolName $ ":" @ UnitData.GetNumUnits() @ "units"); // TODO: Localize
+		}
+		else
+		{
+			Items.AddItem(ModAddPool.PoolName @ "FILE ACCESS ERROR!");
+			//ReadFailPoolFileNames.AddItem(ModAddPool.PoolName);
+		}
+	}
 	
 	return Items; 
 }
+
+simulated private function bool LoadModPool(ModAddPoolStruct ModAddPool)
+{
+	local DownloadableContentEnumerator DLCEnum;
+	local OnlineContent Item;
+
+	DLCEnum = class'Engine'.static.GetEngine().GetDLCEnumerator();
+
+	//`log("======================================================= BEGIN",, GetFuncName());
+
+	foreach DLCEnum.DLCBundles(Item)
+	{	
+		if (Item.Filename == string(ModAddPool.DLCName))
+		{
+			UnitData = new class'CPUnitData';
+
+			`LOG("Attempting to load file:" @ Item.ContentPath $ "\\Content\\" $ ModAddPool.PoolName $ ".bin",, 'IRITEST');
+
+			return class'Engine'.static.BasicLoadObject(UnitData, Item.ContentPath $ "\\Content\\" $ ModAddPool.PoolName $ ".bin", false, 1);
+		}
+
+		/*
+		`log("=============",, GetFuncName());
+
+		`log(`showvar(Item.ContentType),, GetFuncName());
+		`log(`showvar(Item.FriendlyName),, GetFuncName());
+		`log(`showvar(Item.Filename),, GetFuncName());
+						`log(`showvar(Item.ContentPath),, GetFuncName());
+		`log(`showvar(Item.bIsCorrupt),, GetFuncName());
+		`log(`showvar(Item.ContentPackages.Length),, GetFuncName());
+		`log(`showvar(Item.ContentFiles.Length),, GetFuncName());
+		
+		`log("=============",, GetFuncName());*/
+	}
+
+	//`log("======================================================= END",, GetFuncName());
+	return false;
+}
+/*
+[0053.83] LoadModPool: =============
+[0053.83] LoadModPool: Item.ContentType:'OCT_Downloaded_Mod'
+[0053.83] LoadModPool: Item.FriendlyName:''
+[0053.83] LoadModPool: Item.Filename:'WOTCCharacterPoolTest'
+[0053.83] LoadModPool: Item.ContentPath:'F:\Games\steamapps\common\XCOM 2\XCom2-WarOfTheChosen\XComGame\Mods\WOTCCharacterPoolTest'
+[0053.83] LoadModPool: Item.bIsCorrupt:'False'
+[0053.83] LoadModPool: Item.ContentPackages.Length:'1'
+[0053.83] LoadModPool: Item.ContentFiles.Length:'9'
+[0053.83] LoadModPool: =============
+*/
+
 
 simulated function array<string> GetListOfImportableUnitsFromSelectedPool()
 {

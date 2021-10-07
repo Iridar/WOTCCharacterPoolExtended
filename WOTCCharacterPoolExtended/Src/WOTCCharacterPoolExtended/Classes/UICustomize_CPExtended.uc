@@ -14,6 +14,34 @@ var config(CharacterPoolExtended_DEFAULT) array<name> Presets;
 // TODO:
 /*
 Pick up CP files from mods
+exec function AD_DumpDLCBundles ()
+{
+	local DownloadableContentEnumerator DLCEnum;
+	local OnlineContent Item;
+
+	DLCEnum = class'Engine'.static.GetEngine().GetDLCEnumerator();
+
+	`log("======================================================= BEGIN",, GetFuncName());
+
+	foreach DLCEnum.DLCBundles(Item)
+	{
+		`log("=============",, GetFuncName());
+
+		`log(`showvar(Item.ContentType),, GetFuncName());
+		`log(`showvar(Item.FriendlyName),, GetFuncName());
+		`log(`showvar(Item.Filename),, GetFuncName());
+						`log(`showvar(Item.ContentPath),, GetFuncName());
+		`log(`showvar(Item.bIsCorrupt),, GetFuncName());
+		`log(`showvar(Item.ContentPackages.Length),, GetFuncName());
+		`log(`showvar(Item.ContentFiles.Length),, GetFuncName());
+		
+		`log("=============",, GetFuncName());
+	}
+
+	`log("======================================================= END",, GetFuncName());
+}
+
+
 Works with Unrestricted Customization?
 
 MCM Option to skip appearance validation: CharacterPoolManagerExtended.InitSoldierOld

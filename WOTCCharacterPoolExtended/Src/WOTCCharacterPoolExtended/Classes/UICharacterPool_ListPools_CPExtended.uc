@@ -11,7 +11,7 @@ struct PoolInfoStruct
 var private config(CharacterPoolExtended_DEFAULT) array<PoolInfoStruct> DefaultCharacterPoolFiles;
 var private config(CharacterPoolExtended_NULLCONFIG) array<PoolInfoStruct> CharacterPoolFiles;
 
-const CharPoolExtendedImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
+const PlayerPoolFileImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
 
 // Current pool we're exporting into or importing from.
 var private CPUnitData		UnitData; 
@@ -101,7 +101,7 @@ simulated private function bool FillDLCPoolFilePathAndValidate(out PoolInfoStruc
 
 simulated private function bool FillPlayerPoolFilePathAndValidate(out PoolInfoStruct PoolInfo)
 {
-	PoolInfo.FilePath = class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedImportFolderPath $ PoolInfo.PoolName $ ".bin";
+	PoolInfo.FilePath = class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ PlayerPoolFileImportFolderPath $ PoolInfo.PoolName $ ".bin";
 
 	return LoadPool(PoolInfo);
 }

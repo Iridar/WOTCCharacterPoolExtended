@@ -13,35 +13,6 @@ var config(CharacterPoolExtended_DEFAULT) array<name> Presets;
 
 // TODO:
 /*
-Pick up CP files from mods
-exec function AD_DumpDLCBundles ()
-{
-	local DownloadableContentEnumerator DLCEnum;
-	local OnlineContent Item;
-
-	DLCEnum = class'Engine'.static.GetEngine().GetDLCEnumerator();
-
-	`log("======================================================= BEGIN",, GetFuncName());
-
-	foreach DLCEnum.DLCBundles(Item)
-	{
-		`log("=============",, GetFuncName());
-
-		`log(`showvar(Item.ContentType),, GetFuncName());
-		`log(`showvar(Item.FriendlyName),, GetFuncName());
-		`log(`showvar(Item.Filename),, GetFuncName());
-						`log(`showvar(Item.ContentPath),, GetFuncName());
-		`log(`showvar(Item.bIsCorrupt),, GetFuncName());
-		`log(`showvar(Item.ContentPackages.Length),, GetFuncName());
-		`log(`showvar(Item.ContentFiles.Length),, GetFuncName());
-		
-		`log("=============",, GetFuncName());
-	}
-
-	`log("======================================================= END",, GetFuncName());
-}
-
-
 Works with Unrestricted Customization?
 
 MCM Option to skip appearance validation: CharacterPoolManagerExtended.InitSoldierOld
@@ -55,6 +26,7 @@ Preview background (biography) change
 
 ## Checks:
 1. Check if you can customize a unit with all armors in the campaign, then save them into CP, and that they will actually have all that appearance in the next campaign
+2. Working with character pool files: creating new one, creating (importing) an existing one, deleting. exporting/importing units with appearance store.
 
 ## Finalization
 0. Clean up everything. Commentate. Add private/final.

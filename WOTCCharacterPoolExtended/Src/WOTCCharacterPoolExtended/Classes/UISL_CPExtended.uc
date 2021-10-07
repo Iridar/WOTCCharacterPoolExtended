@@ -4,6 +4,8 @@ class UISL_CPExtended extends UIScreenListener;
 
 var localized string strUniform;
 
+`include(WOTCCharacterPoolExtended\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
+
 event OnInit(UIScreen Screen)
 {
 	local UICustomize_Menu	CustomizeMenuScreen;
@@ -102,8 +104,9 @@ simulated function AddLoadoutButton()
 		NewListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
 		CustomizeScreen.ShowListItems();
 
-		// TODO: MCM check here
-		if (true)
+		// Add validate appearance button if we're skipping appearance validation
+		if (!`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG) || 
+		`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
 		{
 			NewListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
 			NewListItem.bAnimateOnInit = false;

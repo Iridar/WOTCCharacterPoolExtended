@@ -8,7 +8,7 @@ struct PoolInfoStruct
 	var string FilePath;
 	var string FriendlyName;
 };
-var private config(CharacterPoolExtended_DEFAULT) array<PoolInfoStruct> DefaultCharacterPoolFiles;
+var private config(WOTCCharacterPoolExtended_DEFAULT) array<PoolInfoStruct> DefaultCharacterPoolFiles;
 var private config(CharacterPoolExtended_NULLCONFIG) array<PoolInfoStruct> CharacterPoolFiles;
 
 const PlayerPoolFileImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";

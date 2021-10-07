@@ -6,10 +6,10 @@ struct CheckboxPresetStruct
 	var name CheckboxName;
 	var bool bChecked;
 };
-var config(CharacterPoolExtended_DEFAULT) array<CheckboxPresetStruct> CheckboxPresetsDefaults;
+var config(WOTCCharacterPoolExtended_DEFAULT) array<CheckboxPresetStruct> CheckboxPresetsDefaults;
 var config(CharacterPoolExtended_NULLCONFIG) array<CheckboxPresetStruct> CheckboxPresets;
 
-var config(CharacterPoolExtended_DEFAULT) array<name> Presets;
+var config(WOTCCharacterPoolExtended_DEFAULT) array<name> Presets;
 
 // TODO:
 /*

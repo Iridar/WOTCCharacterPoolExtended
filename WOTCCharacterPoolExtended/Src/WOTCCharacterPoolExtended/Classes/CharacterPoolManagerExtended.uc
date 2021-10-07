@@ -4,6 +4,8 @@ var private CPUnitData UnitData; // Use GetUnitData() before accessing it
 
 var string CharPoolExtendedFilePath;
 
+`include(WOTCCharacterPoolExtended\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
+
 // ============================================================================
 // OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
 
@@ -29,11 +31,13 @@ event InitSoldierOld(XComGameState_Unit Unit, const out CharacterPoolDataElement
 	if (!(Unit.bAllowedTypeSoldier || Unit.bAllowedTypeVIP || Unit.bAllowedTypeDarkVIP))
 		Unit.bAllowedTypeSoldier = true;
 
-	//No longer re-creates the entire character, just set the invalid attributes to the first element
-	//if (!ValidateAppearance(CharacterPoolData.kAppearance))
-	if (!`XENGINE.bReviewFlagged) // TODO: Add MCM flags here.
+	// Skip appearance validation if MCM says so
+	if (!`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG) || 
+		`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
 		return;
 
+	//No longer re-creates the entire character, just set the invalid attributes to the first element
+	//if (!ValidateAppearance(CharacterPoolData.kAppearance))
 	if (!FixAppearanceOfInvalidAttributes(Unit.kAppearance))
 	{
 		//This should't fail now that we attempt to fix invalid attributes

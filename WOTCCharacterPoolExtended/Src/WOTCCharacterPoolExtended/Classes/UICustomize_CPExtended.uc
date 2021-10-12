@@ -23,6 +23,9 @@ Preview background (biography) change
 Soldier Class filtering for uniforms (maybe add "universal uniform" checbox? Store status as unit value?
 Maybe add "reskin armor" button?
 Scars and beards (facial hair) had none -> none conversions, fix it.
+Enter photobooth from CP?
+Per-uniform selection of which parts of the appearance are a part of the uniform.
+Choose stored appearance on the customize screen?
 
 // Classes up to UICustomize_CPExtended (not counting) are licked up.
 
@@ -82,6 +85,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 
 	super.InitScreen(InitController, InitMovie, InitName);
 
+	// Cache stuff.
 	PoolMgr = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
 	if (PoolMgr == none)
 		super.CloseScreen();
@@ -89,11 +93,10 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	BodyPartMgr = class'X2BodyPartTemplateManager'.static.GetBodyPartTemplateManager();
 	StratMgr = class'X2StrategyElementTemplateManager'.static.GetStrategyElementTemplateManager();
 	History = `XCOMHISTORY;
-
 	CacheArmoryUnitData();
 
+	// 'List' of soldiers whose appearance you can copy.
 	List.OnItemClicked = SoldierListItemClicked;
-
 	List.SetPosition(1920 - List.Width - 70, 360);
 	List.SetHeight(300);
 
@@ -112,9 +115,10 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 		MouseGuard.SetAlpha(0);
 	}
 
+	// Move the soldier name header further into the left upper corner.
 	Header.SetPosition(20 + Header.Width, 20);
 	
-	// Create left list	
+	// Create left list	of soldier customization options.
 	OptionsBG = Spawn(class'UIBGBox', self).InitBG('LeftOptionsListBG', 20, 180);
 	OptionsBG.SetAlpha(80);
 	OptionsBG.SetWidth(582);
@@ -169,11 +173,22 @@ simulated private function CreateFiltersList()
 	SpawnedItem.InitListItem('ApplyToSquad');
 	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("squad"), "", false, none, none);
 
+	if (bInArmory)
+	{
 	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem('ApplyToBarracks');
 	SpawnedItem.SetDisabled(ArmorTemplateName == '', "No armor template on the unit" @ ArmoryUnit.GetFullName());
 	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("barracks"), "", false, none, none);
+	}
+	else
+	{
+		SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
+		SpawnedItem.bAnimateOnInit = false;
+		SpawnedItem.InitListItem('ApplyToCharPool');
+		SpawnedItem.SetDisabled(ArmorTemplateName == '', "No armor template on the unit" @ ArmoryUnit.GetFullName());
+		SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("Character Pool"), "", false, none, none);
+	}
 
 	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
@@ -853,6 +868,14 @@ simulated private function ApplyChanges()
 	if (GetFilterListCheckboxStatus('ApplyToThisUnit'))
 	{
 		ApplyChangesToArmoryUnit();
+	}
+	if (GetFilterListCheckboxStatus('ApplyToCharPool'))
+	{
+		foreach PoolMgr.CharacterPool(UnitState)
+		{
+			ApplyChangesToUnit(UnitState);
+		}
+		PoolMgr.SaveCharacterPool();
 	}
 
 	XComHQ = class'UIUtilities_Strategy'.static.GetXComHQ(true);

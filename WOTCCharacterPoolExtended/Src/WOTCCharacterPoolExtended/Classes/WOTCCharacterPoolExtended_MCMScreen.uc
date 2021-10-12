@@ -40,6 +40,8 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 	`MCM_API_AutoAddCheckBox(Group, DISABLE_APPEARANCE_VALIDATION_REVIEW);	
 	`MCM_API_AutoAddCheckBox(Group, DISABLE_APPEARANCE_VALIDATION_DEBUG);	
 	`MCM_API_AutoAddCheckBox(Group, DEBUG_LOGGING);
+
+	Group.AddLabel('Label_End', "Created by Iridar | www.patreon.com/Iridar", "Thank you for using my mods, I hope you enjoy! Please consider supporting me at Patreon so I can afford the time to make more awesome mods <3");
 	
 	Page.ShowSettings();
 }

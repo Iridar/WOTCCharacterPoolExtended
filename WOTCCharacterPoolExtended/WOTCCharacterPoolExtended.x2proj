@@ -97,6 +97,9 @@
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICharacterPool_ListPools_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICustomize_AppearanceStore.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICustomize_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>

@@ -1,7 +1,7 @@
 class UIArmory_Loadout_CPExtended extends UIArmory_Loadout;
 
-var XComCharacterCustomization	CustomizationManager;
-var CharacterPoolManager		CharPoolMgr;
+var XComCharacterCustomization		CustomizationManager;
+var private CharacterPoolManager	CharPoolMgr;
 
 simulated function InitArmory(StateObjectReference UnitRef, optional name DispEvent, optional name SoldSpawnEvent, optional name NavBackEvent, optional name HideEvent, optional name RemoveEvent, optional bool bInstant = false, optional XComGameState InitCheckGameState)
 {
@@ -12,10 +12,7 @@ simulated function InitArmory(StateObjectReference UnitRef, optional name DispEv
 
 simulated function XComGameState_Unit GetUnit()
 {
-	if (CustomizationManager.UpdatedUnitState != none)
-		return CustomizationManager.UpdatedUnitState;
-	else
-		return CustomizationManager.Unit;
+	return CustomizationManager.UpdatedUnitState;
 }
 
 simulated function UpdateLockerList()

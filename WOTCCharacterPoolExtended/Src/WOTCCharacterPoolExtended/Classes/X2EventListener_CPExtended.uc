@@ -29,7 +29,8 @@ static function CHEventListenerTemplate Create_ListenerTemplate_Strategy()
 static function EventListenerReturn OnOverrideCharCustomizationScale(Object EventData, Object EventSource, XComGameState NewGameState, Name Event, Object CallbackData)
 {
 	local UIScreenStack ScreenStack;
-	local UICustomize_CPExtended CPExtendedScreen;
+	local UICustomize_CPExtended		CPExtendedScreen;
+	//local UICustomize_AppearanceStore	AppearanceStoreScreen;
 
 	ScreenStack = `SCREENSTACK;
 	if (ScreenStack != none)
@@ -39,6 +40,14 @@ static function EventListenerReturn OnOverrideCharCustomizationScale(Object Even
 		{
 			CPExtendedScreen.OnRefreshPawn();
 		}
+		//else // Events still don't trigger in CP...
+		//{
+		//	AppearanceStoreScreen = UICustomize_AppearanceStore(ScreenStack.GetFirstInstanceOf(class'UICustomize_AppearanceStore'));
+		//	if (AppearanceStoreScreen != none)
+		//	{
+		//		AppearanceStoreScreen.OnRefreshPawn();
+		//	}
+		//}
 	}
 
 	return ELR_NoInterrupt;

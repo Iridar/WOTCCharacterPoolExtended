@@ -85,25 +85,22 @@ simulated function UpdateLockerList()
 
 simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 {
-	local XComGameState_Item	NewItem;
-	local bool					EquipSucceeded;
-	local X2WeaponTemplate		WeaponTemplate;
-
+	local XComGameState_Item					NewItem;
+	local bool									EquipSucceeded;
+	local X2WeaponTemplate						WeaponTemplate;
 	local XComGameStateHistory					History;	
 	local XComGameState							TempGameState;
 	local XComGameStateContext_ChangeContainer	TempContainer;
-
 	local XComUnitPawn							UnitPawn;
 	local UIPawnMgr								PawnMgr;
 	local XComPresentationLayerBase				PresBase;
 	local TAppearance							NewAppearance;
-	//local UIArmory_LoadoutItem					LIstItem;
+	local XComGameState_Unit					UnitState;
+	local bool									bHasStoredAppearance;
 
 	`LOG("Attempting to equip item:" @ Item.ItemTemplate.DataName @ "into slot:" @ GetSelectedSlot(),, 'IRITEST');
-	if (Item.ItemTemplate == none)
-		return false;
-
-	if (CustomizationManager.UpdatedUnitState == none)
+	UnitState = GetUnit();
+	if (UnitState == none)
 		return false;
 
 	`LOG("Initial checks done, proceeding",, 'IRITEST');
@@ -113,42 +110,46 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 	History = `XCOMHISTORY;
 	TempContainer = class'XComGameStateContext_ChangeContainer'.static.CreateEmptyChangeContainer("Fake Loadout");
 	TempGameState = History.CreateNewGameState(true, TempContainer);
+	
+	// Breaks the entire thing, apparently
+	//UnitState = XComGameState_Unit(TempGameState.ModifyStateObject(UnitState.Class, UnitState.ObjectID));
 
-	//CustomizationManager.UpdatedUnitState.ApplyInventoryLoadout(TempGameState); //TEST
+	//UnitState.ApplyInventoryLoadout(TempGameState);
 
-	NewItem = CustomizationManager.UpdatedUnitState.GetItemInSlot(GetSelectedSlot(), TempGameState);
+	// Check if the unit already has something equipped in the targeted slot, and remove said item.
+	NewItem = UnitState.GetItemInSlot(GetSelectedSlot(), TempGameState);
 	if (NewItem != none)
 	{
 		`LOG("Unit already had item in this slot:" @ NewItem.GetMyTemplateName(),, 'IRITEST');
-		if (!CustomizationManager.UpdatedUnitState.RemoveItemFromInventory(NewItem, TempGameState))
+		if (!UnitState.RemoveItemFromInventory(NewItem, TempGameState))
 		{
 			History.CleanupPendingGameState(TempGameState);
 			return false;
 		}
 		`LOG("Unequipped successfully",, 'IRITEST');
 	}
-	`LOG("Unit's primary weapon:" @ CustomizationManager.UpdatedUnitState.GetItemInSlot(eInvSlot_PrimaryWeapon, TempGameState).GetMyTemplateName(),, 'IRITEST');
+	`LOG("Unit's primary weapon:" @ UnitState.GetItemInSlot(eInvSlot_PrimaryWeapon, TempGameState).GetMyTemplateName(),, 'IRITEST');
+	`LOG("Torso archetype:" @ UnitState.kAppearance.nmTorso,, 'IRITEST');
 
+	// Create and equip new item.
 	NewItem = Item.ItemTemplate.CreateInstanceFromTemplate(TempGameState);
-
-	`LOG("Torso archetype:" @ CustomizationManager.UpdatedUnitState.kAppearance.nmTorso,, 'IRITEST');
-	
-	if (CustomizationManager.UpdatedUnitState.AddItemToInventory(NewItem, GetSelectedSlot(), TempGameState))
+	bHasStoredAppearance = UnitState.HasStoredAppearance(UnitState.kAppearance.iGender, Item.ItemTemplate.DataName);
+	if (UnitState.AddItemToInventory(NewItem, GetSelectedSlot(), TempGameState))
 	{
 		EquipSucceeded = true; 
 
-		`LOG("Item equipped. New torso archetype:" @ CustomizationManager.UpdatedUnitState.kAppearance.nmTorso,, 'IRITEST');
+		`LOG("Item equipped. New torso archetype:" @ UnitState.kAppearance.nmTorso,, 'IRITEST');
 
 		WeaponTemplate = X2WeaponTemplate(Item.ItemTemplate);
 		if (WeaponTemplate != none && WeaponTemplate.bUseArmorAppearance)
 		{
-			NewItem.WeaponAppearance.iWeaponTint = CustomizationManager.UpdatedUnitState.kAppearance.iArmorTint;
+			NewItem.WeaponAppearance.iWeaponTint = UnitState.kAppearance.iArmorTint;
 		}
 		else
 		{
-			NewItem.WeaponAppearance.iWeaponTint = CustomizationManager.UpdatedUnitState.kAppearance.iWeaponTint;
+			NewItem.WeaponAppearance.iWeaponTint = UnitState.kAppearance.iWeaponTint;
 		}
-		NewItem.WeaponAppearance.nmWeaponPattern = CustomizationManager.UpdatedUnitState.kAppearance.nmWeaponPattern;
+		NewItem.WeaponAppearance.nmWeaponPattern = UnitState.kAppearance.nmWeaponPattern;
 
 		if (X2EquipmentTemplate(Item.ItemTemplate) != none && X2EquipmentTemplate(Item.ItemTemplate).EquipSound != "")
 		{
@@ -158,17 +159,6 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 
 	History.AddGameStateToHistory(TempGameState);
 	
-	UnitPawn = XComUnitPawn(CustomizationManager.ActorPawn);
-
-	// Doesn't seem to work.
-	//if (EquipSucceeded)
-	//{
-	//	LIstItem = UIArmory_LoadoutItem(LockerList.GetItem(1));
-	//	LIstItem.InitLoadoutItem(NewItem, GetSelectedSlot(), true);
-	//}
-
-	if (UnitPawn == none)
-		`LOG("Error, no Unit Pawn",, 'IRITEST');
 
 	PresBase = XComPresentationLayerBase(CustomizationManager.Outer);
 	if (PresBase == none)
@@ -178,21 +168,30 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 	if (PawnMgr == none)
 		`LOG("Error, no PawnMgr",, 'IRITEST');
 
-	UnitPawn.CreateVisualInventoryAttachments(PawnMgr, CustomizationManager.UpdatedUnitState);
+	UnitPawn = XComUnitPawn(CustomizationManager.ActorPawn);
+	if (UnitPawn == none)
+		`LOG("Error, no Unit Pawn",, 'IRITEST');
+
+	UnitPawn.CreateVisualInventoryAttachments(PawnMgr, UnitState);
 	`LOG("Creating visual attachments",, 'IRITEST');
 	
 	History.ObliterateGameStatesFromHistory(1);	
 
-	CustomizationManager.UpdatedUnitState.EmptyInventoryItems();
+	UnitState.EmptyInventoryItems();
 
-	//PrintTorsoOptions("Past item equipped" @ CustomizationManager.UpdatedUnitState.kAppearance.nmTorso);
+	//PrintTorsoOptions("Past item equipped" @ UnitState.kAppearance.nmTorso);
 	
-	NewAppearance = CustomizationManager.UpdatedUnitState.kAppearance;
+	NewAppearance = UnitState.kAppearance;
 	XComUnitPawn(CustomizationManager.ActorPawn).SetAppearance(NewAppearance);
+	if (EquipSucceeded && !bHasStoredAppearance)
+	{
+		UnitState.StoreAppearance(NewAppearance.iGender, Item.ItemTemplate.DataName);
+		CustomizationManager.CommitChanges();
+	}
 
 	CharPoolMgr.SaveCharacterPool();
 
-	//PrintTorsoOptions("Past Refresh" @ CustomizationManager.UpdatedUnitState.kAppearance.nmTorso);
+	//PrintTorsoOptions("Past Refresh" @ UnitState.kAppearance.nmTorso);
 
 	return EquipSucceeded;
 }

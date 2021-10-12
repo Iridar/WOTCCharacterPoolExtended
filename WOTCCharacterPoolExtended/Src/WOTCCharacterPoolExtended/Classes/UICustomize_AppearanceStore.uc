@@ -83,20 +83,21 @@ simulated private function OnListItemSelected(UIList ContainerList, int ItemInde
 
 simulated private function SetPawnAppearance(TAppearance NewAppearance)
 {
-	local bool bRefreshPawn;
+	//local bool bRefreshPawn;
 
-	bRefreshPawn = ArmoryPawn.m_kAppearance.iGender != NewAppearance.iGender;
+	//bRefreshPawn = ArmoryPawn.m_kAppearance.iGender != NewAppearance.iGender;
 
 	// Have to update appearance in the unit state as well, since it will be used to recreate the pawn.
 	UnitState.SetTAppearance(NewAppearance);
 	ArmoryPawn.SetAppearance(NewAppearance);
 		
 	// Have to recreate unit's pawn on a gender change. See more comments in 'UICustomize_CPExtended' for the same situation.
-	if (bRefreshPawn)
-	{
+	// Addendum: Have to refresh pawn every time, not sure how to otherwise get rid of WAR Suit's exo attachments.
+	//if (bRefreshPawn)
+	//{
 		CustomizeManager.ReCreatePawnVisuals(CustomizeManager.ActorPawn, true);
 		SetTimer(0.1f, false, nameof(OnRefreshPawn), self);
-	}
+	//}
 }
 
 // Can't use an Event Listener in CP, so using a timer (ugh)

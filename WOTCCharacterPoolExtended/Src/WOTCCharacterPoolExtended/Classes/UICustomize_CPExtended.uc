@@ -17,7 +17,6 @@ Works with Unrestricted Customization?
 
 Make clicking an item toggle its checkbox?
 Fix weapons / Dual Wielding not working in CP?
-Appearance store management? Copy appearance store mode: no copy, append, override
 Search bar for CP units?
 Preview background (biography) change
 Soldier Class filtering for uniforms (maybe add "universal uniform" checbox? Store status as unit value?
@@ -26,6 +25,9 @@ Scars and beards (facial hair) had none -> none conversions, fix it.
 Enter photobooth from CP?
 Per-uniform selection of which parts of the appearance are a part of the uniform.
 Choose stored appearance on the customize screen?
+
+'Show all' checkbox for the cosmetics list
+Validate appearance button should work in armory? Should probably remove stored appearance, or validate all stored appearances
 
 // Classes up to UICustomize_CPExtended (not counting) are licked up.
 
@@ -175,18 +177,16 @@ simulated private function CreateFiltersList()
 
 	if (bInArmory)
 	{
-	SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
-	SpawnedItem.bAnimateOnInit = false;
-	SpawnedItem.InitListItem('ApplyToBarracks');
-	SpawnedItem.SetDisabled(ArmorTemplateName == '', "No armor template on the unit" @ ArmoryUnit.GetFullName());
-	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("barracks"), "", false, none, none);
+		SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
+		SpawnedItem.bAnimateOnInit = false;
+		SpawnedItem.InitListItem('ApplyToBarracks');
+		SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("barracks"), "", false, none, none);
 	}
 	else
 	{
 		SpawnedItem = Spawn(class'UIMechaListItem', FiltersList.itemContainer);
 		SpawnedItem.bAnimateOnInit = false;
 		SpawnedItem.InitListItem('ApplyToCharPool');
-		SpawnedItem.SetDisabled(ArmorTemplateName == '', "No armor template on the unit" @ ArmoryUnit.GetFullName());
 		SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("Character Pool"), "", false, none, none);
 	}
 

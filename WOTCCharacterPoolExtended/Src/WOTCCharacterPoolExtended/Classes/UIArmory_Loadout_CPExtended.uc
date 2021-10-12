@@ -268,7 +268,7 @@ simulated function UpdateEquippedList()
 
 		if (En.Slot == eInvSlot_Armor)
 		{
-			ItemTemplate = GetItemTemplateFromCosmeticTorso(UpdatedUnit.kAppearance.nmTorso);
+			ItemTemplate = class'Help'.static.GetItemTemplateFromCosmeticTorso(UpdatedUnit.kAppearance.nmTorso);
 			if (ItemTemplate != none)
 			{
 				SetItemImage(Item, ItemTemplate);
@@ -282,29 +282,6 @@ simulated function UpdateEquippedList()
 	EquippedList.NavigatorSelectionChanged(EquippedList.SelectedIndex);
 	// Issue #118 End
 }
-
-static final function X2ItemTemplate GetItemTemplateFromCosmeticTorso(const name nmTorso)
-{
-	local name						ArmorTemplateName;
-	local X2BodyPartTemplate		ArmorPartTemplate;
-	local X2BodyPartTemplateManager BodyPartMgr;
-	local X2ItemTemplateManager		ItemMgr;
-
-	BodyPartMgr = class'X2BodyPartTemplateManager'.static.GetBodyPartTemplateManager();
-	ArmorPartTemplate = BodyPartMgr.FindUberTemplate("Torso", nmTorso);
-	if (ArmorPartTemplate != none)
-	{
-		ArmorTemplateName = ArmorPartTemplate.ArmorTemplate;
-		if (ArmorTemplateName != '')
-		{
-			ItemMgr = class'X2ItemTemplateManager'.static.GetItemTemplateManager();
-			return ItemMgr.FindItemTemplate(ArmorTemplateName);
-		}
-	}
-	return none;
-}
-
-
 
 simulated function SetItemImage(UIArmory_LoadoutItem LoadoutItem, X2ItemTemplate ItemTemplate)
 {

@@ -13,21 +13,27 @@ var config(WOTCCharacterPoolExtended_DEFAULT) array<name> Presets;
 
 // TODO:
 /*
+# Core: 
 Works with Unrestricted Customization?
+Maybe allow Appearance Store button to work as a "reskin armor" button?
+Enter Character Pool from Armory?
+Validate appearance button should work in armory? Should probably remove stored appearance, or validate all stored appearances
 
-Make clicking an item toggle its checkbox?
+# Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
-Preview background (biography) change
-Soldier Class filtering for uniforms (maybe add "universal uniform" checbox? Store status as unit value?
-Maybe add "reskin armor" button?
-Scars and beards (facial hair) had none -> none conversions, fix it.
-Enter photobooth from CP?
-Per-uniform selection of which parts of the appearance are a part of the uniform.
-Choose stored appearance on the customize screen?
+Enter photobooth from CP? 
 
-'Show all' checkbox for the cosmetics list
-Validate appearance button should work in armory? Should probably remove stored appearance, or validate all stored appearances
+# This screen
+Make clicking an item toggle its checkbox?
+Preview background (biography) change
+Scars and beards (facial hair) had none -> none conversions, fix it.
+Check how this screen responds to toggling filters.
+'Show all' checkbox for the cosmetics list?
+
+# Uniforms
+Soldier Class filtering for uniforms (maybe add "universal uniform" checbox? Store uniform status as unit value?
+Per-uniform selection of which parts of the appearance are a part of the uniform.
 
 // Classes up to UICustomize_CPExtended (not counting) are licked up.
 

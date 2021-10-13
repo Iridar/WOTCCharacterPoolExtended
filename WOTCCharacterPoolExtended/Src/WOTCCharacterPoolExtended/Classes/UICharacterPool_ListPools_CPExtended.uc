@@ -1,16 +1,36 @@
 class UICharacterPool_ListPools_CPExtended extends UICharacterPool_ListPools;
 
-// Mod-added pools - located in their respective mods' folders.
+// This screen is used for:
+// 1. Displaying the list of "extended" Character Pool files that can be imported from or exported into.
+// 2. Creating new CP files.
+// 3. Importing units from "extended" CP files.
+
+// This screen can work with CP files located in:
+// 1. CharacterPoolExtended folder in Documents.
+// 2. Content folders of mods that add new character pool files.
+
 struct PoolInfoStruct
 {
-	var name DLCName;
-	var name PoolName;
-	var string FilePath;
+	// This data must be filled by mods that add new CP files.
+	var name DLCName;		// Name of the .XComMod file that contains the mod-added character pool, used to find its Content folder.
+	var name PoolName;		// Name of the .bin character pool file.
+
+	// This data is filled automatically by this mod.
+	var string FilePath;	// Full path to the .bin character pool file.
+
+	// Display name for this character pool file in the in-game UI. Read from 'WOTCCharacterPoolExtended.*' localization files and then stored here.
+	// Alternatively, can be specified directly by the mod in config.
 	var string FriendlyName;
 };
+// Mods should use this array to add their character pool files. Examply entry:
+// +DefaultCharacterPoolFiles = (DLCName = "WOTCCharacterPoolTest", PoolName = "ModAddedPool")
 var private config(WOTCCharacterPoolExtended_DEFAULT) array<PoolInfoStruct> DefaultCharacterPoolFiles;
+
+// Array of all character pool files this mod has access to, both for mod-added pools and player-created ones.
+// Cached and validated on this screen's Init
 var private config(CharacterPoolExtended_NULLCONFIG) array<PoolInfoStruct> CharacterPoolFiles;
 
+// Default path for storing player-created character pool files.
 const PlayerPoolFileImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";
 
 // Current pool we're exporting into or importing from.
@@ -31,48 +51,50 @@ simulated private function BuildCharacterPoolFilesList()
 	local PoolInfoStruct PoolInfo;
 	local int Index;
 
-	`CPOLOG(GetFuncName());
+	`CPOLOG("Building character pool files. Default pools:" @ DefaultCharacterPoolFiles.Length $ ", cached pools:" @ CharacterPoolFiles.Length);
 
 	foreach DefaultCharacterPoolFiles(PoolInfo)
-	{
-		`CPOLOG(PoolInfo.DLCName @ PoolInfo.PoolName @ PoolInfo.FilePath @ PoolInfo.FriendlyName);
+	{		
+		`CPOLOG("Default pool:" @ GeneratePoolText(PoolInfo));
+		if (PoolInfo.PoolName == '')
+		{
+			`CPOLOG("This default pool is invalid: no PoolName specified. Skipping.");
+		}
 
 		Index = CharacterPoolFiles.Find('PoolName', PoolInfo.PoolName);
-
-		`CPOLOG(`showvar(Index));
 		if (Index != INDEX_NONE)
 		{	
 			if (LoadPool(CharacterPoolFiles[Index]))
 			{
-				`CPOLOG("This pool is already in the saved list and can be loaded, skipping");
+				`CPOLOG("This pool was already cached and can be loaded, skipping to the next default pool");
 				continue;
 			}
 			else
 			{
-				`CPOLOG("This pool is already in the saved list, but I couldn't load it:");
-				`CPOLOG(CharacterPoolFiles[Index].DLCName @ CharacterPoolFiles[Index].PoolName @ CharacterPoolFiles[Index].FilePath @ CharacterPoolFiles[Index].FriendlyName);
+				`CPOLOG("This pool was already cached, but canoot be loaded currently.");
+				`CPOLOG("Cached pool:" @ GeneratePoolText(CharacterPoolFiles[Index]));
 			}
 		}
 
 		if (PoolInfo.DLCName != '')
 		{
-			`CPOLOG("This is a mod pool");
-			if (PoolInfo.PoolName != '' && FillDLCPoolFilePathAndValidate(PoolInfo))
+			if (FillDLCPoolFilePathAndValidate(PoolInfo))
 			{
 				FillPoolFriendlyName(PoolInfo);
 				CharacterPoolFiles.AddItem(PoolInfo);
-
-				`CPOLOG("Filled out and added to the list.");
-				`CPOLOG(PoolInfo.DLCName @ PoolInfo.PoolName @ PoolInfo.FilePath @ PoolInfo.FriendlyName);
+				`CPOLOG("Caching mod-added pool:" @ GeneratePoolText(PoolInfo));
 			}
+			else `CPOLOG("Error: failed to read mod-added pool file from disk.");
 		}
 		else
 		{
-			if (PoolInfo.PoolName != '' && FillPlayerPoolFilePathAndValidate(PoolInfo))
+			if (FillPlayerPoolFilePathAndValidate(PoolInfo))
 			{	
 				FillPoolFriendlyName(PoolInfo);
 				CharacterPoolFiles.AddItem(PoolInfo);
+				`CPOLOG("Caching player-added pool:" @ GeneratePoolText(PoolInfo));
 			}
+			else `CPOLOG("Error: failed to read player-added pool file from disk.");
 		}
 	}
 	default.CharacterPoolFiles = CharacterPoolFiles;
@@ -92,16 +114,23 @@ simulated private function bool FillDLCPoolFilePathAndValidate(out PoolInfoStruc
 		{
 			PoolInfo.FilePath = Item.ContentPath $ "\\Content\\" $ PoolInfo.PoolName $ ".bin";
 			PoolInfo.FilePath = Repl(PoolInfo.FilePath, "\\", "\\\\");
-			`CPOLOG("Generated path:" @ PoolInfo.FilePath);
+			`CPOLOG("Generated mod-added pool path:" @ PoolInfo.FilePath);
 			return LoadPool(PoolInfo);
 		}
 	}
 	return false;
 }
 
+simulated private function string GeneratePoolText(const PoolInfoStruct PoolInfo)
+{
+	return `showvar(PoolInfo.DLCName) @ `showvar(PoolInfo.PoolName) @ `showvar(PoolInfo.FilePath) @ `showvar(PoolInfo.FriendlyName);
+}
+
 simulated private function bool FillPlayerPoolFilePathAndValidate(out PoolInfoStruct PoolInfo)
 {
 	PoolInfo.FilePath = class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ PlayerPoolFileImportFolderPath $ PoolInfo.PoolName $ ".bin";
+
+	`CPOLOG("Generated player-added pool path:" @ PoolInfo.FilePath);
 
 	return LoadPool(PoolInfo);
 }
@@ -110,8 +139,7 @@ simulated function UpdateData( bool _bIsExporting )
 {
 	bIsExporting = _bIsExporting; 
 	
-
-	`CPOLOG(GetFuncName() @ bIsExporting);
+	`CPOLOG(GetFuncName() @ `showvar(bIsExporting));
 
 	if (bIsExporting)
 	{
@@ -159,7 +187,7 @@ simulated function DoExportCharacters(string FilenameForExport)
 	}
 	else
 	{
-		ShowInfoPopup("ERROR!", "Warning! Failed to write the pool to the disk.", eDialog_Warning);
+		ShowInfoPopup("ERROR!", "Warning! Failed to write the pool to the disk.\n\n" @ GeneratePoolText(CurrentPoolInfo), eDialog_Warning);
 	}
 }
 
@@ -183,7 +211,7 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 			}
 			else
 			{
-				ShowInfoPopup("ERROR!", "Warning! Failed to read pool from the disk.", eDialog_Warning);
+				ShowInfoPopup("ERROR!", "Warning! Failed to read pool from the disk.\n\n" @ GeneratePoolText(CurrentPoolInfo), eDialog_Warning);
 			}
 		}
 	}
@@ -206,7 +234,7 @@ simulated function OnClickLocal(UIList _list, int iItemIndex)
 				}
 				else
 				{
-					ShowInfoPopup("ERROR!", "Warning! Failed to read pool from the disk.", eDialog_Warning);
+					ShowInfoPopup("ERROR!", "Warning! Failed to read pool from the disk.\n\n" @ GeneratePoolText(CurrentPoolInfo), eDialog_Warning);
 				}				
 			}
 		}	
@@ -252,7 +280,7 @@ simulated function DoImportAllCharacters(string FilenameForImport)
 
 	for (i = 0; i < UnitData.CharacterPoolDatas.Length; i++)
 	{
-		DoImportCharacter("", i);
+		DoImportCharacter("", i); 
 	}
 }
 
@@ -273,7 +301,7 @@ simulated function UpdateDisplay()
 	
 	// Display delete buttons on pools except the first one, since the first one is "add new pool" option.
 	// Also not adding a delete button to mod-added pools, since deleting them would be weird and pointless even if we could.
-	for( i = 0; i < Data.Length; i++ )
+	for (i = 0; i < Data.Length; i++)
 	{
 		if (((!bHasSelectedImportLocation || bIsExporting) && i != 0 && CharacterPoolFiles[i-1].DLCName == '') && !`ISCONTROLLERACTIVE)
 		{
@@ -338,33 +366,6 @@ simulated public function OnConfirmDeletePoolCallback(Name eAction)
 	}
 }
 
-/*
-simulated function DoImportAllCharacters(string FilenameForImport)
-{
-	local CharacterPoolManagerExtended	CharacterPool;
-	local CharacterPoolDataElement		CPData;
-	local XComGameState_Unit			NewUnitState;
-	local int i;
-
-	CharacterPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
-	
-	for (i = 0; i < UnitData.CharacterPoolDatas.Length; i++)
-	{
-		CPData = UnitData.CharacterPoolDatas[i].CharacterPoolData;
-		NewUnitState = CharacterPool.CreateSoldier(CPData.CharacterTemplateName);
-		if (NewUnitState == none)
-		{
-			ShowInfoPopup("ERROR!", "Failed to import unit" @ CPData.strFirstName @ CPData.strLastName @ "with character template:" @ CPData.CharacterTemplateName @ ", maybe you're mising a mod?", eDialog_Warning);
-			continue; 
-		}
-	
-		CharacterPool.InitSoldierOld(NewUnitState, CPData);
-		NewUnitState.AppearanceStore = UnitData.CharacterPoolDatas[i].AppearanceStore;
-		CharacterPool.CharacterPool.AddItem(NewUnitState);
-	}
-	CharacterPool.SaveCharacterPool();
-}
-*/
 private function OnAddNewPoolInputBoxAccepted(string strPoolName)
 {
 	local PoolInfoStruct	NewPoolInfo;
@@ -408,7 +409,7 @@ private function OnAddNewPoolInputBoxAccepted(string strPoolName)
 		else
 		{
 			// ERROR! Failed to save pool.
-			ShowInfoPopup("ERROR!", "Warning! Failed to write the new pool to the disk.", eDialog_Warning);
+			ShowInfoPopup("ERROR!", "Warning! Failed to write the new pool to the disk.\n\n" @ GeneratePoolText(CurrentPoolInfo), eDialog_Warning);
 		}
 	}
 }
@@ -419,7 +420,7 @@ private function OnAddNewPoolInputBoxAccepted(string strPoolName)
 simulated private function FillPoolFriendlyName(out PoolInfoStruct PoolInfo)
 {
 	PoolInfo.FriendlyName = Localize("UICharacterPool_ListPools_CPExtended", string(PoolInfo.PoolName), "WOTCCharacterPoolExtended");
-	if (Left(PoolInfo.FriendlyName, 5) == "?INT?")
+	if (Left(PoolInfo.FriendlyName, 5) == "?INT?") // Failed to read localized value.
 		PoolInfo.FriendlyName = string(PoolInfo.PoolName);
 	
 }

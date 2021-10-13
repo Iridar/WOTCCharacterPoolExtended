@@ -43,6 +43,8 @@ simulated function UpdateLockerList()
 		
 	ItemMgr = class'X2ItemTemplateManager'.static.GetItemTemplateManager();
 
+	`CPOLOG("running for unit:" @ UnitState.GetFullName() @ "and slot:" @ SelectedSlot,, 'IRITEST');
+
 	History = `XCOMHISTORY;
 	TempContainer = class'XComGameStateContext_ChangeContainer'.static.CreateEmptyChangeContainer("Fake Loadout");
 	TempGameState = History.CreateNewGameState(true, TempContainer);

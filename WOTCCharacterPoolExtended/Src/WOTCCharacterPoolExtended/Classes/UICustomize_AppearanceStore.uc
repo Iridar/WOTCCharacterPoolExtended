@@ -17,6 +17,37 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	ArmoryPawn = XComHumanPawn(CustomizeManager.ActorPawn);
 	OriginalAppearance = ArmoryPawn.m_kAppearance;
 	List.OnSelectionChanged = OnListItemSelected;
+
+	if (class'Help'.static.IsUnrestrictedCustomizationLoaded())
+	{
+		`CPOLOG("Setting timer for FixScreenPosition");
+		SetTimer(0.1f, false, nameof(FixScreenPosition), self);
+	}
+}
+
+simulated private function FixScreenPosition()
+{
+	// Unrestricted Customization does two things we want to get rid of:
+	// 1. Shifts the entire screen's position (breaking the intended UI element placement)
+	// 2. Adds a 'tool panel' with buttons like Copy / Paste / Randomize appearance,
+	// which would be nice to have, but it's (A) redundant and (B) there's no room for it.
+	local UIPanel Panel;
+	if (Y == -100)
+	{
+		foreach ChildPanels(Panel)
+		{
+			if (Panel.Class.Name == 'uc_ui_ToolPanel')
+			{
+				Panel.Hide();
+				break;
+			}
+		}
+		`CPOLOG("Applying compatibility for Unrestricted Customization.");
+		SetPosition(0, 0);
+		return;
+	}
+	// In case of lags, we restart the timer until the issue is successfully resolved.
+	SetTimer(0.1f, false, nameof(FixScreenPosition), self);
 }
 
 simulated function UpdateData()

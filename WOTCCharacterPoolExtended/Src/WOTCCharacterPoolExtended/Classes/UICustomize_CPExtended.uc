@@ -14,9 +14,7 @@ var config(WOTCCharacterPoolExtended_DEFAULT) array<name> Presets;
 // TODO:
 /*
 # Core: 
-Works with Unrestricted Customization?
-Maybe allow Appearance Store button to work as a "reskin armor" button?
-Enter Character Pool from Armory?
+
 Validate appearance button should work in armory? Should probably remove stored appearance, or validate all stored appearances
 
 # Character Pool
@@ -44,11 +42,15 @@ Per-uniform selection of which parts of the appearance are a part of the uniform
 ## Finalization
 0. Clean up everything. Commentate. Add private/final.
 0.5 Localize stuff.
-1. Get rid of the logs or clean them up and turn them off
 2. Fix log error spam.
 
+## Addressed
+Maybe allow Appearance Store button to work as a "reskin armor" button? - redundant, can be done with this mod's customization screen by importing unit's own appearance from another armor.
+
 ## Ideas for later
-1. Equipping weapons in CP will reskin them automatically with XSkin (RustyDios). Probably use a Tuple.
+Equipping weapons in CP will reskin them automatically with XSkin (RustyDios). Probably use a Tuple.
+Enter Character Pool from Armory. Seems to be generally working, but has lots of weird behavior: 
+incorrect soldier attitude, incorrect stance, legs getting IK'd to the armory floor, Loadout screen softlocking the game when exiting from it.
 */
 
 // Internal cached info
@@ -147,6 +149,37 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 
 	// Create upper right list
 	CreateFiltersList();
+
+	if (class'Help'.static.IsUnrestrictedCustomizationLoaded())
+	{
+		`CPOLOG("Setting timer for FixScreenPosition");
+		SetTimer(0.1f, false, nameof(FixScreenPosition), self);
+	}
+}
+
+simulated private function FixScreenPosition()
+{
+	// Unrestricted Customization does two things we want to get rid of:
+	// 1. Shifts the entire screen's position (breaking the intended UI element placement)
+	// 2. Adds a 'tool panel' with buttons like Copy / Paste / Randomize appearance,
+	// which would be nice to have, but it's (A) redundant and (B) there's no room for it.
+	local UIPanel Panel;
+	if (Y == -100)
+	{
+		foreach ChildPanels(Panel)
+		{
+			if (Panel.Class.Name == 'uc_ui_ToolPanel')
+			{
+				Panel.Hide();
+				break;
+			}
+		}
+		`CPOLOG("Applying compatibility for Unrestricted Customization.");
+		SetPosition(0, 0);
+		return;
+	}
+	// In case of lags, we restart the timer until the issue is successfully resolved.
+	SetTimer(0.1f, false, nameof(FixScreenPosition), self);
 }
 
 simulated private function CreateFiltersList()

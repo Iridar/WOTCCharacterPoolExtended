@@ -8,10 +8,24 @@ var localized string strUniform;
 
 event OnInit(UIScreen Screen)
 {
+	//local UIAvengerHUD AvengerHud;
+	//local UIAvengerShortcutSubMenuItem MenuItem;
+
 	if (UICustomize_Menu(Screen) != none)
 	{
 		AddButtons();
 	}
+
+	// Enter Character Pool from the Armory.
+	//AvengerHud = UIAvengerHUD(Screen);
+	//if (AvengerHud == none) return;
+
+	//MenuItem.Id = 'IRI_Armory_EnterCharacterPool';
+	//MenuItem.Message.Label = "Character Pool";
+	//MenuItem.Message.Description = "Enter Character Pool";
+	//MenuItem.Message.OnItemClicked = OnCharacterPoolButtonClicked;
+
+	//AvengerHud.Shortcuts.AddSubMenu(eUIAvengerShortcutCat_Barracks, MenuItem);
 }
 
 event OnReceiveFocus(UIScreen Screen)
@@ -33,7 +47,7 @@ simulated function AddButtons()
 	for (i = CustomizeMenuScreen.List.ItemCount - 1; i >= 0; i--)
 	{
 		ListItem = UIMechaListItem(CustomizeMenuScreen.List.GetItem(i));
-		if (string(ListItem.OnClickDelegate) == string(OnManageAppearanceButtonClicked))
+		if (string(ListItem.OnClickDelegate) == string(OnAppearanceStoreButtonClicked))
 		{
 			CustomizeMenuScreen.ShowListItems();
 			bListItemAlreadyExists = true;
@@ -52,6 +66,11 @@ simulated function AddButtons()
 			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
 			ListItem.bAnimateOnInit = false;
 			ListItem.InitListItem();
+			ListItem.UpdateDataDescription("Loadout", OnLoadoutButtonClicked);  // TODO: Localize
+
+			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+			ListItem.bAnimateOnInit = false;
+			ListItem.InitListItem();
 			ListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
 		}
 		// Add validate appearance button if we're skipping appearance validation
@@ -63,19 +82,52 @@ simulated function AddButtons()
 			ListItem.InitListItem();
 			ListItem.UpdateDataButton("Validate Appearance", "Validate", OnValidateButtonClicked); // TODO: Localize
 		}
+		
 		ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
 		ListItem.bAnimateOnInit = false;
 		ListItem.InitListItem();
 		ListItem.UpdateDataDescription("Appearance Store", OnAppearanceStoreButtonClicked);
-
-		ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-		ListItem.bAnimateOnInit = false;
-		ListItem.InitListItem();
-		ListItem.UpdateDataDescription("Loadout", OnLoadoutButtonClicked);
+		
+		if (!CustomizeMenuScreen.bInArmory)
+		{
+			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+			ListItem.bAnimateOnInit = false;
+			ListItem.InitListItem();
+			ListItem.UpdateDataDescription("Photobooth", OnPhotboothButtonClicked);
+		}
 
 		CustomizeMenuScreen.ShowListItems();
 	}
 	CustomizeMenuScreen.SetTimer(0.1f, false, nameof(AddButtons), self);
+}
+
+simulated private function OnPhotboothButtonClicked()
+{
+	local UICustomize_Menu			CustomizeScreen;
+	local XComPresentationLayerBase	Pres;
+	local XComGameState				NewGameState;
+	local UIArmory_Photobooth		ArmoryScreen;
+	
+	Pres = `PRESBASE;
+	if (Pres == none || Pres.ScreenStack == none)
+	{
+		`CPOLOG("No pres:" @ Pres == none @ "or screenstack:" @  Pres.ScreenStack == none);
+		return;
+	}
+
+	CustomizeScreen = UICustomize_Menu(Pres.ScreenStack.GetCurrentScreen());
+	if (CustomizeScreen == none)
+		return;
+
+	NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("Trigger Event: View Photobooth");
+	`XEVENTMGR.TriggerEvent('OnViewPhotobooth', , , NewGameState);
+	`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
+
+	if (Pres.ScreenStack.IsNotInStack(class'UIArmory_Photobooth'))
+	{
+		ArmoryScreen = UIArmory_Photobooth(Pres.ScreenStack.Push(Pres.Spawn(class'UIArmory_Photobooth', Pres)));
+		ArmoryScreen.InitPropaganda(CustomizeScreen.GetUnit().GetReference());
+	}
 }
 
 simulated private function OnAppearanceStoreButtonClicked()
@@ -112,6 +164,7 @@ simulated private function OnManageAppearanceButtonClicked()
 	CustomizeScreen.UpdateData();
 }
 
+// TODO: Add a popup with confirmation prompt here
 simulated private function OnUniformButtonClicked(UIButton ButtonSource)
 {
 	local UICustomize_Menu CustomizeScreen;
@@ -127,15 +180,15 @@ simulated private function OnUniformButtonClicked(UIButton ButtonSource)
 	CustomizeScreen.CustomizeManager.UpdatedUnitState.bAllowedTypeVIP = false;
 	CustomizeScreen.CustomizeManager.UpdatedUnitState.bAllowedTypeDarkVIP = false;
 	CustomizeScreen.CustomizeManager.CommitChanges();
-	CustomizeScreen.CustomizeManager.SubmitUnitCustomizationChanges();
 	CustomizeScreen.CustomizeManager.ReCreatePawnVisuals(CustomizeScreen.CustomizeManager.ActorPawn, true);
 	CustomizeScreen.UpdateData();
 }
 
 simulated private function OnValidateButtonClicked(UIButton ButtonSource)
 {
-	local UICustomize_Menu CustomizeScreen;
-	local CharacterPoolManagerExtended CharPool;
+	local UICustomize_Menu				CustomizeScreen;
+	local CharacterPoolManagerExtended	CharPool;
+	local XComGameState_Item			ItemState;
 
 	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
 	if (CustomizeScreen == none)
@@ -143,8 +196,15 @@ simulated private function OnValidateButtonClicked(UIButton ButtonSource)
 
 	CharPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
 	CharPool.ValidateUnitAppearance(CustomizeScreen.CustomizeManager.UpdatedUnitState);	
+
+	ItemState = CustomizeScreen.CustomizeManager.UpdatedUnitState.GetItemInSlot(eInvSlot_Armor);
+	if (ItemState != none)
+	{
+		CustomizeScreen.CustomizeManager.UpdatedUnitState.StoreAppearance(, ItemState.GetMyTemplateName());
+	}
+	else CustomizeScreen.CustomizeManager.UpdatedUnitState.StoreAppearance();
+
 	CustomizeScreen.CustomizeManager.CommitChanges();
-	CustomizeScreen.CustomizeManager.SubmitUnitCustomizationChanges();
 	CustomizeScreen.CustomizeManager.ReCreatePawnVisuals(CustomizeScreen.CustomizeManager.ActorPawn, true);
 	CustomizeScreen.UpdateData();
 }
@@ -162,13 +222,13 @@ simulated private function OnLoadoutButtonClicked()
 	Pres = `PRESBASE;
 	if (Pres == none || Pres.ScreenStack == none)
 	{
-		`CPOLOG("No pres:" @ Pres == none @ "or screenstack:" @  Pres.ScreenStack == none);
+		`CPOLOG("No pres:" @ Pres == none @ "or screenstack:" @  Pres.ScreenStack == none $ ", exiting");
 		return;
 	}
 	CustomizeScreen = UICustomize_Menu(Pres.ScreenStack.GetCurrentScreen());
 	if (CustomizeScreen == none)
 	{
-		`CPOLOG("No customize screen");
+		`CPOLOG("No customize screen, exiting");
 		return;
 	}
 	UnitState = CustomizeScreen.GetUnit(); 
@@ -323,4 +383,21 @@ simulated function AddLoadoutButton()
 	}
 
 	CustomizeScreen.SetTimer(0.1f, false, nameof(AddLoadoutButton), self);
-}*/
+}
+
+simulated private function OnCharacterPoolButtonClicked(optional StateObjectReference Facility)
+{
+	local XComPresentationLayerBase	Pres;
+	
+	Pres = `PRESBASE;
+	if (Pres == none || Pres.ScreenStack == none)
+	{
+		`CPOLOG("No pres:" @ Pres == none @ "or screenstack:" @  Pres.ScreenStack == none);
+		return;
+	}
+
+	Pres.ScreenStack.Push(Pres.Spawn(class'UICharacterPool_CPExtended', Pres));
+}
+
+
+*/

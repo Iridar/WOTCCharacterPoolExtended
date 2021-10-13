@@ -133,12 +133,15 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	
 	// ---------------------------------------------------------
 
-	Hide();
-	`XCOMGRI.DoRemoteEvent('StartCharacterPool'); // start a fade
-	WorldInfo.RemoteEventListeners.AddItem(self);
-	SetTimer(2.0, false, nameof(ForceShow));
+	if (InShell()) // Support for entering character pool from Armory
+	{
+		Hide();
+		`XCOMGRI.DoRemoteEvent('StartCharacterPool'); // start a fade
+		WorldInfo.RemoteEventListeners.AddItem(self);
+		SetTimer(2.0, false, nameof(ForceShow));
 	
-	bAnimateOut = false;
+		bAnimateOut = false;
+	}
 }
 
 simulated function array<string> GetCharacterNames()
@@ -220,4 +223,23 @@ simulated private function OnCPE_ExportButtonCallback(UIButton kButton)
 		ListPools.UnitsToExport = SelectedCharacters;
 		ListPools.UpdateData(true); // Is exporting?
 	}
+}
+
+
+// Support for entering character pool from Armory
+simulated function OnCancel()
+{
+	if (InShell())
+	{
+		super.OnCancel();
+	}
+	else
+	{
+		CloseScreen();
+	}
+}
+
+simulated private function bool InShell()
+{
+	return XComShellPresentationLayer(Movie.Pres) != none;
 }

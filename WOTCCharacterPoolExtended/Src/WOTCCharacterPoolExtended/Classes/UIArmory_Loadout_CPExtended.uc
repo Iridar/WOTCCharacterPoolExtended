@@ -1,5 +1,8 @@
 class UIArmory_Loadout_CPExtended extends UIArmory_Loadout;
 
+// Modified Loadout screen, used to "equip" armors in Character Pool.
+// All changes done here are cosmetic.
+
 var XComCharacterCustomization		CustomizationManager;
 var private CharacterPoolManager	CharPoolMgr;
 
@@ -15,6 +18,8 @@ simulated function XComGameState_Unit GetUnit()
 	return CustomizationManager.UpdatedUnitState;
 }
 
+// Build a list of all items that can be potentially equipped into the selected slot on the current unit.
+// Item States are then immediately nuked, by loadout list items will retain their templates.
 simulated function UpdateLockerList()
 {
 	local XComGameState_Item	Item;
@@ -83,11 +88,14 @@ simulated function UpdateLockerList()
 	History.ObliterateGameStatesFromHistory(1);
 }
 
+// Cosmetically equip new item. Mostly intended for Armor, but works with other items too.
 simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 {
 	local XComGameState_Item					NewItem;
+	local EInventorySlot						SelectedSlot;
 	local bool									EquipSucceeded;
 	local X2WeaponTemplate						WeaponTemplate;
+	local X2EquipmentTemplate					EquipmentTemplate;
 	local XComGameStateHistory					History;	
 	local XComGameState							TempGameState;
 	local XComGameStateContext_ChangeContainer	TempContainer;
@@ -98,47 +106,45 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 	local XComGameState_Unit					UnitState;
 	local bool									bHasStoredAppearance;
 
-	`LOG("Attempting to equip item:" @ Item.ItemTemplate.DataName @ "into slot:" @ GetSelectedSlot(),, 'IRITEST');
 	UnitState = GetUnit();
 	if (UnitState == none)
 		return false;
 
-	`LOG("Initial checks done, proceeding",, 'IRITEST');
-
-	//PrintTorsoOptions("Before anything is done");
-
 	History = `XCOMHISTORY;
+	SelectedSlot = GetSelectedSlot();
+	`CPOLOG(UnitState.GetFullName() @ "attempting to equip item:" @ Item.ItemTemplate.DataName @ "into slot:" @ SelectedSlot @ "Torso archetype:" @ UnitState.kAppearance.nmTorso);
+
 	TempContainer = class'XComGameStateContext_ChangeContainer'.static.CreateEmptyChangeContainer("Fake Loadout");
 	TempGameState = History.CreateNewGameState(true, TempContainer);
 	
 	// Breaks the entire thing, apparently
 	//UnitState = XComGameState_Unit(TempGameState.ModifyStateObject(UnitState.Class, UnitState.ObjectID));
 
+	// May or may not be necessary
 	//UnitState.ApplyInventoryLoadout(TempGameState);
 
+	// -- Irrelevant in Character Pool.
 	// Check if the unit already has something equipped in the targeted slot, and remove said item.
-	NewItem = UnitState.GetItemInSlot(GetSelectedSlot(), TempGameState);
-	if (NewItem != none)
-	{
-		`LOG("Unit already had item in this slot:" @ NewItem.GetMyTemplateName(),, 'IRITEST');
-		if (!UnitState.RemoveItemFromInventory(NewItem, TempGameState))
-		{
-			History.CleanupPendingGameState(TempGameState);
-			return false;
-		}
-		`LOG("Unequipped successfully",, 'IRITEST');
-	}
-	`LOG("Unit's primary weapon:" @ UnitState.GetItemInSlot(eInvSlot_PrimaryWeapon, TempGameState).GetMyTemplateName(),, 'IRITEST');
-	`LOG("Torso archetype:" @ UnitState.kAppearance.nmTorso,, 'IRITEST');
+	//NewItem = UnitState.GetItemInSlot(SelectedSlot, TempGameState);
+	//if (NewItem != none)
+	//{
+	//	`CPOLOG("Unit already had item in this slot:" @ NewItem.GetMyTemplateName());
+	//	if (!UnitState.RemoveItemFromInventory(NewItem, TempGameState))
+	//	{
+	//		History.CleanupPendingGameState(TempGameState);
+	//		return false;
+	//	}
+	//	`CPOLOG("Unequipped successfully");
+	//}
+	//`CPOLOG("Unit's primary weapon:" @ UnitState.GetItemInSlot(eInvSlot_PrimaryWeapon, TempGameState).GetMyTemplateName());
 
 	// Create and equip new item.
 	NewItem = Item.ItemTemplate.CreateInstanceFromTemplate(TempGameState);
 	bHasStoredAppearance = UnitState.HasStoredAppearance(UnitState.kAppearance.iGender, Item.ItemTemplate.DataName);
-	if (UnitState.AddItemToInventory(NewItem, GetSelectedSlot(), TempGameState))
+	EquipSucceeded = UnitState.AddItemToInventory(NewItem, SelectedSlot, TempGameState); 
+	if (EquipSucceeded)
 	{
-		EquipSucceeded = true; 
-
-		`LOG("Item equipped. New torso archetype:" @ UnitState.kAppearance.nmTorso,, 'IRITEST');
+		`CPOLOG("Item equipped. New torso archetype:" @ UnitState.kAppearance.nmTorso);
 
 		WeaponTemplate = X2WeaponTemplate(Item.ItemTemplate);
 		if (WeaponTemplate != none && WeaponTemplate.bUseArmorAppearance)
@@ -151,66 +157,53 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 		}
 		NewItem.WeaponAppearance.nmWeaponPattern = UnitState.kAppearance.nmWeaponPattern;
 
-		if (X2EquipmentTemplate(Item.ItemTemplate) != none && X2EquipmentTemplate(Item.ItemTemplate).EquipSound != "")
+		EquipmentTemplate = X2EquipmentTemplate(Item.ItemTemplate);
+		if (EquipmentTemplate != none && EquipmentTemplate.EquipSound != "")
 		{
-			`XSTRATEGYSOUNDMGR.PlaySoundEvent(X2EquipmentTemplate(Item.ItemTemplate).EquipSound);
+			`XSTRATEGYSOUNDMGR.PlaySoundEvent(EquipmentTemplate.EquipSound);
 		}
 	}
 
 	History.AddGameStateToHistory(TempGameState);
 	
-
 	PresBase = XComPresentationLayerBase(CustomizationManager.Outer);
 	if (PresBase == none)
-		`LOG("Error, no PresBase",, 'IRITEST');
-
-	PawnMgr = PresBase.GetUIPawnMgr();
-	if (PawnMgr == none)
-		`LOG("Error, no PawnMgr",, 'IRITEST');
-
-	UnitPawn = XComUnitPawn(CustomizationManager.ActorPawn);
-	if (UnitPawn == none)
-		`LOG("Error, no Unit Pawn",, 'IRITEST');
-
-	UnitPawn.CreateVisualInventoryAttachments(PawnMgr, UnitState);
-	`LOG("Creating visual attachments",, 'IRITEST');
-	
+	{
+		`CPOLOG("Error, no PresBase");
+	} else {
+		PawnMgr = PresBase.GetUIPawnMgr();
+		if (PawnMgr == none)
+		{
+			`CPOLOG("Error, no PawnMgr");
+		} else {
+			UnitPawn = XComUnitPawn(CustomizationManager.ActorPawn);
+			if (UnitPawn == none)
+			{
+				`CPOLOG("Error, no Unit Pawn");
+			} else {
+				UnitPawn.CreateVisualInventoryAttachments(PawnMgr, UnitState);
+				`CPOLOG("Creating visual attachments");
+			}
+		}
+	}
 	History.ObliterateGameStatesFromHistory(1);	
-
 	UnitState.EmptyInventoryItems();
 
-	//PrintTorsoOptions("Past item equipped" @ UnitState.kAppearance.nmTorso);
-	
-	NewAppearance = UnitState.kAppearance;
-	XComUnitPawn(CustomizationManager.ActorPawn).SetAppearance(NewAppearance);
-	if (EquipSucceeded && !bHasStoredAppearance)
+	if (EquipSucceeded)
 	{
-		UnitState.StoreAppearance(NewAppearance.iGender, Item.ItemTemplate.DataName);
-		CustomizationManager.CommitChanges();
+		// Always refresh and save unit's appearance in case equipping the item modified it.
+		NewAppearance = UnitState.kAppearance;
+		XComUnitPawn(CustomizationManager.ActorPawn).SetAppearance(NewAppearance);
+		if (!bHasStoredAppearance)
+		{
+			UnitState.StoreAppearance(NewAppearance.iGender, Item.ItemTemplate.DataName);
+			CustomizationManager.CommitChanges();
+		}
+
+		CharPoolMgr.SaveCharacterPool();
 	}
-
-	CharPoolMgr.SaveCharacterPool();
-
-	//PrintTorsoOptions("Past Refresh" @ UnitState.kAppearance.nmTorso);
-
 	return EquipSucceeded;
 }
-
-simulated function PrintTorsoOptions(string LogString)
-{
-	local array<string> Datas;
-	local string Data;
-	local int i;
-
-	`LOG(LogString);
-	Datas = CustomizationManager.GetCategoryList(eUICustomizeCat_Torso);
-	foreach Datas(Data, i)
-	{
-		`LOG(i @ "Torso option:" @ Data,, 'IRITEST');
-	}
-	`LOG("---------------------------",, 'IRITEST');
-}
-
 
 simulated function bool ShowInLockerList(XComGameState_Item Item, EInventorySlot SelectedSlot)
 {
@@ -266,6 +259,8 @@ simulated function UpdateEquippedList()
 		else
 			Item.InitLoadoutItem(En.ItemState, En.Slot, true);
 
+		// ADDED
+		// Use cosmetic torso to figure out which armor template could have been used for it.
 		if (En.Slot == eInvSlot_Armor)
 		{
 			ItemTemplate = class'Help'.static.GetItemTemplateFromCosmeticTorso(UpdatedUnit.kAppearance.nmTorso);
@@ -276,6 +271,7 @@ simulated function UpdateEquippedList()
 				Item.SetSubTitle(ItemTemplate.GetLocalizedCategory());
 			}
 		}
+		// END OF ADDED
 	}
 	EquippedList.SetSelectedIndex(prevIndex < EquippedList.ItemCount ? prevIndex : 0);
 	// Force item into view
@@ -283,7 +279,8 @@ simulated function UpdateEquippedList()
 	// Issue #118 End
 }
 
-simulated function SetItemImage(UIArmory_LoadoutItem LoadoutItem, X2ItemTemplate ItemTemplate)
+// Hodge podge function of existing code responsible for showing item's icon.
+simulated private function SetItemImage(UIArmory_LoadoutItem LoadoutItem, X2ItemTemplate ItemTemplate)
 {
 	local int i;
 	local bool bUpdate;
@@ -338,3 +335,19 @@ simulated function SetItemImage(UIArmory_LoadoutItem LoadoutItem, X2ItemTemplate
 		LoadoutItem.MC.EndOp();
 	}
 }
+
+/*
+simulated function PrintTorsoOptions(string LogString)
+{
+	local array<string> Datas;
+	local string Data;
+	local int i;
+
+	`CPOLOG(LogString);
+	Datas = CustomizationManager.GetCategoryList(eUICustomizeCat_Torso);
+	foreach Datas(Data, i)
+	{
+		`CPOLOG(i @ "Torso option:" @ Data);
+	}
+	`CPOLOG("---------------------------");
+}*/

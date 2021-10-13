@@ -1,6 +1,6 @@
 class UISL_CPExtended extends UIScreenListener;
 
-// This UISL adds a "LOADOUT" button to the character customization screen while in Character Pool.
+// This UISL adds a few buttons to UICustomize_Menu screens.
 
 var localized string strUniform;
 
@@ -8,10 +8,7 @@ var localized string strUniform;
 
 event OnInit(UIScreen Screen)
 {
-	local UICustomize_Menu CustomizeMenuScreen;
-
-	CustomizeMenuScreen = UICustomize_Menu(Screen);
-	if (CustomizeMenuScreen != none)
+	if (UICustomize_Menu(Screen) != none)
 	{
 		AddButtons();
 	}
@@ -81,40 +78,6 @@ simulated function AddButtons()
 	CustomizeMenuScreen.SetTimer(0.1f, false, nameof(AddButtons), self);
 }
 
-
-simulated function AddManageAppearanceButton()
-{
-	local UICustomize_Menu	CustomizeMenuScreen;;
-	local UIMechaListItem	ListItem;
-	local bool				bListItemAlreadyExists;
-	local int i;
-
-	CustomizeMenuScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
-	if (CustomizeMenuScreen == none)
-		return;
-
-	for (i = CustomizeMenuScreen.List.ItemCount - 1; i >= 0; i--)
-	{
-		ListItem = UIMechaListItem(CustomizeMenuScreen.List.GetItem(i));
-		if (string(ListItem.OnClickDelegate) == string(OnManageAppearanceButtonClicked))
-		{
-			ListItem.Show();
-			bListItemAlreadyExists = true;
-			break;
-		}
-	}
-	if (!bListItemAlreadyExists)
-	{	
-		ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-		ListItem.bAnimateOnInit = false;
-		ListItem.InitListItem();
-		ListItem.UpdateDataDescription("Manage Appearance", OnManageAppearanceButtonClicked); // TODO: Localize
-
-		// TODO: Maybe add "reskin armor" button here?
-	}
-	CustomizeMenuScreen.SetTimer(0.1f, false, nameof(AddManageAppearanceButton), self);
-}
-
 simulated private function OnAppearanceStoreButtonClicked()
 {
 	local UICustomize_AppearanceStore	CustomizeScreen;
@@ -147,68 +110,6 @@ simulated private function OnManageAppearanceButtonClicked()
 	CustomizeScreen = Pres.Spawn(class'UICustomize_CPExtended', Pres);
 	Pres.ScreenStack.Push(CustomizeScreen);
 	CustomizeScreen.UpdateData();
-}
-/*
-simulated private function OnManageAppearanceButtonClicked()
-{
-	local UICustomize_CPExtended	CustomizeScreen;
-	local XComHQPresentationLayer	HQPresLayer;
-	
-	HQPresLayer = `HQPRES;
-	if (HQPresLayer == none || HQPresLayer.ScreenStack == none)
-		return;
-
-	CustomizeScreen = HQPresLayer.Spawn(class'UICustomize_CPExtended', HQPresLayer);
-	HQPresLayer.ScreenStack.Push(CustomizeScreen);
-	CustomizeScreen.UpdateData();
-}*/
-
-simulated function AddLoadoutButton()
-{
-	local UICustomize_Menu	CustomizeScreen;
-	local bool				bListItemAlreadyExists;
-	local UIMechaListItem	ListItem;
-	local int i;
-
-	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
-	if (CustomizeScreen == none)
-		return;
-
-	for (i = 0; i < CustomizeScreen.List.ItemCount; i++)
-	{
-		ListItem = UIMechaListItem(CustomizeScreen.List.GetItem(i));
-		if (string(ListItem.OnClickDelegate) ~= string(OnLoadoutButtonClicked))
-		{
-			bListItemAlreadyExists = true;
-			CustomizeScreen.ShowListItems();
-			break;
-		}
-	}
-	if (!bListItemAlreadyExists)
-	{
-		ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
-		ListItem.bAnimateOnInit = false;
-		ListItem.InitListItem();
-		ListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
-		CustomizeScreen.ShowListItems();
-
-		// Add validate appearance button if we're skipping appearance validation
-		if (!`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG) || 
-			`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
-		{
-			ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
-			ListItem.bAnimateOnInit = false;
-			ListItem.InitListItem();
-			ListItem.UpdateDataButton("Validate Appearance", "Validate", OnValidateButtonClicked); // TODO: Localize
-			CustomizeScreen.ShowListItems();
-		}
-		ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
-		ListItem.bAnimateOnInit = false;
-		ListItem.InitListItem();
-		ListItem.UpdateDataDescription(class'UIArmory_MainMenu'.default.m_strLoadout, OnLoadoutButtonClicked);
-	}
-
-	CustomizeScreen.SetTimer(0.1f, false, nameof(AddLoadoutButton), self);
 }
 
 simulated private function OnUniformButtonClicked(UIButton ButtonSource)
@@ -278,29 +179,6 @@ simulated private function OnLoadoutButtonClicked()
 	Pres.ScreenStack.Push(ArmoryScreen);
 	ArmoryScreen.CustomizationManager = Pres.GetCustomizeManager();
 	ArmoryScreen.InitArmory(UnitState.GetReference());
-	/*
-	local UICustomize_Menu				CustomizeScreen;
-	local UIScreenStack					ScreenStack;
-	local UIArmory_Loadout_CPExtended	ArmoryScreen;
-	local XComShellPresentationLayer	Pres;
-	
-
-	ScreenStack = `SCREENSTACK;
-
-	CustomizeScreen = UICustomize_Menu(ScreenStack.GetCurrentScreen());
-	if (CustomizeScreen == none)
-		return;
-
-	Pres = XComShellPresentationLayer(CustomizeScreen.Movie.Pres);
-	UnitState = CustomizeScreen.GetUnit(); 
-
-	`CPOLOG("Opening loadout screen for Character Pool unit:" @ UnitState.GetFullName());
-
-	ArmoryScreen = UIArmory_Loadout_CPExtended(ScreenStack.Push(Pres.Spawn(class'UIArmory_Loadout_CPExtended', Pres), Pres.Get3DMovie()));
-	ArmoryScreen.CustomizationManager = Pres.GetCustomizeManager();
-	ArmoryScreen.InitArmory(UnitState.GetReference());
-
-	`XSTRATEGYSOUNDMGR.PlaySoundEvent("Play_MenuSelect");*/
 }
 /*
 simulated private function OnLoadout()
@@ -350,3 +228,99 @@ simulated function AddNavHelpButtons()
 	CustomizeScreen.SetTimer(0.1f, false, nameof(AddNavHelpButtons), self);
 }
 */
+/*
+simulated private function OnManageAppearanceButtonClicked()
+{
+	local UICustomize_CPExtended	CustomizeScreen;
+	local XComHQPresentationLayer	HQPresLayer;
+	
+	HQPresLayer = `HQPRES;
+	if (HQPresLayer == none || HQPresLayer.ScreenStack == none)
+		return;
+
+	CustomizeScreen = HQPresLayer.Spawn(class'UICustomize_CPExtended', HQPresLayer);
+	HQPresLayer.ScreenStack.Push(CustomizeScreen);
+	CustomizeScreen.UpdateData();
+}*/
+
+/*
+simulated function AddManageAppearanceButton()
+{
+	local UICustomize_Menu	CustomizeMenuScreen;;
+	local UIMechaListItem	ListItem;
+	local bool				bListItemAlreadyExists;
+	local int i;
+
+	CustomizeMenuScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
+	if (CustomizeMenuScreen == none)
+		return;
+
+	for (i = CustomizeMenuScreen.List.ItemCount - 1; i >= 0; i--)
+	{
+		ListItem = UIMechaListItem(CustomizeMenuScreen.List.GetItem(i));
+		if (string(ListItem.OnClickDelegate) == string(OnManageAppearanceButtonClicked))
+		{
+			ListItem.Show();
+			bListItemAlreadyExists = true;
+			break;
+		}
+	}
+	if (!bListItemAlreadyExists)
+	{	
+		ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+		ListItem.bAnimateOnInit = false;
+		ListItem.InitListItem();
+		ListItem.UpdateDataDescription("Manage Appearance", OnManageAppearanceButtonClicked); // TODO: Localize
+
+		// TODO: Maybe add "reskin armor" button here?
+	}
+	CustomizeMenuScreen.SetTimer(0.1f, false, nameof(AddManageAppearanceButton), self);
+}*/
+/*
+simulated function AddLoadoutButton()
+{
+	local UICustomize_Menu	CustomizeScreen;
+	local bool				bListItemAlreadyExists;
+	local UIMechaListItem	ListItem;
+	local int i;
+
+	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
+	if (CustomizeScreen == none)
+		return;
+
+	for (i = 0; i < CustomizeScreen.List.ItemCount; i++)
+	{
+		ListItem = UIMechaListItem(CustomizeScreen.List.GetItem(i));
+		if (string(ListItem.OnClickDelegate) ~= string(OnLoadoutButtonClicked))
+		{
+			bListItemAlreadyExists = true;
+			CustomizeScreen.ShowListItems();
+			break;
+		}
+	}
+	if (!bListItemAlreadyExists)
+	{
+		ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+		ListItem.bAnimateOnInit = false;
+		ListItem.InitListItem();
+		ListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
+		CustomizeScreen.ShowListItems();
+
+		// Add validate appearance button if we're skipping appearance validation
+		if (!`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG) || 
+			`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
+		{
+			ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+			ListItem.bAnimateOnInit = false;
+			ListItem.InitListItem();
+			ListItem.UpdateDataButton("Validate Appearance", "Validate", OnValidateButtonClicked); // TODO: Localize
+			CustomizeScreen.ShowListItems();
+		}
+		ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+		ListItem.bAnimateOnInit = false;
+		ListItem.InitListItem();
+		ListItem.UpdateDataDescription(class'UIArmory_MainMenu'.default.m_strLoadout, OnLoadoutButtonClicked);
+	}
+
+	CustomizeScreen.SetTimer(0.1f, false, nameof(AddLoadoutButton), self);
+}*/

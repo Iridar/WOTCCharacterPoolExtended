@@ -3,6 +3,7 @@ class CPUnitData extends Object;
 struct CPExtendedStruct
 {
 	// Stores most of the info regarding character pool unit: name, bio, current appearance.
+	// Same as vanilla.
 	var CharacterPoolDataElement CharacterPoolData;
 
 	// Store appearance store separately, because 'CharacterPoolDataElement' doesn't include it.
@@ -59,6 +60,7 @@ private function int FindUnitIndex(XComGameState_Unit UnitState)
 	return INDEX_NONE;
 }
 
+// Copy of the similar function from the Character Pool Manager
 private function CharacterPoolDataElement GetCharacterPoolDataFromUnit(XComGameState_Unit Unit)
 {	
 	local CharacterPoolDataElement CharacterPoolSerializeHelper;
@@ -83,7 +85,6 @@ final function int GetNumUnits()
 {
 	return CharacterPoolDatas.Length;
 }
-
 
 final function array<string> GetUnitsFriendly()
 {

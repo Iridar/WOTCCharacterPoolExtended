@@ -91,7 +91,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	local UIScreen	   CycleScreen;
 	local UIMouseGuard MouseGuard;
 
-	`LOG(GetFuncName() @ CheckboxPresets.Length @ default.CheckboxPresets.Length,, 'IRITEST');
+	`CPOLOG(GetFuncName() @ CheckboxPresets.Length @ default.CheckboxPresets.Length);
 
 	super.InitScreen(InitController, InitMovie, InitName);
 
@@ -432,7 +432,7 @@ simulated function UpdateSoldierListOld()
 			SpawnedItem.SetDisabled(true); 
 		}
 
-		UnitName = class'CharacterPoolManagerExtended'.static.GetUnitStateFullNameExtraData(CheckUnit);
+		UnitName = class'CharacterPoolManagerExtended'.static.GetUnitFullNameExtraData_UnitState_Static(CheckUnit);
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 		SpawnedItem.bAnimateOnInit = false;
 		SpawnedItem.InitListItem();
@@ -456,7 +456,7 @@ simulated function UpdateSoldierListOld()
 			SpawnedItem.SetDisabled(true); 
 		}
 
-		UnitName = class'CharacterPoolManagerExtended'.static.GetUnitStateFullNameExtraData(CheckUnit);
+		UnitName = class'CharacterPoolManagerExtended'.static.GetUnitFullNameExtraData_UnitState_Static(CheckUnit);
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 		SpawnedItem.bAnimateOnInit = false;
 		SpawnedItem.InitListItem();
@@ -564,7 +564,7 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 	if (GetFilterListCheckboxStatus('FilterClass') && ArmoryUnit.GetSoldierClassTemplateName() != UnitState.GetSoldierClassTemplateName())
 		return;
 
-	UnitName = class'CharacterPoolManagerExtended'.static.GetUnitStateFullNameExtraData(UnitState);
+	UnitName = class'CharacterPoolManagerExtended'.static.GetUnitFullNameExtraData_UnitState_Static(UnitState);
 	if (bCharPool && IsUnitPresentInCampaign(UnitState)) // If unit was already drawn from the CP, color their entry green.
 			UnitName = class'UIUtilities_Text'.static.GetColoredText(UnitName, eUIState_Good);
 
@@ -894,7 +894,7 @@ simulated private function SavePresetCheckboxPositions()
 	local bool					bFound;
 	local int i;
 
-	`LOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length,, 'IRITEST');
+	`CPOLOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length);
 
 	NewStruct.Preset = CurrentPreset;
 
@@ -911,7 +911,7 @@ simulated private function SavePresetCheckboxPositions()
 		//if (InStr(string(ListItem.MCName), "UIMechaListItem") != INDEX_NONE)
 		//	continue;
 
-		`LOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked,, 'IRITEST');
+		`CPOLOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked);
 
 		bFound = false;
 		for (Index = 0; Index < CheckboxPresets.Length; Index++)
@@ -944,7 +944,7 @@ simulated private function LoadPresetCheckboxPositions()
 	local bool					bFound;
 	local int i;
 
-	`LOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length,, 'IRITEST');
+	`CPOLOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length);
 
 	if (Presets.Length > 0)
 	{
@@ -956,7 +956,7 @@ simulated private function LoadPresetCheckboxPositions()
 		if (ListItem == none || ListItem.Checkbox == none)
 			continue;
 
-		`LOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked,, 'IRITEST');
+		`CPOLOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked);
 
 		bFound = false;
 		for (Index = 0; Index < CheckboxPresets.Length; Index++)
@@ -966,7 +966,7 @@ simulated private function LoadPresetCheckboxPositions()
 			{
 				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
 				bFound = true;
-				`LOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked,, 'IRITEST');
+				`CPOLOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked);
 				break;
 			}
 		}
@@ -979,7 +979,7 @@ simulated private function LoadPresetCheckboxPositions()
 					CheckboxPresetsDefaults[Index].Preset == CurrentPreset)
 				{
 					ListItem.Checkbox.SetChecked(CheckboxPresetsDefaults[Index].bChecked, false);
-					`LOG(i @ "Found default entry:" @ CheckboxPresetsDefaults[Index].bChecked,, 'IRITEST');
+					`CPOLOG(i @ "Found default entry:" @ CheckboxPresetsDefaults[Index].bChecked);
 					break;
 				}
 			}
@@ -995,7 +995,7 @@ simulated private function ApplyPresetCheckboxPositions()
 	local bool					bFound;
 	local int i;
 
-	`LOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length,, 'IRITEST');
+	`CPOLOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length);
 
 	if (Presets.Length > 0)
 	{
@@ -1007,7 +1007,7 @@ simulated private function ApplyPresetCheckboxPositions()
 		if (ListItem == none || ListItem.Checkbox == none)
 			continue;
 
-		`LOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked,, 'IRITEST');
+		`CPOLOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked);
 
 		bFound = false;
 		for (Index = 0; Index < CheckboxPresets.Length; Index++)
@@ -1017,7 +1017,7 @@ simulated private function ApplyPresetCheckboxPositions()
 			{
 				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
 				bFound = true;
-				`LOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked,, 'IRITEST');
+				`CPOLOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked);
 				break;
 			}
 		}
@@ -1030,7 +1030,7 @@ simulated private function ApplyPresetCheckboxPositions()
 					CheckboxPresetsDefaults[Index].Preset == CurrentPreset)
 				{
 					ListItem.Checkbox.SetChecked(CheckboxPresetsDefaults[Index].bChecked, false);
-					`LOG(i @ "Found default entry:" @ CheckboxPresetsDefaults[Index].bChecked,, 'IRITEST');
+					`CPOLOG(i @ "Found default entry:" @ CheckboxPresetsDefaults[Index].bChecked);
 					break;
 				}
 			}
@@ -1383,8 +1383,8 @@ simulated private function LogAllOptions()
 	local UIMechaListItem		ListItem;
 	local int i;
 
-	`LOG(GetFuncName() @  OptionsList.ItemCount,, 'IRITEST');
-	`LOG("----------------------------------------------------------",, 'IRITEST');
+	`CPOLOG(GetFuncName() @  OptionsList.ItemCount);
+	`CPOLOG("----------------------------------------------------------");
 
 	for (i = 0; i < OptionsList.ItemCount; i++)
 	{
@@ -1392,9 +1392,9 @@ simulated private function LogAllOptions()
 		if (ListItem == none)
 			continue;
 			
-		`LOG("List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ ListItem.Checkbox != none,, 'IRITEST');
+		`CPOLOG("List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ ListItem.Checkbox != none);
 	}
-	`LOG("----------------------------------------------------------",, 'IRITEST');
+	`CPOLOG("----------------------------------------------------------");
 }
 
 simulated private function CreateOptionPresets()
@@ -1406,7 +1406,7 @@ simulated private function CreateOptionPresets()
 		return;
 
 	CreateOptionCategory(class'UIOptionsPCScreen'.default.m_strGraphicsLabel_Preset); 
-	`LOG(GetFuncName() @ `showvar(CurrentPreset),, 'IRITEST');
+	`CPOLOG(GetFuncName() @ `showvar(CurrentPreset));
 
 	for (i = 0; i < Presets.Length; i++)
 	{
@@ -1797,7 +1797,7 @@ simulated private function ActivatePreset()
 {
 	local name Preset;
 
-	`LOG(GetFuncName() @ `showvar(CurrentPreset),, 'IRITEST');
+	`CPOLOG(GetFuncName() @ `showvar(CurrentPreset));
 	
 	foreach Presets(Preset)
 	{
@@ -1838,7 +1838,7 @@ simulated private function string GetBodyPartFriendlyName(name OptionName, name 
 	}
 
 	//if (BodyPartTemplate != none && BodyPartTemplate.DisplayName == "")
-	//	`LOG("No localized name for template:" @ BodyPartTemplate.DataName @ PartType @ OptionName,, 'IRITEST');
+	//	`CPOLOG("No localized name for template:" @ BodyPartTemplate.DataName @ PartType @ OptionName);
 
 	if (BodyPartTemplate != none && BodyPartTemplate.DisplayName != "")
 		return BodyPartTemplate.DisplayName;

@@ -31,39 +31,39 @@ simulated private function BuildCharacterPoolFilesList()
 	local PoolInfoStruct PoolInfo;
 	local int Index;
 
-	`LOG(GetFuncName(),, 'IRITEST');
+	`CPOLOG(GetFuncName());
 
 	foreach DefaultCharacterPoolFiles(PoolInfo)
 	{
-		`LOG(PoolInfo.DLCName @ PoolInfo.PoolName @ PoolInfo.FilePath @ PoolInfo.FriendlyName,, 'IRITEST');
+		`CPOLOG(PoolInfo.DLCName @ PoolInfo.PoolName @ PoolInfo.FilePath @ PoolInfo.FriendlyName);
 
 		Index = CharacterPoolFiles.Find('PoolName', PoolInfo.PoolName);
 
-		`LOG(`showvar(Index),, 'IRITEST');
+		`CPOLOG(`showvar(Index));
 		if (Index != INDEX_NONE)
 		{	
 			if (LoadPool(CharacterPoolFiles[Index]))
 			{
-				`LOG("This pool is already in the saved list and can be loaded, skipping",, 'IRITEST');
+				`CPOLOG("This pool is already in the saved list and can be loaded, skipping");
 				continue;
 			}
 			else
 			{
-				`LOG("This pool is already in the saved list, but I couldn't load it:",, 'IRITEST');
-				`LOG(CharacterPoolFiles[Index].DLCName @ CharacterPoolFiles[Index].PoolName @ CharacterPoolFiles[Index].FilePath @ CharacterPoolFiles[Index].FriendlyName,, 'IRITEST');
+				`CPOLOG("This pool is already in the saved list, but I couldn't load it:");
+				`CPOLOG(CharacterPoolFiles[Index].DLCName @ CharacterPoolFiles[Index].PoolName @ CharacterPoolFiles[Index].FilePath @ CharacterPoolFiles[Index].FriendlyName);
 			}
 		}
 
 		if (PoolInfo.DLCName != '')
 		{
-			`LOG("This is a mod pool",, 'IRITEST');
+			`CPOLOG("This is a mod pool");
 			if (PoolInfo.PoolName != '' && FillDLCPoolFilePathAndValidate(PoolInfo))
 			{
 				FillPoolFriendlyName(PoolInfo);
 				CharacterPoolFiles.AddItem(PoolInfo);
 
-				`LOG("Filled out and added to the list.",, 'IRITEST');
-				`LOG(PoolInfo.DLCName @ PoolInfo.PoolName @ PoolInfo.FilePath @ PoolInfo.FriendlyName,, 'IRITEST');
+				`CPOLOG("Filled out and added to the list.");
+				`CPOLOG(PoolInfo.DLCName @ PoolInfo.PoolName @ PoolInfo.FilePath @ PoolInfo.FriendlyName);
 			}
 		}
 		else
@@ -92,7 +92,7 @@ simulated private function bool FillDLCPoolFilePathAndValidate(out PoolInfoStruc
 		{
 			PoolInfo.FilePath = Item.ContentPath $ "\\Content\\" $ PoolInfo.PoolName $ ".bin";
 			PoolInfo.FilePath = Repl(PoolInfo.FilePath, "\\", "\\\\");
-			`LOG("Generated path:" @ PoolInfo.FilePath,, 'IRITEST');
+			`CPOLOG("Generated path:" @ PoolInfo.FilePath);
 			return LoadPool(PoolInfo);
 		}
 	}
@@ -111,7 +111,7 @@ simulated function UpdateData( bool _bIsExporting )
 	bIsExporting = _bIsExporting; 
 	
 
-	`LOG(GetFuncName() @ bIsExporting,, 'IRITEST');
+	`CPOLOG(GetFuncName() @ bIsExporting);
 
 	if (bIsExporting)
 	{
@@ -552,7 +552,7 @@ simulated function RequiredModsPopups()
 			kDialogData.strCancel = class'UIUtilities_Text'.default.m_strGenericAccept;
 			kDialogData.xUserData = CallbackData;
 
-			`LOG(kDialogData.strText,, 'X2WOTCCommunityHighlander');
+			`CPOLOG(kDialogData.strText,, 'X2WOTCCommunityHighlander');
 
 			`PRESBASE.UIRaiseDialog(kDialogData);
 		}
@@ -578,7 +578,7 @@ simulated function UpdateData( bool _bIsExporting )
 	bIsExporting = _bIsExporting; 
 
 	// TODO: Figure out why this title is wrong
-	`LOG(`showvar(m_strTitleImportPoolCharacter) @ `showvar(SelectedFriendlyName),, 'IRITESTSCREEN');
+	`CPOLOG(`showvar(m_strTitleImportPoolCharacter) @ `showvar(SelectedFriendlyName),, 'IRITESTSCREEN');
 
 	TitleHeader.SetText(m_strTitleImportPoolCharacter, SelectedFriendlyName);
 
@@ -610,16 +610,16 @@ simulated function bool DoMakeEmptyPool(string NewFriendlyName)
 
 	ExportPool.EnumerateImportablePools(FriendlyNames, FileNames);
 
-	`LOG("BEGIN CP PRINT",, 'IRITEST');
+	`CPOLOG("BEGIN CP PRINT");
 	foreach FriendlyNames(PrintString)
 	{
-		`LOG(PrintString,, 'IRITEST');
+		`CPOLOG(PrintString);
 	}
 	foreach FileNames(PrintString)
 	{
-		`LOG(PrintString,, 'IRITEST');
+		`CPOLOG(PrintString);
 	}
-	`LOG("END CP PRINT",, 'IRITEST');
+	`CPOLOG("END CP PRINT");
 
 	ExportPool.CharPoolExtendedFilePath = FullFileName;
 	ExportPool.SaveCharacterPoolExtended();

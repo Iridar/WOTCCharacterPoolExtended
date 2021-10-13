@@ -1,5 +1,12 @@
 class CharacterPoolManagerExtended extends CharacterPoolManager dependson(CPUnitData);
 
+// This class is a replacement for the game's own CharacterPoolManager with some extra functions and modifications.
+// The biggest difference is that in the addition to game's own .bin CP files, we also use "extended" format
+// in the form of CPUnitData class, which also stores units' appearance store.
+// Other big difference is that we validate units' appearance (to remove broken body parts caused by removed mods)
+// only if the mod is configured to do so via MCM. 
+// This is done so that people's Character Pool isn't immediately broken the moment they dare to run the game with a few mods disabled.
+
 var private CPUnitData UnitData; // Use GetUnitData() before accessing it
 
 var string CharPoolExtendedFilePath;
@@ -9,12 +16,13 @@ var string CharPoolExtendedFilePath;
 // ============================================================================
 // OVERRIDDEN CHARACTER POOL MANAGER FUNCTIONS
 
-event InitSoldierOld(XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData)
+// Modified version of super.InitSoldier()
+simulated final function InitSoldierOld(XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData)
 {
 	local XGCharacterGenerator CharacterGenerator;
 	local TSoldier             CharacterGeneratorResult;
 
-	`LOG(GetFuncName() @ "called for unit:" @ Unit.GetFullName(),, 'IRITEST');
+	`CPOLOG("called for unit:" @ Unit.GetFullName());
 
 	Unit.SetSoldierClassTemplate(CharacterPoolData.m_SoldierClassTemplateName);
 	Unit.SetCharacterName(CharacterPoolData.strFirstName, CharacterPoolData.strLastName, CharacterPoolData.strNickName);
@@ -31,10 +39,12 @@ event InitSoldierOld(XComGameState_Unit Unit, const out CharacterPoolDataElement
 	if (!(Unit.bAllowedTypeSoldier || Unit.bAllowedTypeVIP || Unit.bAllowedTypeDarkVIP))
 		Unit.bAllowedTypeSoldier = true;
 
+	// ADDED
 	// Skip appearance validation if MCM says so
 	if (!`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG) || 
 		`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
 		return;
+	// END OF ADDED
 
 	//No longer re-creates the entire character, just set the invalid attributes to the first element
 	//if (!ValidateAppearance(CharacterPoolData.kAppearance))
@@ -50,7 +60,7 @@ event InitSoldierOld(XComGameState_Unit Unit, const out CharacterPoolDataElement
 
 event InitSoldier( XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData )
 {
-	`LOG(GetFuncName() @ "called for unit:" @ Unit.GetFullName(),, 'IRITEST');
+	`CPOLOG("called for unit:" @ Unit.GetFullName());
 
 	InitSoldierOld(Unit, CharacterPoolData);
 	GetUnitData();
@@ -59,7 +69,7 @@ event InitSoldier( XComGameState_Unit Unit, const out CharacterPoolDataElement C
 
 function SaveCharacterPool()
 {
-	`LOG(GetFuncName() @ "called",, 'IRITEST');
+	`CPOLOG("called");
 
 	SaveCharacterPoolExtended();
 	super.SaveCharacterPool();
@@ -194,6 +204,7 @@ private final function int SortCharacterPoolBySoldierClassFn(XComGameState_Unit 
 	return -1;
 }
 
+// Serialize all character pool units, including their appearance store, into the "extended" Character Pool file format, and write it to disk.
 final function SaveCharacterPoolExtended()
 {
 	local CPExtendedStruct		CPExtendedUnitData;
@@ -213,14 +224,15 @@ final function SaveCharacterPoolExtended()
 
 		UnitData.CharacterPoolDatas.AddItem(CPExtendedUnitData);
 
-		`LOG("Saved" @ UnitState.GetFullName() @ "to CP Extended:" @ CPExtendedUnitData.AppearanceStore.Length,, 'IRITEST');
+		`CPOLOG("Adding" @ UnitState.GetFullName() @ "to CPUnitData, including stored appearances:" @ CPExtendedUnitData.AppearanceStore.Length);
 	}
 
     Success = class'Engine'.static.BasicSaveObject(UnitData, class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedFilePath, false, 1);
 
-    `LOG("Saved CP Extended:" @ Success,, 'IRITEST');
+    `CPOLOG("Was able to successfully write Extended Character Pool file to disk:" @ Success);
 }
 
+// Read the "extended" Character Pool file from disk.
 final function CPUnitData GetUnitData()
 {
 	if (UnitData != none)
@@ -230,25 +242,25 @@ final function CPUnitData GetUnitData()
 	
 	if (class'Engine'.static.BasicLoadObject(UnitData, class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedFilePath, false, 1))
 	{
-		`LOG("Loaded CP Extended: true",, 'IRITEST');
+		`CPOLOG("Successfully loaded Extended Character Pool file.");
 	}
 	else 
 	{
+		`CPOLOG("Failed to load Extended Character Pool file, attempting to recreate.");
 		SaveCharacterPoolExtended();
-		`LOG("Failed to load CP Extended, recreating it.",, 'IRITEST');
 	}
 }
 
-final function string GetUnitFullNameExtraData(const int Index)
+final function string GetUnitFullNameExtraData_Index(const int Index)
 {
 	local XComGameState_Unit UnitState;
 	
 	UnitState = CharacterPool[Index];
 
-	return GetUnitStateFullNameExtraData(UnitState);
+	return GetUnitFullNameExtraData_UnitState_Static(UnitState);
 }
 
-static final function string GetUnitStateFullNameExtraData(const XComGameState_Unit UnitState)
+static final function string GetUnitFullNameExtraData_UnitState_Static(const XComGameState_Unit UnitState)
 {
 	local X2SoldierClassTemplate ClassTemplate;
 	local string SoldierString;
@@ -274,6 +286,7 @@ static final function string GetUnitStateFullNameExtraData(const XComGameState_U
 	return SoldierString;
 }
 
+// Helper method that fixes unit's appearance if they have bodyparts from mods that are not currently active.
 simulated final function ValidateUnitAppearance(XComGameState_Unit UnitState)
 {
 	local XGCharacterGenerator CharacterGenerator;
@@ -281,7 +294,6 @@ simulated final function ValidateUnitAppearance(XComGameState_Unit UnitState)
 
 	if (!FixAppearanceOfInvalidAttributes(UnitState.kAppearance))
 	{
-		//This should't fail now that we attempt to fix invalid attributes
 		CharacterGenerator = `XCOMGRI.Spawn(UnitState.GetMyTemplate().CharacterGeneratorClass);
 		if (CharacterGenerator != none)
 		{
@@ -310,14 +322,14 @@ private function PrintCP()
 	local XComGameState_Unit UnitState;
 	local int i;
 
-	`LOG("####" @ GetFuncName() @ "BEGIN",, 'IRITEST');
+	`CPOLOG("####" @ GetFuncName() @ "BEGIN");
 
 	foreach CharacterPool(UnitState, i)
 	{
-		`LOG(i @ UnitState.GetFullName(),, 'IRITEST');
+		`CPOLOG(i @ UnitState.GetFullName());
 	}
 
-	`LOG("####" @ GetFuncName() @ "END",, 'IRITEST');
+	`CPOLOG("####" @ GetFuncName() @ "END");
 }
 
 // ============================================================================
@@ -325,18 +337,18 @@ private function PrintCP()
 /*
 function LoadCharacterPool()
 {
-	`LOG(GetFuncName() @ "called" @ CharacterPool.Length,, 'IRITEST');
+	`CPOLOG(GetFuncName() @ "called" @ CharacterPool.Length);
 
 	super.LoadCharacterPool();
 }
 
 function LoadBaseGameCharacterPool()
 {
-	`LOG(GetFuncName() @ "before called" @ CharacterPool.Length,, 'IRITEST');
+	`CPOLOG(GetFuncName() @ "before called" @ CharacterPool.Length);
 
 	super.LoadBaseGameCharacterPool();
 
-	`LOG(GetFuncName() @ "after called" @ CharacterPool.Length,, 'IRITEST');
+	`CPOLOG(GetFuncName() @ "after called" @ CharacterPool.Length);
 }
 */
 

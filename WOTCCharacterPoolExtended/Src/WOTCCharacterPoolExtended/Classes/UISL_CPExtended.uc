@@ -88,46 +88,17 @@ simulated function AddButtons()
 		ListItem.InitListItem();
 		ListItem.UpdateDataDescription("Appearance Store", OnAppearanceStoreButtonClicked);
 		
-		if (!CustomizeMenuScreen.bInArmory)
-		{
-			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-			ListItem.bAnimateOnInit = false;
-			ListItem.InitListItem();
-			ListItem.UpdateDataDescription("Photobooth", OnPhotboothButtonClicked);
-		}
+		//if (!CustomizeMenuScreen.bInArmory)
+		//{
+		//	ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+		//	ListItem.bAnimateOnInit = false;
+		//	ListItem.InitListItem();
+		//	ListItem.UpdateDataDescription("Photobooth", OnPhotboothButtonClicked);
+		//}
 
 		CustomizeMenuScreen.ShowListItems();
 	}
 	CustomizeMenuScreen.SetTimer(0.1f, false, nameof(AddButtons), self);
-}
-
-simulated private function OnPhotboothButtonClicked()
-{
-	local UICustomize_Menu			CustomizeScreen;
-	local XComPresentationLayerBase	Pres;
-	local XComGameState				NewGameState;
-	local UIArmory_Photobooth		ArmoryScreen;
-	
-	Pres = `PRESBASE;
-	if (Pres == none || Pres.ScreenStack == none)
-	{
-		`CPOLOG("No pres:" @ Pres == none @ "or screenstack:" @  Pres.ScreenStack == none);
-		return;
-	}
-
-	CustomizeScreen = UICustomize_Menu(Pres.ScreenStack.GetCurrentScreen());
-	if (CustomizeScreen == none)
-		return;
-
-	NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("Trigger Event: View Photobooth");
-	`XEVENTMGR.TriggerEvent('OnViewPhotobooth', , , NewGameState);
-	`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
-
-	if (Pres.ScreenStack.IsNotInStack(class'UIArmory_Photobooth'))
-	{
-		ArmoryScreen = UIArmory_Photobooth(Pres.ScreenStack.Push(Pres.Spawn(class'UIArmory_Photobooth', Pres)));
-		ArmoryScreen.InitPropaganda(CustomizeScreen.GetUnit().GetReference());
-	}
 }
 
 simulated private function OnAppearanceStoreButtonClicked()
@@ -399,5 +370,32 @@ simulated private function OnCharacterPoolButtonClicked(optional StateObjectRefe
 	Pres.ScreenStack.Push(Pres.Spawn(class'UICharacterPool_CPExtended', Pres));
 }
 
+simulated private function OnPhotboothButtonClicked()
+{
+	local UICustomize_Menu			CustomizeScreen;
+	local XComPresentationLayerBase	Pres;
+	local XComGameState				NewGameState;
+	local UIArmory_Photobooth		ArmoryScreen;
+	
+	Pres = `PRESBASE;
+	if (Pres == none || Pres.ScreenStack == none)
+	{
+		`CPOLOG("No pres:" @ Pres == none @ "or screenstack:" @  Pres.ScreenStack == none);
+		return;
+	}
 
+	CustomizeScreen = UICustomize_Menu(Pres.ScreenStack.GetCurrentScreen());
+	if (CustomizeScreen == none)
+		return;
+
+	NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("Trigger Event: View Photobooth");
+	`XEVENTMGR.TriggerEvent('OnViewPhotobooth', , , NewGameState);
+	`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
+
+	if (Pres.ScreenStack.IsNotInStack(class'UIArmory_Photobooth_CPExtended'))
+	{
+		ArmoryScreen = UIArmory_Photobooth(Pres.ScreenStack.Push(Pres.Spawn(class'UIArmory_Photobooth_CPExtended', Pres)));
+		ArmoryScreen.InitPropaganda(CustomizeScreen.GetUnit().GetReference());
+	}
+}
 */

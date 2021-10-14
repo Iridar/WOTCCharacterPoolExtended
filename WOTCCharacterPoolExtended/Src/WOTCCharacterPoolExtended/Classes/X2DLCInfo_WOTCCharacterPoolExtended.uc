@@ -7,6 +7,17 @@ static function OnPreCreateTemplates()
 	LocalEngine = `XENGINE;
 	LocalEngine.m_CharacterPoolManager = new class'CharacterPoolManagerExtended';
 }
+
+static event OnLoadedSavedGame()
+{
+	class'UICustomize_CPExtended'.static.SetInitialSoldierListSettings();
+}
+
+static event InstallNewCampaign(XComGameState StartState)
+{
+	class'UICustomize_CPExtended'.static.SetInitialSoldierListSettings();
+}
+
 /*
 exec function SetLoc(int X, int Y)
 {

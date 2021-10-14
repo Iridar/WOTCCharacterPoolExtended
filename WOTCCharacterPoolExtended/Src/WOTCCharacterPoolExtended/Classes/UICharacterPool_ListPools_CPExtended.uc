@@ -28,7 +28,7 @@ var private config(WOTCCharacterPoolExtended_DEFAULT) array<PoolInfoStruct> Defa
 
 // Array of all character pool files this mod has access to, both for mod-added pools and player-created ones.
 // Cached and validated on this screen's Init
-var private config(CharacterPoolExtended_NULLCONFIG) array<PoolInfoStruct> CharacterPoolFiles;
+var private config(WOTCCharacterPoolExtended) array<PoolInfoStruct> CharacterPoolFiles;
 
 // Default path for storing player-created character pool files.
 const PlayerPoolFileImportFolderPath = "\\Documents\\my games\\XCOM2 War of the Chosen\\XComGame\\CharacterPool\\CharacterPoolExtended\\";

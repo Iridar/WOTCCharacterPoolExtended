@@ -94,6 +94,9 @@
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UIArmory_Loadout_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\WOTCCharacterPoolExtended\Classes\UIArmory_Photobooth_CPExtended.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICharacterPool_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>

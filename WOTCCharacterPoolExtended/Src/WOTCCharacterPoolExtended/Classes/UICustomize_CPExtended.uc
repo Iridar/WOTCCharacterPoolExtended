@@ -18,11 +18,14 @@ var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowDeadSoldiers_DEF
 var private config(WOTCCharacterPoolExtended) bool bShowCharPoolSoldiers;
 var private config(WOTCCharacterPoolExtended) bool bShowBarracksSoldiers;
 var private config(WOTCCharacterPoolExtended) bool bShowDeadSoldiers;
-var private config(WOTCCharacterPoolExtended) bool bSetInitialSoldierListSettings;
+var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 
 
 // TODO:
 /*
+# Priority
+Gender switching is broken
+
 # Core: 
 Validate appearance button should validate all stored appearances. 
 
@@ -39,7 +42,6 @@ Check how this screen responds to toggling filters:: 'no change' option gets sel
 Cycling between soldiers breaks their position on the screen.
 Search bar for appearances?
 'Apply changes' button?
-Add "patterns" preset
 Confirmation checkbox for barracks / armory that would ask "are you sure you want to apply these changes to the following categories: torso, head, etc" 
 Also it should probably make changes only to gender agnostic cosmetic parts, or only if gender is also changed.
 
@@ -1017,12 +1019,11 @@ simulated private function SavePresetCheckboxPositions()
 	default.CheckboxPresets = CheckboxPresets; // This is actually necessary
 	SaveConfig();
 }
-
+/*
 simulated private function LoadPresetCheckboxPositions()
 {
 	local UIMechaListItem		ListItem;
 	local int					Index;
-	local bool					bFound;
 	local int i;
 
 	`CPOLOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length);
@@ -1039,85 +1040,33 @@ simulated private function LoadPresetCheckboxPositions()
 
 		`CPOLOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked);
 
-		bFound = false;
 		for (Index = 0; Index < CheckboxPresets.Length; Index++)
 		{
 			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
 				CheckboxPresets[Index].Preset == CurrentPreset)
 			{
 				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
-				bFound = true;
 				`CPOLOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked);
 				break;
 			}
 		}
-
-		if (!bFound)
-		{
-			for (Index = 0; Index < CheckboxPresetsDefaults.Length; Index++)
-			{
-				if (CheckboxPresetsDefaults[Index].CheckboxName == ListItem.MCName &&
-					CheckboxPresetsDefaults[Index].Preset == CurrentPreset)
-				{
-					ListItem.Checkbox.SetChecked(CheckboxPresetsDefaults[Index].bChecked, false);
-					`CPOLOG(i @ "Found default entry:" @ CheckboxPresetsDefaults[Index].bChecked);
-					break;
-				}
-			}
-		}
 	}
 	//SavePresetCheckboxPositions();
-}
+}*/
 
 simulated private function ApplyPresetCheckboxPositions()
 {
-	local UIMechaListItem		ListItem;
-	local int					Index;
-	local bool					bFound;
-	local int i;
+	local CheckboxPresetStruct CheckboxPreset;
 
-	`CPOLOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length);
-
-	if (Presets.Length > 0)
+	foreach CheckboxPresets(CheckboxPreset)
 	{
-		i = Presets.Length + 1;
-	}
-	for (i = i; i < OptionsList.ItemCount; i++) 
-	{
-		ListItem = UIMechaListItem(OptionsList.GetItem(i));
-		if (ListItem == none || ListItem.Checkbox == none)
-			continue;
-
-		`CPOLOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked);
-
-		bFound = false;
-		for (Index = 0; Index < CheckboxPresets.Length; Index++)
+		if (CheckboxPreset.Preset == CurrentPreset)
 		{
-			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
-				CheckboxPresets[Index].Preset == CurrentPreset)
-			{
-				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
-				bFound = true;
-				`CPOLOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked);
-				break;
-			}
-		}
-
-		if (!bFound)
-		{
-			for (Index = 0; Index < CheckboxPresetsDefaults.Length; Index++)
-			{
-				if (CheckboxPresetsDefaults[Index].CheckboxName == ListItem.MCName &&
-					CheckboxPresetsDefaults[Index].Preset == CurrentPreset)
-				{
-					ListItem.Checkbox.SetChecked(CheckboxPresetsDefaults[Index].bChecked, false);
-					`CPOLOG(i @ "Found default entry:" @ CheckboxPresetsDefaults[Index].bChecked);
-					break;
-				}
-			}
+			`CPOLOG("Setting preset checkbox:" @ CheckboxPreset.CheckboxName @ CheckboxPreset.bChecked);
+			SetCheckbox(CheckboxPreset.CheckboxName, CheckboxPreset.bChecked);
 		}
 	}
-	//SavePresetCheckboxPositions();
+	
 }
 
 simulated private function ApplyChanges()
@@ -1372,7 +1321,6 @@ simulated private function SetCheckbox(name OptionName, bool bChecked)
 
 simulated function UpdateOptionsList()
 {
-	SavePresetCheckboxPositions();
 	OptionsList.ClearItems();
 
 	// PRESETS
@@ -1895,6 +1843,7 @@ simulated private function CreateOptionPreset(name OptionName, string strText, s
 
 simulated private function OptionPresetCheckboxChanged(UICheckbox CheckBox)
 {
+	SavePresetCheckboxPositions();
 	CurrentPreset = UIMechaListItem(CheckBox.GetParent(class'UIMechaListItem')).MCName;
 	UpdateOptionsList(); // This will call ActivatePreset()
 	UpdateUnitAppearance();
@@ -2089,14 +2038,6 @@ static private function bool ShouldCopyUniformPiece(const name UniformPiece, con
 			return CheckboxPreset.bChecked;
 		}
 	}
-	foreach default.CheckboxPresetsDefaults(CheckboxPreset)
-	{
-		if (CheckboxPreset.CheckboxName == UniformPiece &&
-			CheckboxPreset.Preset == PresetName)
-		{
-			return CheckboxPreset.bChecked;
-		}
-	}	
 	return false;
 }
 
@@ -2194,14 +2135,15 @@ static final function SetInitialSoldierListSettings()
 {
 	local UICustomize_CPExtended CDO;
 
-	if (!default.bSetInitialSoldierListSettings)
+	if (!default.bInitComplete)
 	{
 		CDO = UICustomize_CPExtended(class'XComEngine'.static.GetClassDefaultObject(class'UICustomize_CPExtended'));
 
-		CDO.bSetInitialSoldierListSettings = true;
+		CDO.bInitComplete = true;
 		CDO.bShowCharPoolSoldiers = CDO.bShowCharPoolSoldiers_DEFAULT;
 		CDO.bShowBarracksSoldiers = CDO.bShowBarracksSoldiers_DEFAULT;
 		CDO.bShowDeadSoldiers = CDO.bShowDeadSoldiers_DEFAULT;
+		CDO.CheckboxPresets = CDO.CheckboxPresetsDefaults;
 		CDO.SaveConfig();
 	}
 }

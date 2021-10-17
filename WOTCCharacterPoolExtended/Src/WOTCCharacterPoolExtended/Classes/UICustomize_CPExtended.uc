@@ -24,7 +24,7 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 // TODO:
 /*
 # Priority
-Gender switching is broken
+
 
 # Core: 
 Validate appearance button should validate all stored appearances. 
@@ -720,29 +720,13 @@ simulated private function array<XComGameState_Unit> GetDeadSoldiers(XComGameSta
 	}
 	return Soldiers;
 }
-/*
-simulated private function bool DoesUnitPassActiveFilters(const XComGameState_Unit UnitState)
-{
-	if (!IsUnitSameType(UnitState))
-		return false;
-
-	if (GetFilterListCheckboxStatus('FilterGender') && OriginalAppearance.iGender != UnitState.kAppearance.iGender)
-		return false;
-
-	if (GetFilterListCheckboxStatus('FilterArmorAppearance') && ArmorTemplateName != '' && !UnitState.HasStoredAppearance(OriginalAppearance.iGender, ArmorTemplateName))
-		return false;
-
-	if (GetFilterListCheckboxStatus('FilterClass') && ArmoryUnit.GetSoldierClassTemplateName() != UnitState.GetSoldierClassTemplateName())
-		return false;
-
-	return true;
-}*/
 
 simulated private function bool IsUnitSameType(const XComGameState_Unit UnitState)
 {	
-	// TODO: Use this check if Unrestricted Customization is not active
-	if (true)
-	{
+	if (!class'Help'.static.IsUnrestrictedCustomizationLoaded())
+	{	
+		// If Unrestricted Customization is not present, then soldier cosmetics should respect
+		// per-character-template customization.
 		if (UnitState.GetMyTemplateName() != ArmoryUnit.GetMyTemplateName())
 			return false;
 	}
@@ -773,8 +757,6 @@ simulated function bool IsUnitPresentInCampaign(const XComGameState_Unit CheckUn
 	}
 	return false;
 }
-
-
 
 simulated function bool GetFilterListCheckboxStatus(name FilterName)
 {
@@ -1251,7 +1233,7 @@ simulated private function CopyAppearance(out TAppearance NewAppearance, const o
 	//NewAppearance = UniformAppearance;
 
 	if (IsCheckboxChecked('nmHead'))				{NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; }
-	if (IsCheckboxChecked('iGender'))				NewAppearance.iGender = UniformAppearance.iGender;
+	if (IsCheckboxChecked('iGender'))				{NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn; }
 	if (IsCheckboxChecked('iRace'))					NewAppearance.iRace = UniformAppearance.iRace;
 	if (IsCheckboxChecked('nmHaircut'))				NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
 	if (IsCheckboxChecked('iHairColor'))			NewAppearance.iHairColor = UniformAppearance.iHairColor;
@@ -2044,7 +2026,7 @@ static private function bool ShouldCopyUniformPiece(const name UniformPiece, con
 static final function CopyAppearance_Static(out TAppearance NewAppearance, const TAppearance UniformAppearance, const name PresetName)
 {
 	if (ShouldCopyUniformPiece('nmHead', PresetName)) {NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; }
-	if (ShouldCopyUniformPiece('iGender', PresetName)) NewAppearance.iGender = UniformAppearance.iGender;
+	if (ShouldCopyUniformPiece('iGender', PresetName)) {NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn;}
 	if (ShouldCopyUniformPiece('iRace', PresetName)) NewAppearance.iRace = UniformAppearance.iRace;
 	if (ShouldCopyUniformPiece('nmHaircut', PresetName)) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
 	if (ShouldCopyUniformPiece('iHairColor', PresetName)) NewAppearance.iHairColor = UniformAppearance.iHairColor;
@@ -2061,7 +2043,7 @@ static final function CopyAppearance_Static(out TAppearance NewAppearance, const
 	if (ShouldCopyUniformPiece('iWeaponTint', PresetName)) NewAppearance.iWeaponTint = UniformAppearance.iWeaponTint;
 	if (ShouldCopyUniformPiece('iTattooTint', PresetName)) NewAppearance.iTattooTint = UniformAppearance.iTattooTint;
 	if (ShouldCopyUniformPiece('nmWeaponPattern', PresetName)) NewAppearance.nmWeaponPattern = UniformAppearance.nmWeaponPattern;
-	if (ShouldCopyUniformPiece('nmPawn', PresetName)) NewAppearance.nmPawn = UniformAppearance.nmPawn;
+	//if (ShouldCopyUniformPiece('nmPawn', PresetName)) NewAppearance.nmPawn = UniformAppearance.nmPawn;
 	if (ShouldCopyUniformPiece('nmTorso', PresetName)) NewAppearance.nmTorso = UniformAppearance.nmTorso;
 	if (ShouldCopyUniformPiece('nmArms', PresetName)) NewAppearance.nmArms = UniformAppearance.nmArms;
 	if (ShouldCopyUniformPiece('nmLegs', PresetName)) NewAppearance.nmLegs = UniformAppearance.nmLegs;

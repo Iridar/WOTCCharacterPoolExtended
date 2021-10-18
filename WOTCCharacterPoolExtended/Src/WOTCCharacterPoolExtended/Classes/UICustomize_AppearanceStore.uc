@@ -57,7 +57,6 @@ simulated function UpdateData()
 	local EGender			Gender;
 	local name				ArmorTemplateName;
 	local string			DisplayName;
-	local bool				bCurrentAppearance;
 	local int i;
 
 	super.UpdateData();
@@ -88,8 +87,7 @@ simulated function UpdateData()
 			DisplayName @= "|" @ class'XComCharacterCustomization'.default.Gender_Female;
 		}
 
-		bCurrentAppearance = StoredAppearance.Appearance == OriginalAppearance;
-		if (bCurrentAppearance)
+		if (class'Help'.static.IsAppearanceCurrent(StoredAppearance.Appearance, OriginalAppearance))
 		{
 			DisplayName @= "(Current)"; // TODO: Localize
 			GetListItem(i++).UpdateDataDescription(DisplayName); // Deleting current appearance may not work as people expect it to.

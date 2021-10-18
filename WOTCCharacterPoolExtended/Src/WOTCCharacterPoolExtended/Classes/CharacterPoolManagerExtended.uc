@@ -303,7 +303,7 @@ simulated final function ValidateUnitAppearance(XComGameState_Unit UnitState)
 	}
 }
 
-simulated final function bool IsUnitUniform(const XComGameState_Unit UnitState)
+static final function bool IsUnitUniform(const XComGameState_Unit UnitState)
 {
 	return UnitState.GetFirstName() == class'UISL_CPExtended'.default.strUniform;
 }

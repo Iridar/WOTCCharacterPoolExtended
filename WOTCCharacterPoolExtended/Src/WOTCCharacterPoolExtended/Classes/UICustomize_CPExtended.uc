@@ -12,10 +12,12 @@ var config(WOTCCharacterPoolExtended) array<CheckboxPresetStruct> CheckboxPreset
 var config(WOTCCharacterPoolExtended_DEFAULT) array<name> Presets;
 
 var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowCharPoolSoldiers_DEFAULT;
+var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowUniformSoldiers_DEFAULT;
 var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowBarracksSoldiers_DEFAULT;
 var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowDeadSoldiers_DEFAULT;
 
 var private config(WOTCCharacterPoolExtended) bool bShowCharPoolSoldiers;
+var private config(WOTCCharacterPoolExtended) bool bShowUniformSoldiers;
 var private config(WOTCCharacterPoolExtended) bool bShowBarracksSoldiers;
 var private config(WOTCCharacterPoolExtended) bool bShowDeadSoldiers;
 var private config(WOTCCharacterPoolExtended) bool bInitComplete;
@@ -82,6 +84,7 @@ var private	XComGameStateHistory				History;
 var private bool								bRefreshPawn;
 var private bool								bUniformMode;
 var private name								CurrentPreset;
+var private string								SearchText;
 
 // Info about selected CP unit
 var private TAppearance						SelectedAppearance;
@@ -527,16 +530,15 @@ simulated function UpdateSoldierList()
 	local XComGameState_Unit				CheckUnit;
 	local XComGameState_HeadquartersXCom	XComHQ;
 	local array<XComGameState_Unit>			Soldiers;
-	local int i;
 
 	List.ClearItems();
 
 	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem();
-	SpawnedItem.UpdateDataDescription("SELECT APPEARANCE"); // TODO: Localize
-	SpawnedItem.SetDisabled(true); 
-
+	SpawnedItem.UpdateDataButton(class'UIUtilities_Text'.static.GetColoredText("SELECT APPEARANCE", eUIState_Warning), 
+		"Search" $ SearchText == "" ? "" : ":" @ SearchText, OnSearchButtonClicked); // TODO: Localize
+	
 	// First entry is always "No change"
 	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 	SpawnedItem.bAnimateOnInit = false;
@@ -544,6 +546,23 @@ simulated function UpdateSoldierList()
 	SpawnedItem.UpdateDataCheckbox("NO CHANGE", "", true, SoldierCheckboxChanged, none); // TODO: Localize
 	SpawnedItem.StoredAppearance.Appearance = OriginalAppearance;
 	SpawnedItem.bNoChange = true;
+
+	// Uniforms
+	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('bShowUniformSoldiers');
+	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.GetColoredText("UNIFORMS", eUIState_Warning), "", bShowUniformSoldiers, SoldierCheckboxChanged, none); // TODO: Localize
+
+	if (bShowUniformSoldiers)
+	{
+		foreach PoolMgr.CharacterPool(CheckUnit)
+		{
+			if (PoolMgr.IsUnitUniform(CheckUnit))
+			{
+				CreateAppearanceStoreEntriesForUnit(CheckUnit, true);
+			}
+		}
+	}
 
 	// Character pool
 	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
@@ -553,9 +572,12 @@ simulated function UpdateSoldierList()
 
 	if (bShowCharPoolSoldiers)
 	{
-		foreach PoolMgr.CharacterPool(CheckUnit, i)
+		foreach PoolMgr.CharacterPool(CheckUnit)
 		{
-			CreateAppearanceStoreEntriesForUnit(CheckUnit, true);
+			if (!PoolMgr.IsUnitUniform(CheckUnit))
+			{
+				CreateAppearanceStoreEntriesForUnit(CheckUnit, true);
+			}
 		}
 	}
 	// Soldiers in barracks
@@ -589,17 +611,42 @@ simulated function UpdateSoldierList()
 	}
 }
 
+simulated private function OnSearchButtonClicked(UIButton ButtonSource)
+{
+	local TInputDialogData kData;
+
+	if (SearchText != "")
+	{
+		SearchText = "";
+		UpdateSoldierList();
+	}
+	else
+	{
+		kData.strTitle = "Search"; //TODO: Localize
+		kData.iMaxChars = 99;
+		kData.strInputBoxText = SearchText;
+		kData.fnCallback = OnSearchInputBoxAccepted;
+
+		Movie.Pres.UIInputDialog(kData);
+	}
+}
+
+function OnSearchInputBoxAccepted(string text)
+{
+	SearchText = text;
+	UpdateSoldierList();
+}
+
 simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameState_Unit UnitState, optional bool bCharPool)
 {
-	local AppearanceInfo		StoredAppearance;
-	local X2ItemTemplate		ArmorTemplate;
-	local EGender				Gender;
-	local name					LocalArmorTemplateName;
-	local string				DisplayName;
-	local bool					bCurrentAppearance;
-	local bool					bCurrentAppearanceFound;
-	local string				UnitName;
-	local UIMechaListItem_Soldier SpawnedItem;
+	local AppearanceInfo			StoredAppearance;
+	local X2ItemTemplate			ArmorTemplate;
+	local EGender					Gender;
+	local name						LocalArmorTemplateName;
+	local string					DisplayString;
+	local bool						bCurrentAppearanceFound;
+	local string					UnitName;
+	local UIMechaListItem_Soldier	SpawnedItem;
 
 	if (!IsUnitSameType(UnitState))
 		return;
@@ -611,6 +658,7 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 	if (bCharPool && IsUnitPresentInCampaign(UnitState)) // If unit was already drawn from the CP, color their entry green.
 			UnitName = class'UIUtilities_Text'.static.GetColoredText(UnitName, eUIState_Good);
 
+	// Cycle through Appearance Store, which may or may not include unit's current appearance.
 	foreach UnitState.AppearanceStore(StoredAppearance)
 	{
 		Gender = EGender(int(Right(StoredAppearance.GenderArmorTemplate, 1)));
@@ -623,42 +671,51 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 
 		ArmorTemplate = ItemMgr.FindItemTemplate(LocalArmorTemplateName);
 
-		DisplayName = UnitName @ "|";
+		DisplayString = UnitName @ "|";
 
 		if (ArmorTemplate != none && ArmorTemplate.FriendlyName != "")
 		{
-			DisplayName @= ArmorTemplate.FriendlyName;
+			DisplayString @= ArmorTemplate.FriendlyName;
 		}
 		else
 		{
-			DisplayName @= string(LocalArmorTemplateName);
+			DisplayString @= string(LocalArmorTemplateName);
 		}
 
 		if (Gender == eGender_Male)
 		{
-			DisplayName @= "|" @ class'XComCharacterCustomization'.default.Gender_Male;
+			DisplayString @= "|" @ class'XComCharacterCustomization'.default.Gender_Male;
 		}
 		else if (Gender == eGender_Female)
 		{
-			DisplayName @= "|" @ class'XComCharacterCustomization'.default.Gender_Female;
+			DisplayString @= "|" @ class'XComCharacterCustomization'.default.Gender_Female;
 		}
 
-		bCurrentAppearance = StoredAppearance.Appearance == UnitState.kAppearance;
-		if (bCurrentAppearance)
+		if (class'Help'.static.IsAppearanceCurrent(StoredAppearance.Appearance, UnitState.kAppearance))
 		{
 			bCurrentAppearanceFound = true;
 
-			DisplayName @= "(Current)"; // TODO: Localize
+			DisplayString @= "(Current)"; // TODO: Localize
 		}
+		else if (PoolMgr.IsUnitUniform(UnitState)) // DEBUG
+		{
+			
+
+		} // END DEBUG
+
+		if (InStr(DisplayString, SearchText) == INDEX_NONE)
+			continue;
 		
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 		SpawnedItem.bAnimateOnInit = false;
 		SpawnedItem.InitListItem();
-		SpawnedItem.UpdateDataCheckbox(DisplayName, "", false, SoldierCheckboxChanged, none);
+		SpawnedItem.UpdateDataCheckbox(DisplayString, "", false, SoldierCheckboxChanged, none);
 		SpawnedItem.StoredAppearance = StoredAppearance;
 		SpawnedItem.SetPersonalityTemplate();
 		SpawnedItem.UnitState = UnitState;
 	}
+
+	// If Appearance Store didn't contain unit's current appearance, add unit's current appearance to the list as well.
 	if (!bCurrentAppearanceFound)
 	{
 		Gender = EGender(UnitState.kAppearance.iGender);
@@ -671,31 +728,34 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 		if (GetFilterListCheckboxStatus('FilterArmorAppearance') && ArmorTemplateName != ArmorTemplate == none ? '' : ArmorTemplate.DataName)
 			return;
 
-		DisplayName = UnitState.GetFullName() @ "|";
+		DisplayString = UnitState.GetFullName() @ "|";
 
 		if (ArmorTemplate != none && ArmorTemplate.FriendlyName != "")
 		{
-			DisplayName @= ArmorTemplate.FriendlyName;
+			DisplayString @= ArmorTemplate.FriendlyName;
 		}
 		else
 		{
-			DisplayName @= string(LocalArmorTemplateName);
+			DisplayString @= string(LocalArmorTemplateName);
 		}
 
 		if (Gender == eGender_Male)
 		{
-			DisplayName @= "|" @ class'XComCharacterCustomization'.default.Gender_Male;
+			DisplayString @= "|" @ class'XComCharacterCustomization'.default.Gender_Male;
 		}
 		else if (Gender == eGender_Female)
 		{
-			DisplayName @= "|" @ class'XComCharacterCustomization'.default.Gender_Female;
+			DisplayString @= "|" @ class'XComCharacterCustomization'.default.Gender_Female;
 		}
-		DisplayName @= "(Current)"; // TODO: Localize
+		DisplayString @= "(Current)"; // TODO: Localize
+
+		if (InStr(DisplayString, SearchText) == INDEX_NONE)
+			return;
 		
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 		SpawnedItem.bAnimateOnInit = false;
 		SpawnedItem.InitListItem();
-		SpawnedItem.UpdateDataCheckbox(DisplayName, "", false, SoldierCheckboxChanged, none);
+		SpawnedItem.UpdateDataCheckbox(DisplayString, "", false, SoldierCheckboxChanged, none);
 		//SpawnedItem.StoredAppearance.GenderArmorTemplate
 		SpawnedItem.StoredAppearance.Appearance = UnitState.kAppearance;
 		SpawnedItem.SetPersonalityTemplate();
@@ -816,6 +876,12 @@ simulated function SoldierListItemClicked(UIList ContainerList, int ItemIndex)
 		case 'bShowCharPoolSoldiers':
 			bShowCharPoolSoldiers = !bShowCharPoolSoldiers;
 			default.bShowCharPoolSoldiers = bShowCharPoolSoldiers;
+			SaveConfig();
+			UpdateSoldierList();
+			return;
+		case 'bShowUniformSoldiers':
+			bShowUniformSoldiers = !bShowUniformSoldiers;
+			default.bShowUniformSoldiers = bShowUniformSoldiers;
 			SaveConfig();
 			UpdateSoldierList();
 			return;
@@ -1317,16 +1383,16 @@ simulated function UpdateOptionsList()
 	if (OriginalAppearance.iGender != SelectedAppearance.iGender)							CreateOptionGender('iGender', OriginalAppearance.iGender, SelectedAppearance.iGender);
 	if (OriginalAppearance.iRace != SelectedAppearance.iRace)								CreateOptionInt('iRace', OriginalAppearance.iRace, SelectedAppearance.iRace);
 	if (OriginalAppearance.iSkinColor != SelectedAppearance.iSkinColor)						CreateOptionInt('iSkinColor', OriginalAppearance.iSkinColor, SelectedAppearance.iSkinColor);
-	if (OriginalAppearance.nmHead != SelectedAppearance.nmHead)								CreateOptionName('nmHead', OriginalAppearance.nmHead , SelectedAppearance.nmHead);
+	if (OriginalAppearance.nmHead != SelectedAppearance.nmHead)								CreateOptionName('nmHead', OriginalAppearance.nmHead, SelectedAppearance.nmHead);
 	if (OriginalAppearance.nmHelmet != SelectedAppearance.nmHelmet)							CreateOptionName('nmHelmet', OriginalAppearance.nmHelmet, SelectedAppearance.nmHelmet);
-	if (OriginalAppearance.nmFacePropLower != SelectedAppearance.nmFacePropLower)			CreateOptionName('nmFacePropLower', OriginalAppearance.nmHelmet, SelectedAppearance.nmFacePropLower);
+	if (OriginalAppearance.nmFacePropLower != SelectedAppearance.nmFacePropLower)			CreateOptionName('nmFacePropLower', OriginalAppearance.nmFacePropLower, SelectedAppearance.nmFacePropLower);
 	if (OriginalAppearance.nmFacePropUpper != SelectedAppearance.nmFacePropUpper)			CreateOptionName('nmFacePropUpper', OriginalAppearance.nmFacePropUpper, SelectedAppearance.nmFacePropUpper);
 	if (OriginalAppearance.nmHaircut != SelectedAppearance.nmHaircut)						CreateOptionName('nmHaircut', OriginalAppearance.nmHaircut, SelectedAppearance.nmHaircut);
-	if (ShouldShowBeardOption())															CreateOptionName('nmBeard', OriginalAppearance.nmBeard, SelectedAppearance.nmBeard);
+	if (OriginalAppearance.nmBeard != SelectedAppearance.nmBeard)							CreateOptionName('nmBeard', OriginalAppearance.nmBeard, SelectedAppearance.nmBeard);
 	if (OriginalAppearance.iHairColor != SelectedAppearance.iHairColor)						CreateOptionColorInt('iHairColor', OriginalAppearance.iHairColor, SelectedAppearance.iHairColor, ePalette_HairColor);
 	if (OriginalAppearance.iFacialHair != SelectedAppearance.iFacialHair)					CreateOptionInt('iFacialHair', OriginalAppearance.iFacialHair, SelectedAppearance.iFacialHair);
 	if (OriginalAppearance.iEyeColor != SelectedAppearance.iEyeColor)						CreateOptionColorInt('iEyeColor', OriginalAppearance.iEyeColor, SelectedAppearance.iEyeColor, ePalette_EyeColor);
-	if (ShouldShowScarsOption())															CreateOptionName('nmScars', OriginalAppearance.nmScars, SelectedAppearance.nmScars);
+	if (OriginalAppearance.nmScars != SelectedAppearance.nmScars)							CreateOptionName('nmScars', OriginalAppearance.nmScars, SelectedAppearance.nmScars);
 	if (OriginalAppearance.nmFacePaint != SelectedAppearance.nmFacePaint)					CreateOptionName('nmFacePaint', OriginalAppearance.nmFacePaint, SelectedAppearance.nmFacePaint);
 	//if (OriginalAppearance.nmEye != SelectedAppearance.nmEye)								CreateOptionName('nmEye', OriginalAppearance.nmEye ,SelectedAppearance.nmEye);
 	if (OriginalAppearance.nmTeeth != SelectedAppearance.nmTeeth)							CreateOptionName('nmTeeth', OriginalAppearance.nmTeeth, SelectedAppearance.nmTeeth);
@@ -1438,11 +1504,11 @@ simulated private function bool ShouldShowHeadCategory()
 			OriginalAppearance.nmFacePropLower != SelectedAppearance.nmFacePropLower ||
 			OriginalAppearance.nmFacePropUpper != SelectedAppearance.nmFacePropUpper ||
 			OriginalAppearance.nmHaircut != SelectedAppearance.nmHaircut ||
-			ShouldShowBeardOption() ||
+			OriginalAppearance.nmBeard != SelectedAppearance.nmBeard ||
 			OriginalAppearance.iHairColor != SelectedAppearance.iHairColor ||
 			OriginalAppearance.iFacialHair != SelectedAppearance.iFacialHair ||
-			OriginalAppearance.iEyeColor != SelectedAppearance.iEyeColor||
-			ShouldShowScarsOption() ||
+			OriginalAppearance.iEyeColor != SelectedAppearance.iEyeColor ||
+			OriginalAppearance.nmScars != SelectedAppearance.nmScars || 
 			OriginalAppearance.nmFacePaint != SelectedAppearance.nmFacePaint ||
 			OriginalAppearance.nmEye != SelectedAppearance.nmEye ||
 			OriginalAppearance.nmTeeth != SelectedAppearance.nmTeeth;
@@ -1474,36 +1540,13 @@ simulated private function bool ShouldShowTattooCategory()
 			 ShouldShowTatooColorOption();
 }
 
-simulated private function bool ShouldShowScarsOption()
-{
-	if ((OriginalAppearance.nmScars == '' || SelectedAppearance.nmScars == 'Scars_BLANK') && 
-		(SelectedAppearance.nmScars == '' || SelectedAppearance.nmScars == 'Scars_BLANK'))
-	{
-		// '' and _Blank entries are considered equal.
-		return false;
-	}
-
-	return	OriginalAppearance.nmScars != SelectedAppearance.nmScars;
-}
-
-simulated private function bool ShouldShowBeardOption()
-{
-	if ((OriginalAppearance.nmBeard == '' || SelectedAppearance.nmBeard == 'MaleBeard_Blank') && 
-		(SelectedAppearance.nmBeard == '' || SelectedAppearance.nmBeard == 'MaleBeard_Blank'))
-	{
-		// '' and _Blank entries are considered equal.
-		return false;
-	}
-
-	return	OriginalAppearance.nmBeard != SelectedAppearance.nmBeard;
-}
 
 simulated private function bool ShouldShowTatooColorOption()
 {
 	// Show tattoo color only if we're changing it *and* at least one of the tattoos for the new appearance isn't empty
 	return	OriginalAppearance.iTattooTint != SelectedAppearance.iTattooTint && 
-			(SelectedAppearance.nmTattoo_LeftArm != 'Tattoo_Arms_BLANK' || 
-			SelectedAppearance.nmTattoo_RightArm != 'Tattoo_Arms_BLANK');
+			(SelectedAppearance.nmTattoo_LeftArm != 'Tattoo_Arms_BLANK' && SelectedAppearance.nmTattoo_LeftArm != '' || 
+			 SelectedAppearance.nmTattoo_RightArm != 'Tattoo_Arms_BLANK' && SelectedAppearance.nmTattoo_RightArm != '');
 }
 
 simulated private function bool ShouldShowArmorPatternCategory()
@@ -2123,6 +2166,7 @@ static final function SetInitialSoldierListSettings()
 
 		CDO.bInitComplete = true;
 		CDO.bShowCharPoolSoldiers = CDO.bShowCharPoolSoldiers_DEFAULT;
+		CDO.bShowUniformSoldiers = CDO.bShowUniformSoldiers_DEFAULT;		
 		CDO.bShowBarracksSoldiers = CDO.bShowBarracksSoldiers_DEFAULT;
 		CDO.bShowDeadSoldiers = CDO.bShowDeadSoldiers_DEFAULT;
 		CDO.CheckboxPresets = CDO.CheckboxPresetsDefaults;

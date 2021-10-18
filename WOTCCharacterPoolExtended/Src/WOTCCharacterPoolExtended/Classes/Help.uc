@@ -43,6 +43,29 @@ static final function bool IsModActive(name ModName)
     }
     return false;
 }
+
+static final function bool IsAppearanceCurrent(TAppearance TestAppearance, TAppearance CurrentAppearance)
+{
+	// These parts of the appearance may end up with both '_Blank' entry and just simply be empty.
+	// Have to equalize these before we can do a direct comparison.
+	EqualizeAppearance(TestAppearance);
+	EqualizeAppearance(CurrentAppearance);
+
+	return TestAppearance == CurrentAppearance;
+}
+
+static final function EqualizeAppearance(out TAppearance Appearance)
+{
+	if (Appearance.nmScars == '') Appearance.nmScars = 'Scars_BLANK';
+	if (Appearance.nmBeard == '') Appearance.nmBeard = 'MaleBeard_Blank';
+	if (Appearance.nmTattoo_LeftArm == '') Appearance.nmTattoo_LeftArm = 'Tattoo_Arms_BLANK';
+	if (Appearance.nmTattoo_RightArm == '') Appearance.nmTattoo_RightArm = 'Tattoo_Arms_BLANK';
+	if (Appearance.nmHaircut == '') Appearance.nmHaircut = 'FemHair_Blank';
+	if (Appearance.nmHaircut == '') Appearance.nmHaircut = 'MaleHair_Blank';
+	if (Appearance.nmFacePropLower == '') Appearance.nmFacePropLower = 'Prop_FaceLower_Blank';
+	if (Appearance.nmFacePropUpper == '') Appearance.nmFacePropUpper = 'Prop_FaceUpper_Blank';
+	if (Appearance.nmFacePaint == '') Appearance.nmFacePaint = 'Facepaint_BLANK';
+}
 /*
 static final function X2SoldierPersonalityTemplate GetPersonalityTemplate(const int iAttitude)
 {

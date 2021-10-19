@@ -2,6 +2,8 @@ class UICustomize_AppearanceStore extends UICustomize;
 
 // This screen lists unit's AppearanceStore elements, allows to preview and delete them.
 
+// TODO: This screen suffers from being darkened by MouseGuard as well.
+
 var private X2ItemTemplateManager	ItemMgr;
 var private XComGameState_Unit		UnitState;
 var private TAppearance				OriginalAppearance;

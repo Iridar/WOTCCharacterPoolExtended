@@ -35,8 +35,8 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-# Core: 
-Validate appearance button should validate all stored appearances. --Shouldn't be done, since regenerating unit appearance based on equipped armor 
+Manage Appearance button sometimes doesn't appear from the first try.
+When exiting Bio screen, soldier defaults to their original attitude animation, probably because the checkbox doesn't exist when UpdateUnitAppearance() runs. 
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
@@ -45,8 +45,9 @@ Search bar for CP units?
 # This screen
 make the HEAD, BODY and other categories have whole toggle checkboxes too, and make the list headers appear only if there's something in their category to show.
 Make clicking an item toggle its checkbox?
-Preview background (biography) change
+====Preview background (biography) change
 Check how this screen responds to toggling filters:: 'no change' option gets selected, even though soldier appearance isn't restored.
+
 'Show all' checkbox for the cosmetics list?
 
 Cycling between soldiers breaks their position on the screen.
@@ -74,6 +75,7 @@ Per-uniform selection of which parts of the appearance are a part of the uniform
 Maybe allow Appearance Store button to work as a "reskin armor" button? - redundant, can be done with this mod's customization screen by importing unit's own appearance from another armor.
 
 ## Ideas for later
+When copying biography, automatically update soldier name and country (MCM toggle)
 Equipping weapons in CP will reskin them automatically with XSkin (RustyDios). Probably use a Tuple.
 
 Enter Character Pool from Armory. Seems to be generally working, but has lots of weird behavior: 
@@ -704,11 +706,6 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 
 			DisplayString @= "(Current)"; // TODO: Localize
 		}
-		else if (PoolMgr.IsUnitUniform(UnitState)) // DEBUG
-		{
-			
-
-		} // END DEBUG
 
 		if (InStr(DisplayString, SearchText) == INDEX_NONE)
 			continue;
@@ -876,7 +873,7 @@ simulated private function SoldierCheckboxChanged(UICheckbox CheckBox)
 	}
 }
 
-simulated function SoldierListItemClicked(UIList ContainerList, int ItemIndex)
+simulated private function SoldierListItemClicked(UIList ContainerList, int ItemIndex)
 {
 	switch(UIMechaListItem(List.GetItem(ItemIndex)).MCName)
 	{
@@ -1502,7 +1499,7 @@ simulated private function CreateOptionPresets()
 
 simulated private function MaybeCreateAppearanceOption(name OptionName, coerce string CurrentCosmetic, coerce string NewCosmetic, ECosmeticType CosmeticType)
 {	
-	local UIMechaListItem SpawnedItem;
+	local UIMechaListItem_Button SpawnedItem;
 
 	// Don't create the cosmetic option if both the current appearance and selected appearance are the same or empty.
 	switch (CosmeticType)
@@ -1526,7 +1523,7 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 
 	`CPOLOG(`showvar(OptionName) @ `showvar(CurrentCosmetic) @ `showvar(NewCosmetic));
 
-	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem = Spawn(class'UIMechaListItem_Button', OptionsList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem(OptionName);
 
@@ -1547,10 +1544,24 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 		case ECosmeticType_Biography:
 			SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strEditBiography, 
 			"", false, OptionCheckboxChanged, none);
+
+			SpawnedItem.UpdateDataButton(class'UICustomize_Info'.default.m_strEditBiography, "Preview", // TODO: Localize
+			OnPreviewBiographyButtonClicked);
+			break;
 		default:
 			`CPOLOG("WARNING, unknown cosmetic type!" @ CosmeticType); // Shouldn't ever happen, really
 			break;
 	}
+}
+
+simulated private function OnPreviewBiographyButtonClicked(UIButton ButtonSource)
+{
+	local UIScreen_Biography BioScreen;
+
+	BioScreen = Movie.Pres.Spawn(class'UIScreen_Biography', self);
+	Movie.Pres.ScreenStack.Push(BioScreen);
+	BioScreen.ShowText(ArmoryUnit.GetBackground(), SelectedUnit.GetBackground());
+	BioScreen.OnScreenClosedFn = UpdateUnitAppearance;
 }
 
 simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue, int iNewValue, EColorPalette PaletteType, optional bool bPrimary = true)
@@ -1672,7 +1683,7 @@ simulated private function CreateOptionCategory(string strText)
 
 	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
-	SpawnedItem.InitListItem('CategoryTest'); // DEBUG ONLY
+	SpawnedItem.InitListItem(); 
 	SpawnedItem.SetDisabled(true);
 	SpawnedItem.UpdateDataDescription(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS(strText));
 }

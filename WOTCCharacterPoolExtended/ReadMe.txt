@@ -15,7 +15,7 @@ iArmorTint
 iArmorTintSecondary
 iWeaponTint
 iTattooTint
-nmWeaponPatterna
+nmWeaponPattern
 nmPawn
 nmTorso
 nmArms

@@ -1,4 +1,6 @@
-class Help extends Object abstract;
+class Help extends Object abstract config(WOTCCharacterPoolExtended_DEFAULT);
+
+var config array<string> EmptyCosmeticPartialNames;
 
 static final function X2ItemTemplate GetItemTemplateFromCosmeticTorso(const name nmTorso)
 {
@@ -66,6 +68,23 @@ static final function EqualizeAppearance(out TAppearance Appearance)
 	if (Appearance.nmFacePropUpper == '') Appearance.nmFacePropUpper = 'Prop_FaceUpper_Blank';
 	if (Appearance.nmFacePaint == '') Appearance.nmFacePaint = 'Facepaint_BLANK';
 }
+
+static final function bool IsCosmeticEmpty(coerce string Cosmetic)
+{
+	local string CheckString;
+
+	if (Cosmetic == "" || Cosmetic == "None")
+		return true;
+
+	foreach default.EmptyCosmeticPartialNames(CheckString)
+	{
+		`CPOLOG(`showvar(Cosmetic) @ `showvar(CheckString));
+		if (InStr(Cosmetic, CheckString,, true) != INDEX_NONE) // Ignore case
+			return true;
+	}
+	return false;
+}
+
 /*
 static final function X2SoldierPersonalityTemplate GetPersonalityTemplate(const int iAttitude)
 {

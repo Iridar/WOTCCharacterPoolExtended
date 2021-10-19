@@ -157,16 +157,45 @@ simulated private function OnUniformButtonClicked(UIButton ButtonSource)
 
 simulated private function OnValidateButtonClicked(UIButton ButtonSource)
 {
+	local XComGameState_Unit			UnitState;
 	local UICustomize_Menu				CustomizeScreen;
 	local CharacterPoolManagerExtended	CharPool;
 	local XComGameState_Item			ItemState;
+	local TAppearance					FixAppearance;
+	local int i;
 
 	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
 	if (CustomizeScreen == none)
 		return;
 
+	UnitState = CustomizeScreen.CustomizeManager.UpdatedUnitState;
+	if (UnitState == none)
+		return;
+
+	`CPOLOG(UnitState.GetFullName());
+
 	CharPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
+	if (CharPool == none)
+		return;
+
+	// Validate current appearance
 	CharPool.ValidateUnitAppearance(CustomizeScreen.CustomizeManager.UpdatedUnitState);	
+
+	// Validate appearance store, remove entries that could not be validated
+	for (i = UnitState.AppearanceStore.Length - 1; i >= 0; i--)
+	{
+		FixAppearance = UnitState.AppearanceStore[i].Appearance;
+		if (CharPool.FixAppearanceOfInvalidAttributes(FixAppearance))
+		{
+			`CPOLOG(i @ "Successfully validated Appearance Store entry. It required no changes:" @ FixAppearance == UnitState.AppearanceStore[i].Appearance);
+			UnitState.AppearanceStore[i].Appearance = FixAppearance;
+		}
+		else
+		{
+			`CPOLOG(i @ "Failed to validate Appearance Store entry, removing it");
+			UnitState.AppearanceStore.Remove(i, 1);
+		}
+	}
 
 	ItemState = CustomizeScreen.CustomizeManager.UpdatedUnitState.GetItemInSlot(eInvSlot_Armor);
 	if (ItemState != none)

@@ -100,10 +100,7 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 	local X2EquipmentTemplate					EquipmentTemplate;
 	local XComGameStateHistory					History;	
 	local XComGameState							TempGameState;
-	local XComGameStateContext_ChangeContainer	TempContainer;
-	local XComUnitPawn							UnitPawn;
-	local UIPawnMgr								PawnMgr;
-	local XComPresentationLayerBase				PresBase;
+	local XComGameStateContext_ChangeContainer	TempContainer;	
 	local TAppearance							NewAppearance;
 	local XComGameState_Unit					UnitState;
 	local bool									bHasStoredAppearance;
@@ -168,26 +165,8 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 
 	History.AddGameStateToHistory(TempGameState);
 	
-	PresBase = XComPresentationLayerBase(CustomizationManager.Outer);
-	if (PresBase == none)
-	{
-		`CPOLOG("Error, no PresBase");
-	} else {
-		PawnMgr = PresBase.GetUIPawnMgr();
-		if (PawnMgr == none)
-		{
-			`CPOLOG("Error, no PawnMgr");
-		} else {
-			UnitPawn = XComUnitPawn(CustomizationManager.ActorPawn);
-			if (UnitPawn == none)
-			{
-				`CPOLOG("Error, no Unit Pawn");
-			} else {
-				UnitPawn.CreateVisualInventoryAttachments(PawnMgr, UnitState);
-				`CPOLOG("Creating visual attachments");
-			}
-		}
-	}
+	CreateVisualAttachments(UnitState);
+	
 	History.ObliterateGameStatesFromHistory(1);	
 	UnitState.EmptyInventoryItems();
 
@@ -205,6 +184,40 @@ simulated function bool EquipItem(UIArmory_LoadoutItem Item)
 		CharPoolMgr.SaveCharacterPool();
 	}
 	return EquipSucceeded;
+}
+
+simulated private function CreateVisualAttachments(XComGameState_Unit UnitState)
+{
+	local UIPawnMgr					PawnMgr;
+	local XComPresentationLayerBase	PresBase;
+	local XComUnitPawn				UnitPawn;
+
+	PresBase = XComPresentationLayerBase(CustomizationManager.Outer);
+	if (PresBase == none)
+	{
+		`CPOLOG("Error, no PresBase");
+	}
+	else 
+	{
+		PawnMgr = PresBase.GetUIPawnMgr();
+		if (PawnMgr == none)
+		{
+			`CPOLOG("Error, no PawnMgr");
+		} 
+		else 
+		{
+			UnitPawn = XComUnitPawn(CustomizationManager.ActorPawn);
+			if (UnitPawn == none)
+			{
+				`CPOLOG("Error, no Unit Pawn");
+			} 
+			else 
+			{
+				UnitPawn.CreateVisualInventoryAttachments(PawnMgr, UnitState);
+				`CPOLOG("Creating visual attachments");
+			}
+		}
+	}
 }
 
 simulated function bool ShowInLockerList(XComGameState_Item Item, EInventorySlot SelectedSlot)

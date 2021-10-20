@@ -86,6 +86,7 @@ var private CharacterPoolManagerExtended		PoolMgr;
 var private X2BodyPartTemplateManager			BodyPartMgr;
 var private X2StrategyElementTemplateManager	StratMgr;
 var private X2ItemTemplateManager				ItemMgr;
+//var private UIPawnMgr							PawnMgr;
 var private	XComGameStateHistory				History;
 var private bool								bRefreshPawn;
 var private bool								bUniformMode;
@@ -134,6 +135,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	BodyPartMgr = class'X2BodyPartTemplateManager'.static.GetBodyPartTemplateManager();
 	StratMgr = class'X2StrategyElementTemplateManager'.static.GetStrategyElementTemplateManager();
 	ItemMgr = class'X2ItemTemplateManager'.static.GetItemTemplateManager();
+	//PawnMgr = Movie.Pres.GetUIPawnMgr();
 	History = `XCOMHISTORY;
 	CacheArmoryUnitData();
 
@@ -322,6 +324,7 @@ simulated function CacheArmoryUnitData()
 	OriginalAppearance = ArmoryPawn.m_kAppearance;
 	SelectedAppearance = OriginalAppearance;
 	OriginalAttitude = ArmoryUnit.GetPersonalityTemplate();
+	OriginalPawnLocation = ArmoryPawn.Location;
 
 	UpdatePawnLocation();
 }
@@ -336,6 +339,7 @@ simulated static function CycleToSoldier(StateObjectReference NewRef)
 	{
 		CustomizeScreen.CacheArmoryUnitData();
 		CustomizeScreen.UpdateOptionsList();
+		CustomizeScreen.UpdatePawnLocation();
 	}
 }
 
@@ -562,7 +566,7 @@ simulated function UpdateSoldierList()
 	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem();
-	SpawnedItem.UpdateDataCheckbox("NO CHANGE", "", true, SoldierCheckboxChanged, none); // TODO: Localize
+	SpawnedItem.UpdateDataCheckbox("NO CHANGE", "", OriginalAppearance == SelectedAppearance, SoldierCheckboxChanged, none); // TODO: Localize
 	SpawnedItem.StoredAppearance.Appearance = OriginalAppearance;
 	SpawnedItem.bNoChange = true;
 
@@ -723,13 +727,15 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 		SpawnedItem.bAnimateOnInit = false;
 		SpawnedItem.InitListItem();
-		SpawnedItem.UpdateDataCheckbox(DisplayString, "", false, SoldierCheckboxChanged, none);
 		SpawnedItem.StoredAppearance = StoredAppearance;
 		SpawnedItem.SetPersonalityTemplate();
 		SpawnedItem.UnitState = UnitState;
+		SpawnedItem.UpdateDataCheckbox(DisplayString, "", SelectedAppearance == SpawnedItem.StoredAppearance.Appearance && SpawnedItem.UnitState == SelectedUnit, SoldierCheckboxChanged, none);
+		SpawnedItem.SetDisabled(StoredAppearance.Appearance == OriginalAppearance && UnitState == ArmoryUnit); // Lock current appearance of current unit
 	}
 
 	// If Appearance Store didn't contain unit's current appearance, add unit's current appearance to the list as well.
+	// As long it's not the currently selected unit there's no value in having them in the list.
 	if (!bCurrentAppearanceFound)
 	{
 		Gender = EGender(UnitState.kAppearance.iGender);
@@ -774,6 +780,7 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 		SpawnedItem.StoredAppearance.Appearance = UnitState.kAppearance;
 		SpawnedItem.SetPersonalityTemplate();
 		SpawnedItem.UnitState = UnitState;
+		SpawnedItem.SetDisabled(UnitState == ArmoryUnit); // Lock current appearance of current unit
 	}
 }
 
@@ -885,7 +892,13 @@ simulated private function SoldierCheckboxChanged(UICheckbox CheckBox)
 
 simulated private function SoldierListItemClicked(UIList ContainerList, int ItemIndex)
 {
-	switch(UIMechaListItem(List.GetItem(ItemIndex)).MCName)
+	local UIMechaListItem ListItem;
+
+	ListItem = UIMechaListItem(List.GetItem(ItemIndex));
+	if (ListItem.bDisabled)
+		return;
+
+	switch (ListItem.MCName)
 	{
 		case 'bShowCharPoolSoldiers':
 			bShowCharPoolSoldiers = !bShowCharPoolSoldiers;
@@ -922,7 +935,6 @@ simulated function UpdatePawnLocation()
 {
 	local vector PawnLocation;
 
-	OriginalPawnLocation = ArmoryPawn.Location;
 	PawnLocation = OriginalPawnLocation;
 
 	PawnLocation.X += 20; // Nudge the soldier pawn to the left a little
@@ -968,12 +980,14 @@ simulated private function UpdateUnitAppearance()
 
 	if (bRefreshPawn)
 	{
+		bRefreshPawn = false;
+
 		CustomizeManager.ReCreatePawnVisuals(CustomizeManager.ActorPawn, true);
 
 		// After ReCreatePawnVisuals, the CustomizeManager.ActorPawn, ArmoryPawn and become 'none'
-		// Apparently there's some sort of threading issue at play, so we use an event listener to get a reference to the new pawn with a slight delay.
+		// Apparently there's some sort of threading issue at play, so we use a timer to get a reference to the new pawn with a slight delay.
 		//OnRefreshPawn();
-		bRefreshPawn = false;
+		SetTimer(0.01f, false, nameof(OnRefreshPawn), self);
 	}	
 	else
 	{
@@ -981,27 +995,31 @@ simulated private function UpdateUnitAppearance()
 	}
 
 	UpdateHeader();
+	//ArmoryPawn.CreateVisualInventoryAttachments(PawnMgr, ArmoryUnit);
 }
 
-// Called from X2EventListener_CPExtended
+// Can't use an Event Listener in CP, so using a timer (ugh)
 simulated final function OnRefreshPawn()
 {
 	ArmoryPawn = XComHumanPawn(CustomizeManager.ActorPawn);
-	UpdatePawnLocation();
-	UpdatePawnAttitudeAnimation();
+	if (ArmoryPawn != none)
+	{
+		UpdatePawnLocation();
+		UpdatePawnAttitudeAnimation();
 
-	`CPOLOG("ArmoryPawn present:" @ ArmoryPawn != none);
-
-	// Assign the actor pawn to the mouse guard so the pawn can be rotated by clicking and dragging
-	UIMouseGuard_RotatePawn(`SCREENSTACK.GetFirstInstanceOf(class'UIMouseGuard_RotatePawn')).SetActorPawn(CustomizeManager.ActorPawn);
+		// Assign the actor pawn to the mouse guard so the pawn can be rotated by clicking and dragging
+		UIMouseGuard_RotatePawn(`SCREENSTACK.GetFirstInstanceOf(class'UIMouseGuard_RotatePawn')).SetActorPawn(CustomizeManager.ActorPawn);
+	}
+	else
+	{
+		SetTimer(0.01f, false, nameof(OnRefreshPawn), self);
+	}
 }
 
 simulated private function UpdatePawnAttitudeAnimation()
 {
 	if (ArmoryPawn == none)
 		return;
-
-	`CPOLOG("Before:" @ `showvar(IdleAnimName));
 
 	if (IsCheckboxChecked('iAttitude'))
 	{
@@ -1011,14 +1029,11 @@ simulated private function UpdatePawnAttitudeAnimation()
 	{
 		IdleAnimName = OriginalAttitude.IdleAnimName;
 	}
-	`CPOLOG("After:" @ `showvar(IdleAnimName));
 	if (!ArmoryPawn.GetAnimTreeController().IsPlayingCurrentAnimation(IdleAnimName))
 	{
-		`CPOLOG("Playing this animation");
 		ArmoryPawn.PlayHQIdleAnim(IdleAnimName);
 		ArmoryPawn.CustomizationIdleAnim = IdleAnimName;
 	}
-	else `CPOLOG("This animation is already playing");
 }
 
 simulated function CloseScreen()

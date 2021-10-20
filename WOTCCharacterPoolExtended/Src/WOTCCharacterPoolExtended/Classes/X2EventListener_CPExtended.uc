@@ -4,13 +4,15 @@ static function array<X2DataTemplate> CreateTemplates()
 {
 	local array<X2DataTemplate> Templates;
 
-	Templates.AddItem(Create_ListenerTemplate_Strategy());
+	//Templates.AddItem(Create_ListenerTemplate_Strategy());
 	Templates.AddItem(Create_ListenerTemplate_StrategyAndTactical());
 	Templates.AddItem(Create_ListenerTemplate_CampaignStart());
 	
 	return Templates;
 }
 
+// Events still don't trigger in CP...
+/*
 static function CHEventListenerTemplate Create_ListenerTemplate_Strategy()
 {
 	local CHEventListenerTemplate Template;
@@ -19,7 +21,7 @@ static function CHEventListenerTemplate Create_ListenerTemplate_Strategy()
 
 	Template.RegisterInStrategy = true;
 
-	Template.AddCHEvent('OverrideCharCustomizationScale', OnOverrideCharCustomizationScale, ELD_Immediate, 50);
+	Template.AddCHEvent('OverrideCharCustomizationScale', OnOverrideCharCustomizationScale, ELD_Immediate, 50); 
 	//'PostInventoryLoadoutApplied' doesn't seem to trigger for CP units.
 
 	return Template;
@@ -40,7 +42,7 @@ static function EventListenerReturn OnOverrideCharCustomizationScale(Object Even
 		{
 			CPExtendedScreen.OnRefreshPawn();
 		}
-		//else // Events still don't trigger in CP...
+		//else 
 		//{
 		//	AppearanceStoreScreen = UICustomize_AppearanceStore(ScreenStack.GetFirstInstanceOf(class'UICustomize_AppearanceStore'));
 		//	if (AppearanceStoreScreen != none)
@@ -51,7 +53,7 @@ static function EventListenerReturn OnOverrideCharCustomizationScale(Object Even
 	}
 
 	return ELR_NoInterrupt;
-}
+}*/
 
 // ItemAddedToSlot listeners are responsible for two things:
 // 1. CP Appearance Store support.

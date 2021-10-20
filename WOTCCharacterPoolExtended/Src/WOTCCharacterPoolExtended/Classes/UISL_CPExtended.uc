@@ -12,8 +12,9 @@ event OnInit(UIScreen Screen)
 	//local UIAvengerShortcutSubMenuItem MenuItem;
 
 	if (UICustomize_Menu(Screen) != none)
-	{
-		AddButtons();
+	{	 
+		// When screen is initialized, list has no items yet, and our changes to it don't work right.
+		Screen.SetTimer(0.05f, false, nameof(AddButtons), self);
 	}
 
 	// Enter Character Pool from the Armory.
@@ -42,63 +43,73 @@ simulated function AddButtons()
 
 	CustomizeMenuScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
 	if (CustomizeMenuScreen == none)
-		return;
-
-	for (i = CustomizeMenuScreen.List.ItemCount - 1; i >= 0; i--)
 	{
-		ListItem = UIMechaListItem(CustomizeMenuScreen.List.GetItem(i));
-		if (string(ListItem.OnClickDelegate) == string(OnAppearanceStoreButtonClicked))
+		//`CPOLOG("Stopping timer cuz of wrong screen");
+		return;
+	}
+	//`CPOLOG("List has items:" @ CustomizeMenuScreen.List.ItemCount);
+
+	if (CustomizeMenuScreen.List.ItemCount != 0)
+	{
+		for (i = CustomizeMenuScreen.List.ItemCount - 1; i >= 0; i--)
 		{
+			ListItem = UIMechaListItem(CustomizeMenuScreen.List.GetItem(i));
+			//`CPOLOG(i @ ListItem.MCName);
+			if (ListItem.MCName == 'CPExtended_ManageAppearance_Button')
+			{
+				//`CPOLOG("Item already exists, breaking");
+				CustomizeMenuScreen.ShowListItems();
+				bListItemAlreadyExists = true;
+				break;
+			}
+		}
+		if (!bListItemAlreadyExists)
+		{	
+			//`CPOLOG("Adding list items");
+			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+			ListItem.bAnimateOnInit = false;
+			ListItem.InitListItem('CPExtended_ManageAppearance_Button');
+			ListItem.UpdateDataDescription("Manage Appearance", OnManageAppearanceButtonClicked); // TODO: Localize
+
+			if (!CustomizeMenuScreen.bInArmory)
+			{
+				ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+				ListItem.bAnimateOnInit = false;
+				ListItem.InitListItem();
+				ListItem.UpdateDataDescription("Loadout", OnLoadoutButtonClicked);  // TODO: Localize
+
+				ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+				ListItem.bAnimateOnInit = false;
+				ListItem.InitListItem();
+				ListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
+			}
+			// Add validate appearance button if we're skipping appearance validation
+			if (!`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG) || 
+				`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
+			{
+				ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+				ListItem.bAnimateOnInit = false;
+				ListItem.InitListItem();
+				ListItem.UpdateDataButton("Validate Appearance", "Validate", OnValidateButtonClicked); // TODO: Localize
+			}
+		
+			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+			ListItem.bAnimateOnInit = false;
+			ListItem.InitListItem();
+			ListItem.UpdateDataDescription("Appearance Store", OnAppearanceStoreButtonClicked);
+		
+			//if (!CustomizeMenuScreen.bInArmory)
+			//{
+			//	ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
+			//	ListItem.bAnimateOnInit = false;
+			//	ListItem.InitListItem();
+			//	ListItem.UpdateDataDescription("Photobooth", OnPhotboothButtonClicked);
+			//}
+
 			CustomizeMenuScreen.ShowListItems();
-			bListItemAlreadyExists = true;
-			break;
 		}
 	}
-	if (!bListItemAlreadyExists)
-	{	
-		ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-		ListItem.bAnimateOnInit = false;
-		ListItem.InitListItem();
-		ListItem.UpdateDataDescription("Manage Appearance", OnManageAppearanceButtonClicked); // TODO: Localize
-
-		if (!CustomizeMenuScreen.bInArmory)
-		{
-			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-			ListItem.bAnimateOnInit = false;
-			ListItem.InitListItem();
-			ListItem.UpdateDataDescription("Loadout", OnLoadoutButtonClicked);  // TODO: Localize
-
-			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-			ListItem.bAnimateOnInit = false;
-			ListItem.InitListItem();
-			ListItem.UpdateDataButton("Convert to a Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
-		}
-		// Add validate appearance button if we're skipping appearance validation
-		if (!`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG) || 
-			`XENGINE.bReviewFlagged && `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW))
-		{
-			ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-			ListItem.bAnimateOnInit = false;
-			ListItem.InitListItem();
-			ListItem.UpdateDataButton("Validate Appearance", "Validate", OnValidateButtonClicked); // TODO: Localize
-		}
-		
-		ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-		ListItem.bAnimateOnInit = false;
-		ListItem.InitListItem();
-		ListItem.UpdateDataDescription("Appearance Store", OnAppearanceStoreButtonClicked);
-		
-		//if (!CustomizeMenuScreen.bInArmory)
-		//{
-		//	ListItem = CustomizeMenuScreen.Spawn(class'UIMechaListItem', CustomizeMenuScreen.List.ItemContainer);
-		//	ListItem.bAnimateOnInit = false;
-		//	ListItem.InitListItem();
-		//	ListItem.UpdateDataDescription("Photobooth", OnPhotboothButtonClicked);
-		//}
-
-		CustomizeMenuScreen.ShowListItems();
-	}
-	CustomizeMenuScreen.SetTimer(0.1f, false, nameof(AddButtons), self);
+	CustomizeMenuScreen.SetTimer(0.25f, false, nameof(AddButtons), self);
 }
 
 simulated private function OnAppearanceStoreButtonClicked()

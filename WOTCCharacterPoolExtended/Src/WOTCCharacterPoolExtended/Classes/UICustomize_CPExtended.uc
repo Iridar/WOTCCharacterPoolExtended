@@ -35,7 +35,6 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-Manage Appearance button sometimes doesn't appear from the first try.
 When exiting Bio screen, soldier defaults to their original attitude animation, probably because the checkbox doesn't exist when UpdateUnitAppearance() runs. 
 
 # Character Pool

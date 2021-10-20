@@ -35,6 +35,8 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
+Weapon pattern copying should work by checking weapon states
+
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
@@ -43,12 +45,13 @@ Search bar for CP units?
 make the HEAD, BODY and other categories have whole toggle checkboxes too, and make the list headers appear only if there's something in their category to show.
 Make clicking an item toggle its checkbox?
 
-'Show all' checkbox for the cosmetics list?
+'Show all' checkbox for the cosmetic options list?
 
-Cycling between soldiers breaks their position on the screen.
 'Apply changes' button?
 Confirmation checkbox for barracks / armory that would ask "are you sure you want to apply these changes to the following categories: torso, head, etc" 
 Also it should probably make changes only to gender agnostic cosmetic parts, or only if gender is also changed.
+
+Armor appearance and gender filters are somewhat pointless together. 
 
 # Uniforms
 Soldier Class filtering for uniforms (maybe add "universal uniform" checbox? Store uniform status as unit value?
@@ -102,6 +105,7 @@ var private XComHumanPawn					ArmoryPawn;
 var private XComGameState_Unit				ArmoryUnit;
 var private vector							OriginalPawnLocation;
 var private TAppearance						OriginalAppearance; // Appearance to restore if the player exits the screen without selecting anything
+var private TAppearance						PreviousAppearance; // Briefly cached appearance, used to check if we need to refresh pawn
 var private name							ArmorTemplateName;
 var private X2SoldierPersonalityTemplate	OriginalAttitude;
 
@@ -668,7 +672,7 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 			DisplayString @= "(Current)"; // TODO: Localize
 		}
 
-		if (InStr(DisplayString, SearchText) == INDEX_NONE)
+		if (InStr(DisplayString, SearchText,, true) == INDEX_NONE) // ignore case
 			continue;
 		
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
@@ -716,7 +720,7 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 		}
 		DisplayString @= "(Current)"; // TODO: Localize
 
-		if (InStr(DisplayString, SearchText) == INDEX_NONE)
+		if (InStr(DisplayString, SearchText,, true) == INDEX_NONE) // ignore case
 			return;
 		
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
@@ -904,13 +908,35 @@ simulated private function OnUnitSelected(int ItemIndex)
 	SelectedUnit = ListItem.UnitState;
 	bNoChangeSelected = ListItem.bNoChange;
 
-	if (ArmoryPawn.m_kAppearance.iGender != SelectedAppearance.iGender)
-	{
-		bRefreshPawn = true;
-	} 
+	//if (ShouldRefreshPawn())
+	//{
+	//	bRefreshPawn = true;
+	//} 
 
 	UpdateOptionsList();
 	UpdateUnitAppearance();	
+}
+
+simulated private function bool ShouldRefreshPawn(const TAppearance NewAppearance)
+{
+	
+	if (PreviousAppearance.iGender != NewAppearance.iGender)
+	{
+		`CPOLOG("refreshing appearance cuz of gender");
+		return true;
+	}
+	if (PreviousAppearance.nmWeaponPattern != NewAppearance.nmWeaponPattern)
+	{
+		`CPOLOG("refreshing appearance cuz of weapon pattern" @ PreviousAppearance.nmWeaponPattern @ NewAppearance.nmWeaponPattern);
+		return true;
+	}
+	if (PreviousAppearance.iWeaponTint != NewAppearance.iWeaponTint)
+	{
+		`CPOLOG("refreshing appearance cuz of weapon tint");
+		return true;
+	}
+	`CPOLOG("not refreshing appearance");
+	return false;
 }
 
 simulated private function UpdateUnitAppearance()
@@ -920,14 +946,15 @@ simulated private function UpdateUnitAppearance()
 	NewAppearance = OriginalAppearance;
 	CopyAppearance(NewAppearance, SelectedAppearance);
 
+	PreviousAppearance = ArmoryPawn.m_kAppearance;
 	ArmoryUnit.SetTAppearance(NewAppearance);
 	ArmoryPawn.SetAppearance(NewAppearance);
 	//ArmoryUnit.SetTAppearance(NewAppearance);
 	//CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, NewAppearance.iWeaponTint);
 
-	if (bRefreshPawn)
+	if (ShouldRefreshPawn(NewAppearance))
 	{
-		bRefreshPawn = false;
+		//bRefreshPawn = false;
 
 		CustomizeManager.ReCreatePawnVisuals(CustomizeManager.ActorPawn, true);
 

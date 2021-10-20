@@ -78,7 +78,7 @@ static final function bool IsCosmeticEmpty(coerce string Cosmetic)
 
 	foreach default.EmptyCosmeticPartialNames(CheckString)
 	{
-		`CPOLOG(`showvar(Cosmetic) @ `showvar(CheckString));
+		//`CPOLOG(`showvar(Cosmetic) @ `showvar(CheckString));
 		if (InStr(Cosmetic, CheckString,, true) != INDEX_NONE) // Ignore case
 			return true;
 	}

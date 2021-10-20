@@ -35,8 +35,6 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-Check how this screen responds to toggling filters:: 'no change' option gets selected, even though soldier appearance isn't restored.
-
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
@@ -386,58 +384,7 @@ simulated private function OnUniformButtonClicked()
 	UpdatePawnAttitudeAnimation();
 }
 */
-simulated private function OnEntireUnitButtonClicked()
-{
-	SetCheckbox('nmHead', true);
-	SetCheckbox('iGender', true);
-	SetCheckbox('iRace', true);
-	SetCheckbox('nmHaircut', true);
-	SetCheckbox('iHairColor', true);
-	SetCheckbox('iFacialHair', true);
-	SetCheckbox('nmBeard', true);
-	SetCheckbox('iSkinColor', true);
-	SetCheckbox('iEyeColor', true);
-	SetCheckbox('nmFlag', true);
-	SetCheckbox('iVoice', true);
-	SetCheckbox('iAttitude', true);
-	SetCheckbox('iArmorDeco', true);
-	SetCheckbox('iArmorTint', true);
-	SetCheckbox('iArmorTintSecondary', true);
-	SetCheckbox('iWeaponTint', true);
-	SetCheckbox('iTattooTint', true);
-	SetCheckbox('nmWeaponPattern', true);
-	SetCheckbox('nmTorso', true);
-	SetCheckbox('nmArms', true);
-	SetCheckbox('nmLegs', true);
-	SetCheckbox('nmHelmet', true);
-	SetCheckbox('nmEye', true);
-	SetCheckbox('nmTeeth', true);
-	SetCheckbox('nmFacePropLower', true);
-	SetCheckbox('nmFacePropUpper', true);
-	SetCheckbox('nmPatterns', true);
-	SetCheckbox('nmVoice', true);
-	SetCheckbox('nmLanguage', true);
-	SetCheckbox('nmTattoo_LeftArm', true);
-	SetCheckbox('nmTattoo_RightArm', true);
-	SetCheckbox('nmScars', true);
-	SetCheckbox('nmTorso_Underlay', true);
-	SetCheckbox('nmArms_Underlay', true);
-	SetCheckbox('nmLegs_Underlay', true);
-	SetCheckbox('nmFacePaint', true);
-	SetCheckbox('nmLeftArm', true);
-	SetCheckbox('nmRightArm', true);
-	SetCheckbox('nmLeftArmDeco', true);
-	SetCheckbox('nmRightArmDeco', true);
-	SetCheckbox('nmLeftForearm', true);
-	SetCheckbox('nmRightForearm', true);
-	SetCheckbox('nmThighs', true);
-	SetCheckbox('nmShins', true);
-	SetCheckbox('nmTorsoDeco', true);
-	SetCheckbox('bGhostPawn', true);
 
-	UpdateUnitAppearance();	
-	//UpdatePawnAttitudeAnimation();
-}
 /*
 simulated function UpdateSoldierListOld()
 {
@@ -1531,6 +1478,8 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 {	
 	local UIMechaListItem_Button SpawnedItem;
 
+	`CPOLOG(`showvar(OptionName) @ `showvar(CurrentCosmetic) @ `showvar(NewCosmetic));
+
 	// Don't create the cosmetic option if both the current appearance and selected appearance are the same or empty.
 	switch (CosmeticType)
 	{
@@ -1541,17 +1490,20 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 			break;
 		case ECosmeticType_Name:
 			if (CurrentCosmetic == NewCosmetic || class'Help'.static.IsCosmeticEmpty(CurrentCosmetic) && class'Help'.static.IsCosmeticEmpty(NewCosmetic))
-				return;
+			{
+				`CPOLOG("Cosmetic is empty or equal, exiting");
+				return;}
 			break;
 		case ECosmeticType_Biography:
 			if (CurrentCosmetic == NewCosmetic)
 				return;
 			break;
 		default:
+			`CPOLOG("WARNING, unknown cosmetic type!" @ CosmeticType); // Shouldn't ever happen, really
 			return;
 	}
 
-	`CPOLOG(`showvar(OptionName) @ `showvar(CurrentCosmetic) @ `showvar(NewCosmetic));
+	`CPOLOG("Creating option");
 
 	SpawnedItem = Spawn(class'UIMechaListItem_Button', OptionsList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
@@ -1579,7 +1531,6 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 			OnPreviewBiographyButtonClicked);
 			break;
 		default:
-			`CPOLOG("WARNING, unknown cosmetic type!" @ CosmeticType); // Shouldn't ever happen, really
 			break;
 	}
 }

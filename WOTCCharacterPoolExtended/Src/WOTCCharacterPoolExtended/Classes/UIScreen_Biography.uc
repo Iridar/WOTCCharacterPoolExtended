@@ -5,7 +5,7 @@ var private UIText	Text_2;
 var private UIText	ArrowText;
 var private UIBGBox	TextBG;
 
-
+/*
 var delegate<OnScreenClosed> OnScreenClosedFn;
 
 delegate OnScreenClosed();
@@ -17,7 +17,7 @@ simulated function CloseScreen()
 
 	super.CloseScreen();
 }
-
+*/
 simulated final function ShowText(string Biography_1, string Biography_2)
 {
 	TextBG = Spawn(class'UIBGBox', self);

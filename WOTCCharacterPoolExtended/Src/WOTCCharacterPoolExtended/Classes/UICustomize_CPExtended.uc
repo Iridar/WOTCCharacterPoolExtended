@@ -35,7 +35,7 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-When exiting Bio screen, soldier defaults to their original attitude animation, probably because the checkbox doesn't exist when UpdateUnitAppearance() runs. 
+Check how this screen responds to toggling filters:: 'no change' option gets selected, even though soldier appearance isn't restored.
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
@@ -44,8 +44,6 @@ Search bar for CP units?
 # This screen
 make the HEAD, BODY and other categories have whole toggle checkboxes too, and make the list headers appear only if there's something in their category to show.
 Make clicking an item toggle its checkbox?
-====Preview background (biography) change
-Check how this screen responds to toggling filters:: 'no change' option gets selected, even though soldier appearance isn't restored.
 
 'Show all' checkbox for the cosmetics list?
 
@@ -343,10 +341,23 @@ simulated static function CycleToSoldier(StateObjectReference NewRef)
 
 simulated function UpdateData()
 {
-	super.UpdateData();
+	if (ColorSelector != none )
+	{
+		CloseColorSelector();
+	}
+
+	// Override in child classes for custom behavior
+	Header.PopulateData(Unit);
+
+	if(CustomizeManager.ActorPawn != none)
+	{
+		// Assign the actor pawn to the mouse guard so the pawn can be rotated by clicking and dragging
+		UIMouseGuard_RotatePawn(`SCREENSTACK.GetFirstInstanceOf(class'UIMouseGuard_RotatePawn')).SetActorPawn(CustomizeManager.ActorPawn);
+	}
 
 	UpdateSoldierList();
 	UpdateOptionsList();
+	UpdateUnitAppearance();
 }
 /*
 simulated function UpdateNavHelp()
@@ -990,6 +1001,8 @@ simulated private function UpdatePawnAttitudeAnimation()
 	if (ArmoryPawn == none)
 		return;
 
+	`CPOLOG("Before:" @ `showvar(IdleAnimName));
+
 	if (IsCheckboxChecked('iAttitude'))
 	{
 		IdleAnimName = SelectedAttitude.IdleAnimName;
@@ -998,11 +1011,14 @@ simulated private function UpdatePawnAttitudeAnimation()
 	{
 		IdleAnimName = OriginalAttitude.IdleAnimName;
 	}
+	`CPOLOG("After:" @ `showvar(IdleAnimName));
 	if (!ArmoryPawn.GetAnimTreeController().IsPlayingCurrentAnimation(IdleAnimName))
 	{
+		`CPOLOG("Playing this animation");
 		ArmoryPawn.PlayHQIdleAnim(IdleAnimName);
 		ArmoryPawn.CustomizationIdleAnim = IdleAnimName;
 	}
+	else `CPOLOG("This animation is already playing");
 }
 
 simulated function CloseScreen()
@@ -1557,10 +1573,10 @@ simulated private function OnPreviewBiographyButtonClicked(UIButton ButtonSource
 {
 	local UIScreen_Biography BioScreen;
 
+	SavePresetCheckboxPositions();
 	BioScreen = Movie.Pres.Spawn(class'UIScreen_Biography', self);
 	Movie.Pres.ScreenStack.Push(BioScreen);
 	BioScreen.ShowText(ArmoryUnit.GetBackground(), SelectedUnit.GetBackground());
-	BioScreen.OnScreenClosedFn = UpdateUnitAppearance;
 }
 
 simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue, int iNewValue, EColorPalette PaletteType, optional bool bPrimary = true)

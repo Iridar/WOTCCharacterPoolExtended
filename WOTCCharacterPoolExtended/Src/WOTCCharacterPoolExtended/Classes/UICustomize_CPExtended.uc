@@ -1343,12 +1343,15 @@ simulated function CancelChanges()
 
 simulated private function CopyAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
 {
-	local bool bGender;
+	local bool bGenderChange;
 
-	bGender = IsCheckboxChecked('iGender');
-	if (bGender)				
+	if (IsCheckboxChecked('iGender'))
 	{
+		bGenderChange = true;
 		NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn; 
+	}
+	if (bGenderChange || NewAppearance.iGender == UniformAppearance.iGender)
+	{		
 		if (IsCheckboxChecked('nmHead'))				{NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; NewAppearance.nmTeeth = UniformAppearance.nmTeeth; NewAppearance.iRace = UniformAppearance.iRace;}
 		//if (IsCheckboxChecked('iRace'))					NewAppearance.iRace = UniformAppearance.iRace;
 		if (IsCheckboxChecked('nmHaircut'))				NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
@@ -2072,12 +2075,15 @@ static private function bool ShouldCopyUniformPiece(const name UniformPiece, con
 
 static final function CopyAppearance_Static(out TAppearance NewAppearance, const TAppearance UniformAppearance, const name PresetName)
 {
-	local bool bGender;
+	local bool bGenderChange;
 
-	bGender = ShouldCopyUniformPiece('iGender', PresetName);
-	if (bGender)
+	if (ShouldCopyUniformPiece('iGender', PresetName))
 	{
+		bGenderChange = true;
 		NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn;
+	}
+	if (bGenderChange || NewAppearance.iGender == UniformAppearance.iGender)
+	{		
 		if (ShouldCopyUniformPiece('nmHead', PresetName)) {NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; NewAppearance.nmTeeth = UniformAppearance.nmTeeth; NewAppearance.iRace = UniformAppearance.iRace;}
 		//if (ShouldCopyUniformPiece('iRace', PresetName)) NewAppearance.iRace = UniformAppearance.iRace;
 		if (ShouldCopyUniformPiece('nmHaircut', PresetName)) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;

@@ -23,11 +23,13 @@ var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowCharPoolSoldiers
 var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowUniformSoldiers_DEFAULT;
 var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowBarracksSoldiers_DEFAULT;
 var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowDeadSoldiers_DEFAULT;
+var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowAllCosmeticOptions_DEFAULT;
 
 var private config(WOTCCharacterPoolExtended) bool bShowCharPoolSoldiers;
 var private config(WOTCCharacterPoolExtended) bool bShowUniformSoldiers;
 var private config(WOTCCharacterPoolExtended) bool bShowBarracksSoldiers;
 var private config(WOTCCharacterPoolExtended) bool bShowDeadSoldiers;
+var private config(WOTCCharacterPoolExtended) bool bShowAllCosmeticOptions;
 var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 
 
@@ -36,8 +38,6 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 # Priority
 
 Lock "copy preset" button when non-default preset is selected
-
-'Show all' checkbox for the cosmetic options list that would just bypass the 'if the cosmetic part is the same' check. 
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
@@ -305,6 +305,8 @@ simulated function CacheArmoryUnitData()
 {
 	local X2ItemTemplate ArmorTemplate;
 
+	bNoChangeSelected = true;
+
 	ArmoryUnit = CustomizeManager.UpdatedUnitState;
 	if (ArmoryUnit == none)
 		super.CloseScreen();
@@ -361,135 +363,7 @@ simulated function UpdateData()
 	UpdateOptionsList();
 	UpdateUnitAppearance();
 }
-/*
-simulated function UpdateNavHelp()
-{
-	super.UpdateNavHelp();
 
-	NavHelp.AddLeftHelp("UNIFORM MODE:" $ bUniformMode ? "ON" : "OFF",			
-				class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ class'UIUtilities_Input'.const.ICON_RT_R2, 
-				OnUniformButtonClicked,
-				false,
-				"Tooltip placeholder",
-				class'UIUtilities'.const.ANCHOR_BOTTOM_CENTER);
-}
-
-simulated private function OnUniformButtonClicked()
-{
-	bUniformMode = !bUniformMode;
-	UpdateNavHelp();
-
-	UpdateOptionsList();
-	UpdateUnitAppearance();	
-	UpdatePawnAttitudeAnimation();
-}
-*/
-
-/*
-simulated function UpdateSoldierListOld()
-{
-	local UIMechaListItem_Soldier			SpawnedItem;
-	local XComGameState_Unit				CheckUnit;
-	local string							UnitName;
-	local XComGameState_HeadquartersXCom	XComHQ;
-	local array<XComGameState_Unit>			Soldiers;
-	local bool								bCPHeaderSpawned;
-	local bool								bBarracksHeaderSpawned;
-	local bool								bDeadCrewHeaderSpawned;
-	local int i;
-
-	List.ClearItems();
-
-	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-	SpawnedItem.bAnimateOnInit = false;
-	SpawnedItem.InitListItem();
-	SpawnedItem.UpdateDataDescription("SELECT UNIT"); // TODO: Localize
-	SpawnedItem.SetDisabled(true); 
-
-	// First entry is always "No change"
-	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-	SpawnedItem.bAnimateOnInit = false;
-	SpawnedItem.InitListItem();
-	SpawnedItem.UpdateDataCheckbox("NO CHANGE", "", true, SoldierCheckboxChanged, none); // TODO: Localize
-	SpawnedItem.UnitState = ArmoryUnit;
-
-	// Character pool
-	foreach PoolMgr.CharacterPool(CheckUnit, i)
-	{
-		if (!DoesUnitPassActiveFilters(CheckUnit))
-			continue;
-
-		if (!bCPHeaderSpawned)
-		{
-			bCPHeaderSpawned = true;
-			SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-			SpawnedItem.bAnimateOnInit = false;
-			SpawnedItem.InitListItem();
-			SpawnedItem.UpdateDataDescription("CHARACTER POOL"); // TODO: Localize
-			SpawnedItem.SetDisabled(true); 
-		}
-
-		UnitName = PoolMgr.GetUnitFullNameExtraData(i);
-		if (IsUnitPresentInCampaign(CheckUnit)) // If unit was already drawn from the CP, color their entry green.
-			UnitName = class'UIUtilities_Text'.static.GetColoredText(UnitName, eUIState_Good);
-
-		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-		SpawnedItem.bAnimateOnInit = false;
-		SpawnedItem.InitListItem();
-		SpawnedItem.UpdateDataCheckbox(UnitName, "", false, SoldierCheckboxChanged, none);
-		SpawnedItem.UnitState = CheckUnit;
-	}
-	
-	// Soldiers in barracks
-	XComHQ = `XCOMHQ;
-	Soldiers = XComHQ.GetSoldiers(); 
-	foreach Soldiers(CheckUnit)
-	{
-		if (!DoesUnitPassActiveFilters(CheckUnit))
-			continue;
-
-		if (!bBarracksHeaderSpawned)
-		{
-			bBarracksHeaderSpawned = true;
-			SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-			SpawnedItem.bAnimateOnInit = false;
-			SpawnedItem.InitListItem();
-			SpawnedItem.UpdateDataDescription("BARRACKS"); // TODO: Localize
-			SpawnedItem.SetDisabled(true); 
-		}
-
-		UnitName = class'CharacterPoolManagerExtended'.static.GetUnitFullNameExtraData_UnitState_Static(CheckUnit);
-		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-		SpawnedItem.bAnimateOnInit = false;
-		SpawnedItem.InitListItem();
-		SpawnedItem.UpdateDataCheckbox(UnitName, "", false, SoldierCheckboxChanged, none);
-		SpawnedItem.UnitState = CheckUnit;
-	}
-	// Soldiers in morgue
-	Soldiers = GetDeadSoldiers(XComHQ);
-	foreach Soldiers(CheckUnit)
-	{
-		if (!DoesUnitPassActiveFilters(CheckUnit))
-			continue;
-
-		if (!bDeadCrewHeaderSpawned)
-		{
-			bDeadCrewHeaderSpawned = true;
-			SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-			SpawnedItem.bAnimateOnInit = false;
-			SpawnedItem.InitListItem();
-			SpawnedItem.UpdateDataDescription("MORGUE"); // TODO: Localize
-			SpawnedItem.SetDisabled(true); 
-		}
-
-		UnitName = class'CharacterPoolManagerExtended'.static.GetUnitFullNameExtraData_UnitState_Static(CheckUnit);
-		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-		SpawnedItem.bAnimateOnInit = false;
-		SpawnedItem.InitListItem();
-		SpawnedItem.UpdateDataCheckbox(UnitName, "", false, SoldierCheckboxChanged, none);
-		SpawnedItem.UnitState = CheckUnit;
-	}
-}*/
 
 // ================================================================================================================================================
 // LIVE UPDATE FUNCTIONS - called when toggling checkboxes or selecting a new CP unit.
@@ -513,7 +387,7 @@ simulated function UpdateSoldierList()
 	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem();
-	SpawnedItem.UpdateDataCheckbox("NO CHANGE", "", OriginalAppearance == SelectedAppearance, SoldierCheckboxChanged, none); // TODO: Localize
+	SpawnedItem.UpdateDataCheckbox("ORIGINAL APPEARANCE", "", bNoChangeSelected, SoldierCheckboxChanged, none); // TODO: Localize
 	SpawnedItem.StoredAppearance.Appearance = OriginalAppearance;
 	SpawnedItem.bNoChange = true;
 
@@ -633,7 +507,11 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 
 	// Cycle through Appearance Store, which may or may not include unit's current appearance.
 	foreach UnitState.AppearanceStore(StoredAppearance)
-	{
+	{	
+		// Skip current appearance of current unit
+		if (StoredAppearance.Appearance == OriginalAppearance && UnitState == ArmoryUnit)
+			continue;
+
 		Gender = EGender(int(Right(StoredAppearance.GenderArmorTemplate, 1)));
 		if (GetFilterListCheckboxStatus('FilterGender') && OriginalAppearance.iGender != Gender)
 			continue;
@@ -681,13 +559,17 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 		SpawnedItem.SetPersonalityTemplate();
 		SpawnedItem.UnitState = UnitState;
 		SpawnedItem.UpdateDataCheckbox(DisplayString, "", SelectedAppearance == SpawnedItem.StoredAppearance.Appearance && SpawnedItem.UnitState == SelectedUnit, SoldierCheckboxChanged, none);
-		SpawnedItem.SetDisabled(StoredAppearance.Appearance == OriginalAppearance && UnitState == ArmoryUnit); // Lock current appearance of current unit
+		//SpawnedItem.SetDisabled(StoredAppearance.Appearance == OriginalAppearance && UnitState == ArmoryUnit); // Lock current appearance of current unit
 	}
 
 	// If Appearance Store didn't contain unit's current appearance, add unit's current appearance to the list as well.
 	// As long it's not the currently selected unit there's no value in having them in the list.
 	if (!bCurrentAppearanceFound)
 	{
+		// Skip current appearance of current unit
+		if (UnitState.kAppearance == OriginalAppearance && UnitState == ArmoryUnit)
+			return;
+
 		Gender = EGender(UnitState.kAppearance.iGender);
 		if (GetFilterListCheckboxStatus('FilterGender') && OriginalAppearance.iGender != Gender)
 			return;
@@ -726,11 +608,10 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 		SpawnedItem.bAnimateOnInit = false;
 		SpawnedItem.InitListItem();
 		SpawnedItem.UpdateDataCheckbox(DisplayString, "", false, SoldierCheckboxChanged, none);
-		//SpawnedItem.StoredAppearance.GenderArmorTemplate
 		SpawnedItem.StoredAppearance.Appearance = UnitState.kAppearance;
 		SpawnedItem.SetPersonalityTemplate();
 		SpawnedItem.UnitState = UnitState;
-		SpawnedItem.SetDisabled(UnitState == ArmoryUnit); // Lock current appearance of current unit
+		//SpawnedItem.SetDisabled(UnitState == ArmoryUnit); // Lock current appearance of current unit
 	}
 }
 
@@ -1431,10 +1312,12 @@ simulated function UpdateOptionsList()
 
 	OptionsList.ClearItems();
 
+	CreateOptionShowAll();
+
 	// PRESETS
 	CreateOptionPresets();
-	
-	if (SelectedAppearance == OriginalAppearance)
+
+	if (!bShowAllCosmeticOptions && bNoChangeSelected)
 		return;
 
 	// HEAD
@@ -1556,9 +1439,11 @@ simulated private function CreateOptionPresets()
 
 simulated private function MaybeCreateAppearanceOption(name OptionName, coerce string CurrentCosmetic, coerce string NewCosmetic, ECosmeticType CosmeticType)
 {	
-	local UIMechaListItem_Button SpawnedItem;
-	local bool bChecked;
-	local bool bDisabled;
+	local UIMechaListItem_Button	SpawnedItem;
+	local string					strDesc;
+	local bool						bChecked;
+	local bool						bDisabled;
+	local bool						bNewIsSameAsCurrent;
 
 	`CPOLOG(`showvar(OptionName) @ `showvar(CurrentCosmetic) @ `showvar(NewCosmetic));
 
@@ -1567,23 +1452,24 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 	{
 		case ECosmeticType_Int:
 		case ECosmeticType_GenderInt:
-			if (int(CurrentCosmetic) == int(NewCosmetic))
-				return;
+			bNewIsSameAsCurrent = int(CurrentCosmetic) == int(NewCosmetic);
 			break;
 		case ECosmeticType_Name:
 			if (CurrentCosmetic == NewCosmetic || class'Help'.static.IsCosmeticEmpty(CurrentCosmetic) && class'Help'.static.IsCosmeticEmpty(NewCosmetic))
 			{
-				`CPOLOG("Cosmetic is empty or equal, exiting");
-				return;}
+				bNewIsSameAsCurrent = true;
+			}
 			break;
 		case ECosmeticType_Biography:
-			if (CurrentCosmetic == NewCosmetic)
-				return;
+			bNewIsSameAsCurrent = CurrentCosmetic == NewCosmetic;
 			break;
 		default:
 			`CPOLOG("WARNING, unknown cosmetic type!" @ CosmeticType); // Shouldn't ever happen, really
 			return;
 	}
+	
+	if (bNewIsSameAsCurrent && !bShowAllCosmeticOptions)
+		return;
 
 	`CPOLOG("Creating option");
 
@@ -1614,28 +1500,43 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 	switch (CosmeticType)
 	{
 		case ECosmeticType_Int:
-			SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ CurrentCosmetic @ "->" @ NewCosmetic, 
-			"", bChecked, OptionCheckboxChanged, none);
+			if (bNewIsSameAsCurrent)
+				strDesc = GetOptionFriendlyName(OptionName) $ ":" @ CurrentCosmetic;
+			else
+				strDesc = GetOptionFriendlyName(OptionName) $ ":" @ CurrentCosmetic @ "->" @ NewCosmetic;
+			SpawnedItem.UpdateDataCheckbox(strDesc, "", bChecked, OptionCheckboxChanged, none);
 			break;
 		case ECosmeticType_Name:
-			SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ GetBodyPartFriendlyName(OptionName, CurrentCosmetic) @ "->" @ GetBodyPartFriendlyName(OptionName, NewCosmetic), 
-			"", bChecked, OptionCheckboxChanged, none);
+			if (bNewIsSameAsCurrent)
+				strDesc = GetOptionFriendlyName(OptionName) $ ":" @ GetBodyPartFriendlyName(OptionName, CurrentCosmetic);
+			else
+				strDesc = GetOptionFriendlyName(OptionName) $ ":" @ GetBodyPartFriendlyName(OptionName, CurrentCosmetic) @ "->" @ GetBodyPartFriendlyName(OptionName, NewCosmetic);
+			
+			SpawnedItem.UpdateDataCheckbox(strDesc, "", bChecked, OptionCheckboxChanged, none);
+			if (bShowAllCosmeticOptions)
+				SpawnedItem.UpdateDataButton(strDesc, "EMPTY", OnEmptyCosmeticOptionButtonClicked); // TODO: Localize	
+
 			break;
 		case ECosmeticType_GenderInt:
-			SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ GetFriendlyGender(int(CurrentCosmetic)) @ "->" @ GetFriendlyGender(int(NewCosmetic)), 
-			"", bChecked, OptionCheckboxChanged, none);
+			if (bNewIsSameAsCurrent)
+				strDesc = GetOptionFriendlyName(OptionName) $ ":" @ GetFriendlyGender(int(CurrentCosmetic));
+			else
+				strDesc = GetOptionFriendlyName(OptionName) $ ":" @ GetFriendlyGender(int(CurrentCosmetic)) @ "->" @ GetFriendlyGender(int(NewCosmetic));
+
+			SpawnedItem.UpdateDataCheckbox(strDesc, "", bChecked, OptionCheckboxChanged, none);
 			break;
 		case ECosmeticType_Biography:
-			SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strEditBiography, 
-			"", bChecked, OptionCheckboxChanged, none);
-
-			SpawnedItem.UpdateDataButton(class'UICustomize_Info'.default.m_strEditBiography, "Preview", // TODO: Localize
-			OnPreviewBiographyButtonClicked);
+			strDesc = class'UICustomize_Info'.default.m_strEditBiography;	
+			SpawnedItem.UpdateDataCheckbox(strDesc, "", bChecked, OptionCheckboxChanged, none);
+			SpawnedItem.UpdateDataButton(strDesc, "Preview", OnPreviewBiographyButtonClicked); // TODO: Localize		
 			break;
 		default:
 			break;
 	}
-	SpawnedItem.SetDisabled(bDisabled); // Have to do this after checkbox has been assigned to the list item.
+
+	//SpawnedItem.UpdateDataCheckbox(strDesc, "", bChecked, OptionCheckboxChanged, none);
+
+	SpawnedItem.SetDisabled(!bShowAllCosmeticOptions && bDisabled); // Have to do this after checkbox has been assigned to the list item.
 }
 
 simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue, int iNewValue, EColorPalette PaletteType, optional bool bPrimary = true)
@@ -1645,7 +1546,7 @@ simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue
 	local LinearColor				ParamColor;
 	local LinearColor				NewParamColor;
 
-	if (iValue == iNewValue)
+	if (!bShowAllCosmeticOptions && iValue == iNewValue)
 		return;
 
 	SpawnedItem = Spawn(class'UIMechaListItem_Color', OptionsList.itemContainer);
@@ -1673,6 +1574,56 @@ simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue
 	SpawnedItem.strColorText_1 = string(iValue);
 	SpawnedItem.strColorText_2 = string(iNewValue);
 	SpawnedItem.UpdateDataColorChip(GetOptionFriendlyName(OptionName), GetHTMLColor(ParamColor));	
+}
+
+simulated private function OnEmptyCosmeticOptionButtonClicked(UIButton ButtonSource)
+{
+	`CPOLOG(ButtonSource.GetParent(class'UIMechaListItem_Button').MCName);
+
+	switch (ButtonSource.GetParent(class'UIMechaListItem_Button').MCName)
+	{
+		case 'nmFlag': SelectedAppearance.nmFlag = ''; break;
+		case 'nmTattoo_LeftArm': SelectedAppearance.nmTattoo_LeftArm = ''; break;
+		case 'nmTattoo_RightArm': SelectedAppearance.nmTattoo_RightArm = ''; break;
+		case 'nmWeaponPattern': SelectedAppearance.nmWeaponPattern = ''; break;
+		case 'nmPatterns': SelectedAppearance.nmPatterns = ''; break;
+		case 'nmLanguage': SelectedAppearance.nmLanguage = ''; break;
+		//case 'FirstName': SelectedAppearance.FirstName = ''; break;
+		//case 'LastName': SelectedAppearance.LastName = ''; break;
+		//case 'Nickname': SelectedAppearance.Nickname = ''; break;
+		//case 'nmHead': SelectedAppearance.nmHead = ''; break;
+		case 'nmHaircut': SelectedAppearance.nmHaircut = ''; break;
+		case 'nmBeard': SelectedAppearance.nmBeard = ''; break;
+		//case 'nmPawn': SelectedAppearance.nmPawn = ''; break;
+		case 'nmTorso': SelectedAppearance.nmTorso = ''; break;
+		case 'nmArms': SelectedAppearance.nmArms = ''; break;
+		case 'nmLegs': SelectedAppearance.nmLegs = ''; break;
+		case 'nmHelmet': SelectedAppearance.nmHelmet = ''; break;
+		case 'nmEye': SelectedAppearance.nmEye = ''; break;
+		case 'nmTeeth': SelectedAppearance.nmTeeth = ''; break;
+		case 'nmFacePropLower': SelectedAppearance.nmFacePropLower = ''; break;
+		case 'nmFacePropUpper': SelectedAppearance.nmFacePropUpper = ''; break;
+		case 'nmVoice': SelectedAppearance.nmVoice = ''; break;
+		case 'nmScars': SelectedAppearance.nmScars = ''; break;
+		case 'nmTorso_Underlay': SelectedAppearance.nmTorso_Underlay = ''; break;
+		case 'nmArms_Underlay': SelectedAppearance.nmArms_Underlay = ''; break;
+		case 'nmLegs_Underlay': SelectedAppearance.nmLegs_Underlay = ''; break;
+		case 'nmFacePaint': SelectedAppearance.nmFacePaint = ''; break;
+		case 'nmLeftArm': SelectedAppearance.nmLeftArm = ''; break;
+		case 'nmRightArm': SelectedAppearance.nmRightArm = ''; break;
+		case 'nmLeftArmDeco': SelectedAppearance.nmLeftArmDeco = ''; break;
+		case 'nmRightArmDeco': SelectedAppearance.nmRightArmDeco = ''; break;
+		case 'nmLeftForearm': SelectedAppearance.nmLeftForearm = ''; break;
+		case 'nmRightForearm': SelectedAppearance.nmRightForearm = ''; break;
+		case 'nmThighs': SelectedAppearance.nmThighs = ''; break;
+		case 'nmShins': SelectedAppearance.nmShins = ''; break;
+		case 'nmTorsoDeco': SelectedAppearance.nmTorsoDeco = ''; break;
+		default:
+			break;
+	}
+	SavePresetCheckboxPositions();
+	UpdateOptionsList();
+	UpdateUnitAppearance();
 }
 
 simulated private function bool IsOptionGenderAgnostic(const name OptionName)
@@ -1823,10 +1774,21 @@ simulated private function OptionCheckboxChanged(UICheckbox CheckBox)
 {
 	SavePresetCheckboxPositions();
 
-	if (CheckBox.GetParent(class'UIMechaListItem_Button').MCName == 'iGender')
+	`CPOLOG(CheckBox.GetParent(class'UIMechaListItem_Button').MCName);
+
+	switch (CheckBox.GetParent(class'UIMechaListItem_Button').MCName)
 	{
-		`CPOLOG("Calling UpdateOptionsList" @ CheckBox.bChecked);
-		UpdateOptionsList();
+		case 'iGender':
+			UpdateOptionsList();
+			break;
+		case 'bShowAllCosmeticOptions':
+			bShowAllCosmeticOptions = !bShowAllCosmeticOptions;
+			default.bShowAllCosmeticOptions = bShowAllCosmeticOptions;
+			SaveConfig();
+			UpdateOptionsList();
+			return;
+		default:
+			break;
 	}
 
 	UpdateUnitAppearance();
@@ -1841,6 +1803,17 @@ simulated private function CreateOptionCategory(string strText)
 	SpawnedItem.InitListItem(); 
 	SpawnedItem.SetDisabled(true);
 	SpawnedItem.UpdateDataDescription(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS(strText));
+}
+
+simulated private function CreateOptionShowAll()
+{
+	local UIMechaListItem_Button SpawnedItem;
+
+	SpawnedItem = Spawn(class'UIMechaListItem_Button', OptionsList.itemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem('bShowAllCosmeticOptions'); 
+	//SpawnedItem.SetDisabled(true);
+	SpawnedItem.UpdateDataCheckbox("SHOW ALL OPTIONS", "", bShowAllCosmeticOptions, OptionCheckboxChanged, none);
 }
 
 simulated private function string GetHTMLColor(LinearColor ParamColor)
@@ -2192,6 +2165,7 @@ static final function SetInitialSoldierListSettings()
 		CDO.bShowBarracksSoldiers = CDO.bShowBarracksSoldiers_DEFAULT;
 		CDO.bShowDeadSoldiers = CDO.bShowDeadSoldiers_DEFAULT;
 		CDO.CheckboxPresets = CDO.CheckboxPresetsDefaults;
+		CDO.bShowAllCosmeticOptions = CDO.bShowAllCosmeticOptions_DEFAULT;
 		CDO.SaveConfig();
 	}
 }
@@ -2352,4 +2326,134 @@ simulated private function LoadPresetCheckboxPositions()
 		}
 	}
 	//SavePresetCheckboxPositions();
+}*/
+
+/*
+simulated function UpdateNavHelp()
+{
+	super.UpdateNavHelp();
+
+	NavHelp.AddLeftHelp("UNIFORM MODE:" $ bUniformMode ? "ON" : "OFF",			
+				class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ class'UIUtilities_Input'.const.ICON_RT_R2, 
+				OnUniformButtonClicked,
+				false,
+				"Tooltip placeholder",
+				class'UIUtilities'.const.ANCHOR_BOTTOM_CENTER);
+}
+
+simulated private function OnUniformButtonClicked()
+{
+	bUniformMode = !bUniformMode;
+	UpdateNavHelp();
+
+	UpdateOptionsList();
+	UpdateUnitAppearance();	
+	UpdatePawnAttitudeAnimation();
+}
+*/
+
+/*
+simulated function UpdateSoldierListOld()
+{
+	local UIMechaListItem_Soldier			SpawnedItem;
+	local XComGameState_Unit				CheckUnit;
+	local string							UnitName;
+	local XComGameState_HeadquartersXCom	XComHQ;
+	local array<XComGameState_Unit>			Soldiers;
+	local bool								bCPHeaderSpawned;
+	local bool								bBarracksHeaderSpawned;
+	local bool								bDeadCrewHeaderSpawned;
+	local int i;
+
+	List.ClearItems();
+
+	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem();
+	SpawnedItem.UpdateDataDescription("SELECT UNIT"); // TODO: Localize
+	SpawnedItem.SetDisabled(true); 
+
+	// First entry is always "No change"
+	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+	SpawnedItem.bAnimateOnInit = false;
+	SpawnedItem.InitListItem();
+	SpawnedItem.UpdateDataCheckbox("NO CHANGE", "", true, SoldierCheckboxChanged, none); // TODO: Localize
+	SpawnedItem.UnitState = ArmoryUnit;
+
+	// Character pool
+	foreach PoolMgr.CharacterPool(CheckUnit, i)
+	{
+		if (!DoesUnitPassActiveFilters(CheckUnit))
+			continue;
+
+		if (!bCPHeaderSpawned)
+		{
+			bCPHeaderSpawned = true;
+			SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+			SpawnedItem.bAnimateOnInit = false;
+			SpawnedItem.InitListItem();
+			SpawnedItem.UpdateDataDescription("CHARACTER POOL"); // TODO: Localize
+			SpawnedItem.SetDisabled(true); 
+		}
+
+		UnitName = PoolMgr.GetUnitFullNameExtraData(i);
+		if (IsUnitPresentInCampaign(CheckUnit)) // If unit was already drawn from the CP, color their entry green.
+			UnitName = class'UIUtilities_Text'.static.GetColoredText(UnitName, eUIState_Good);
+
+		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+		SpawnedItem.bAnimateOnInit = false;
+		SpawnedItem.InitListItem();
+		SpawnedItem.UpdateDataCheckbox(UnitName, "", false, SoldierCheckboxChanged, none);
+		SpawnedItem.UnitState = CheckUnit;
+	}
+	
+	// Soldiers in barracks
+	XComHQ = `XCOMHQ;
+	Soldiers = XComHQ.GetSoldiers(); 
+	foreach Soldiers(CheckUnit)
+	{
+		if (!DoesUnitPassActiveFilters(CheckUnit))
+			continue;
+
+		if (!bBarracksHeaderSpawned)
+		{
+			bBarracksHeaderSpawned = true;
+			SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+			SpawnedItem.bAnimateOnInit = false;
+			SpawnedItem.InitListItem();
+			SpawnedItem.UpdateDataDescription("BARRACKS"); // TODO: Localize
+			SpawnedItem.SetDisabled(true); 
+		}
+
+		UnitName = class'CharacterPoolManagerExtended'.static.GetUnitFullNameExtraData_UnitState_Static(CheckUnit);
+		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+		SpawnedItem.bAnimateOnInit = false;
+		SpawnedItem.InitListItem();
+		SpawnedItem.UpdateDataCheckbox(UnitName, "", false, SoldierCheckboxChanged, none);
+		SpawnedItem.UnitState = CheckUnit;
+	}
+	// Soldiers in morgue
+	Soldiers = GetDeadSoldiers(XComHQ);
+	foreach Soldiers(CheckUnit)
+	{
+		if (!DoesUnitPassActiveFilters(CheckUnit))
+			continue;
+
+		if (!bDeadCrewHeaderSpawned)
+		{
+			bDeadCrewHeaderSpawned = true;
+			SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+			SpawnedItem.bAnimateOnInit = false;
+			SpawnedItem.InitListItem();
+			SpawnedItem.UpdateDataDescription("MORGUE"); // TODO: Localize
+			SpawnedItem.SetDisabled(true); 
+		}
+
+		UnitName = class'CharacterPoolManagerExtended'.static.GetUnitFullNameExtraData_UnitState_Static(CheckUnit);
+		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+		SpawnedItem.bAnimateOnInit = false;
+		SpawnedItem.InitListItem();
+		SpawnedItem.UpdateDataCheckbox(UnitName, "", false, SoldierCheckboxChanged, none);
+		SpawnedItem.UnitState = CheckUnit;
+	}
 }*/

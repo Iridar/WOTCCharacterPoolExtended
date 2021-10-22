@@ -38,30 +38,33 @@ simulated function UIMechaListItem UpdateDataColorChip(string _Desc,
 	Color1_Text.SetPosition(ColorChip.X, 5);
 	Color1_Text.SetCenteredText(strColorText_1, ColorChip);
 	Color1_Text.bAnimateOnInit = false;
-	
-	ArrowText = Spawn(class'UIText', self);
-	ArrowText.InitText('ColorArrowTextMC', "->");
-	ArrowText.SetPosition(width / 2 + ColorChip.Width + 3, 0);
-	ArrowText.bAnimateOnInit = false;
 
-	if( ColorChip2 == none )
+	if (strColorText_1 != strColorText_2)
 	{
-		ColorChip2 = Spawn(class'UIBGBox', self);
-		ColorChip2.bAnimateOnInit = false;
-		ColorChip2.bIsNavigable = false;
-		ColorChip2.InitBG('ColorChip2MC');
-		ColorChip2.SetSize(85, 20);
-		ColorChip2.SetPosition(width / 2 + ColorChip.Width + 30, 7);
+		ArrowText = Spawn(class'UIText', self);
+		ArrowText.InitText('ColorArrowTextMC', "->");
+		ArrowText.SetPosition(width / 2 + ColorChip.Width + 3, 0);
+		ArrowText.bAnimateOnInit = false;
 
-		Color2_Text = Spawn(class'UIText', self);
-		Color2_Text.InitText('ColorChip2TextMC');
-		Color2_Text.SetPosition(ColorChip2.X, 5);
-		Color2_Text.SetCenteredText(strColorText_2, ColorChip2);
-		Color2_Text.bAnimateOnInit = false;
+		if( ColorChip2 == none )
+		{
+			ColorChip2 = Spawn(class'UIBGBox', self);
+			ColorChip2.bAnimateOnInit = false;
+			ColorChip2.bIsNavigable = false;
+			ColorChip2.InitBG('ColorChip2MC');
+			ColorChip2.SetSize(85, 20);
+			ColorChip2.SetPosition(width / 2 + ColorChip.Width + 30, 7);
+
+			Color2_Text = Spawn(class'UIText', self);
+			Color2_Text.InitText('ColorChip2TextMC');
+			Color2_Text.SetPosition(ColorChip2.X, 5);
+			Color2_Text.SetCenteredText(strColorText_2, ColorChip2);
+			Color2_Text.bAnimateOnInit = false;
+		}
+
+		ColorChip2.SetColor(HTMLColorChip2);
+		ColorChip2.Show();
 	}
-
-	ColorChip2.SetColor(HTMLColorChip2);
-	ColorChip2.Show();
 
 	//--------------------------------
 	Desc.SetWidth(width / 2);

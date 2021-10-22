@@ -35,8 +35,6 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-Presets are broken again
-
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
@@ -1438,7 +1436,9 @@ simulated private function SetCheckbox(name OptionName, bool bChecked)
 
 simulated function UpdateOptionsList()
 {
-	SavePresetCheckboxPositions();
+	
+	// Can't do it here, otherwise the relationship between CurrentPreset and checkboxes will be broken!
+	//SavePresetCheckboxPositions();
 
 	OptionsList.ClearItems();
 
@@ -1746,6 +1746,7 @@ simulated private function UpdateHeader()
 
 simulated private function OptionCheckboxChanged(UICheckbox CheckBox)
 {
+	SavePresetCheckboxPositions();
 	UpdateUnitAppearance();
 }
 

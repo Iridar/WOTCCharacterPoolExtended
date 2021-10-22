@@ -47,15 +47,10 @@ Make clicking an item toggle its checkbox?
 
 'Apply changes' button?
 Confirmation checkbox for barracks / armory that would ask "are you sure you want to apply these changes to the following categories: torso, head, etc" 
-Also it should probably make changes only to gender agnostic cosmetic parts, or only if gender is also changed.
-
-Armor appearance and gender filters are somewhat pointless together. 
 
 # Uniforms
 Soldier Class filtering for uniforms (maybe add "universal uniform" checbox? Store uniform status as unit value?
 Per-uniform selection of which parts of the appearance are a part of the uniform.
-
-// Classes up to UICustomize_CPExtended (not counting) are licked up.
 
 ## Checks:
 1. Check if you can customize a unit with all armors in the campaign, then save them into CP, and that they will actually have all that appearance in the next campaign
@@ -552,33 +547,36 @@ simulated function UpdateSoldierList()
 			}
 		}
 	}
-	// Soldiers in barracks
-	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-	SpawnedItem.bAnimateOnInit = false;
-	SpawnedItem.InitListItem('bShowBarracksSoldiers');
-	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.GetColoredText("BARRACKS", eUIState_Warning), "", bShowBarracksSoldiers, SoldierCheckboxChanged, none); // TODO: Localize
-
-	XComHQ = `XCOMHQ;
-	if (bShowBarracksSoldiers)
+	if (!InShell())
 	{
-		Soldiers = XComHQ.GetSoldiers(); 
-		foreach Soldiers(CheckUnit)
+		// Soldiers in barracks
+		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+		SpawnedItem.bAnimateOnInit = false;
+		SpawnedItem.InitListItem('bShowBarracksSoldiers');
+		SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.GetColoredText("BARRACKS", eUIState_Warning), "", bShowBarracksSoldiers, SoldierCheckboxChanged, none); // TODO: Localize
+
+		XComHQ = `XCOMHQ;
+		if (bShowBarracksSoldiers)
 		{
-			CreateAppearanceStoreEntriesForUnit(CheckUnit);
+			Soldiers = XComHQ.GetSoldiers(); 
+			foreach Soldiers(CheckUnit)
+			{
+				CreateAppearanceStoreEntriesForUnit(CheckUnit);
+			}
 		}
-	}
-	// Soldiers in morgue
-	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
-	SpawnedItem.bAnimateOnInit = false;
-	SpawnedItem.InitListItem('bShowDeadSoldiers');
-	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.GetColoredText("MORGUE", eUIState_Warning), "", bShowDeadSoldiers, SoldierCheckboxChanged, none); // TODO: Localize
+		// Soldiers in morgue
+		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
+		SpawnedItem.bAnimateOnInit = false;
+		SpawnedItem.InitListItem('bShowDeadSoldiers');
+		SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.GetColoredText("MORGUE", eUIState_Warning), "", bShowDeadSoldiers, SoldierCheckboxChanged, none); // TODO: Localize
 
-	if (bShowDeadSoldiers)
-	{
-		Soldiers = GetDeadSoldiers(XComHQ);
-		foreach Soldiers(CheckUnit)
+		if (bShowDeadSoldiers)
 		{
-			CreateAppearanceStoreEntriesForUnit(CheckUnit);
+			Soldiers = GetDeadSoldiers(XComHQ);
+			foreach Soldiers(CheckUnit)
+			{
+				CreateAppearanceStoreEntriesForUnit(CheckUnit);
+			}
 		}
 	}
 }
@@ -1066,40 +1064,6 @@ simulated private function SavePresetCheckboxPositions()
 	default.CheckboxPresets = CheckboxPresets; // This is actually necessary
 	SaveConfig();
 }
-/*
-simulated private function LoadPresetCheckboxPositions()
-{
-	local UIMechaListItem		ListItem;
-	local int					Index;
-	local int i;
-
-	`CPOLOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length);
-
-	if (Presets.Length > 0)
-	{
-		i = Presets.Length + 1;
-	}
-	for (i = i; i < OptionsList.ItemCount; i++) 
-	{
-		ListItem = UIMechaListItem(OptionsList.GetItem(i));
-		if (ListItem == none || ListItem.Checkbox == none)
-			continue;
-
-		`CPOLOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked);
-
-		for (Index = 0; Index < CheckboxPresets.Length; Index++)
-		{
-			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
-				CheckboxPresets[Index].Preset == CurrentPreset)
-			{
-				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
-				`CPOLOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked);
-				break;
-			}
-		}
-	}
-	//SavePresetCheckboxPositions();
-}*/
 
 simulated private function ApplyPresetCheckboxPositions()
 {
@@ -1114,6 +1078,19 @@ simulated private function ApplyPresetCheckboxPositions()
 		}
 	}
 	
+}
+
+simulated private function bool GetOptionCheckboxPosition(const name OptionName)
+{
+	local CheckboxPresetStruct CheckboxPreset;
+
+	foreach CheckboxPresets(CheckboxPreset)
+	{
+		if (CheckboxPreset.Preset == CurrentPreset && CheckboxPreset.CheckboxName == OptionName)
+		{
+			return CheckboxPreset.bChecked;
+		}
+	}
 }
 
 simulated private function ApplyChanges()
@@ -1366,17 +1343,45 @@ simulated function CancelChanges()
 
 simulated private function CopyAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
 {
-	if (IsCheckboxChecked('nmHead'))				{NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; }
-	if (IsCheckboxChecked('iGender'))				{NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn; }
-	if (IsCheckboxChecked('iRace'))					NewAppearance.iRace = UniformAppearance.iRace;
-	if (IsCheckboxChecked('nmHaircut'))				NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
+	local bool bGender;
+
+	bGender = IsCheckboxChecked('iGender');
+	if (bGender)				
+	{
+		NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn; 
+		if (IsCheckboxChecked('nmHead'))				{NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; NewAppearance.nmTeeth = UniformAppearance.nmTeeth; NewAppearance.iRace = UniformAppearance.iRace;}
+		//if (IsCheckboxChecked('iRace'))					NewAppearance.iRace = UniformAppearance.iRace;
+		if (IsCheckboxChecked('nmHaircut'))				NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
+		if (IsCheckboxChecked('iFacialHair'))			NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
+		if (IsCheckboxChecked('nmBeard'))				NewAppearance.nmBeard = UniformAppearance.nmBeard;
+		if (IsCheckboxChecked('iVoice'))				NewAppearance.iVoice = UniformAppearance.iVoice;
+		if (IsCheckboxChecked('nmTorso'))				NewAppearance.nmTorso = UniformAppearance.nmTorso;
+		if (IsCheckboxChecked('nmArms'))				NewAppearance.nmArms = UniformAppearance.nmArms;
+		if (IsCheckboxChecked('nmLegs'))				NewAppearance.nmLegs = UniformAppearance.nmLegs;
+		if (IsCheckboxChecked('nmHelmet'))				NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
+		if (IsCheckboxChecked('nmFacePropLower'))		NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
+		if (IsCheckboxChecked('nmFacePropUpper'))		NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
+		if (IsCheckboxChecked('nmVoice'))				NewAppearance.nmVoice = UniformAppearance.nmVoice;
+		if (IsCheckboxChecked('nmScars'))				NewAppearance.nmScars = UniformAppearance.nmScars;
+		if (IsCheckboxChecked('nmTorso_Underlay'))		NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
+		if (IsCheckboxChecked('nmArms_Underlay'))		NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
+		if (IsCheckboxChecked('nmLegs_Underlay'))		NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
+		if (IsCheckboxChecked('nmFacePaint'))			NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
+		if (IsCheckboxChecked('nmLeftArm'))				NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
+		if (IsCheckboxChecked('nmRightArm'))			NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
+		if (IsCheckboxChecked('nmLeftArmDeco'))			NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
+		if (IsCheckboxChecked('nmRightArmDeco'))		NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
+		if (IsCheckboxChecked('nmLeftForearm'))			NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
+		if (IsCheckboxChecked('nmRightForearm'))		NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
+		if (IsCheckboxChecked('nmThighs'))				NewAppearance.nmThighs = UniformAppearance.nmThighs;
+		if (IsCheckboxChecked('nmShins'))				NewAppearance.nmShins = UniformAppearance.nmShins;
+		if (IsCheckboxChecked('nmTorsoDeco'))			NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
+	}
+
 	if (IsCheckboxChecked('iHairColor'))			NewAppearance.iHairColor = UniformAppearance.iHairColor;
-	if (IsCheckboxChecked('iFacialHair'))			NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
-	if (IsCheckboxChecked('nmBeard'))				NewAppearance.nmBeard = UniformAppearance.nmBeard;
 	if (IsCheckboxChecked('iSkinColor'))			NewAppearance.iSkinColor = UniformAppearance.iSkinColor;
 	if (IsCheckboxChecked('iEyeColor'))				NewAppearance.iEyeColor = UniformAppearance.iEyeColor;
 	if (IsCheckboxChecked('nmFlag'))				NewAppearance.nmFlag = UniformAppearance.nmFlag;
-	if (IsCheckboxChecked('iVoice'))				NewAppearance.iVoice = UniformAppearance.iVoice;
 	if (IsCheckboxChecked('iAttitude'))				NewAppearance.iAttitude = UniformAppearance.iAttitude;
 	if (IsCheckboxChecked('iArmorDeco'))			NewAppearance.iArmorDeco = UniformAppearance.iArmorDeco;
 	if (IsCheckboxChecked('iArmorTint'))			NewAppearance.iArmorTint = UniformAppearance.iArmorTint;
@@ -1384,32 +1389,10 @@ simulated private function CopyAppearance(out TAppearance NewAppearance, const o
 	if (IsCheckboxChecked('iWeaponTint'))			NewAppearance.iWeaponTint = UniformAppearance.iWeaponTint;
 	if (IsCheckboxChecked('iTattooTint'))			NewAppearance.iTattooTint = UniformAppearance.iTattooTint;
 	if (IsCheckboxChecked('nmWeaponPattern'))		NewAppearance.nmWeaponPattern = UniformAppearance.nmWeaponPattern;
-	if (IsCheckboxChecked('nmTorso'))				NewAppearance.nmTorso = UniformAppearance.nmTorso;
-	if (IsCheckboxChecked('nmArms'))				NewAppearance.nmArms = UniformAppearance.nmArms;
-	if (IsCheckboxChecked('nmLegs'))				NewAppearance.nmLegs = UniformAppearance.nmLegs;
-	if (IsCheckboxChecked('nmHelmet'))				NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
-	if (IsCheckboxChecked('nmTeeth'))				NewAppearance.nmTeeth = UniformAppearance.nmTeeth;
-	if (IsCheckboxChecked('nmFacePropLower'))		NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
-	if (IsCheckboxChecked('nmFacePropUpper'))		NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
 	if (IsCheckboxChecked('nmPatterns'))			NewAppearance.nmPatterns = UniformAppearance.nmPatterns;
-	if (IsCheckboxChecked('nmVoice'))				NewAppearance.nmVoice = UniformAppearance.nmVoice;
 	if (IsCheckboxChecked('nmLanguage'))			NewAppearance.nmLanguage = UniformAppearance.nmLanguage;
 	if (IsCheckboxChecked('nmTattoo_LeftArm'))		NewAppearance.nmTattoo_LeftArm = UniformAppearance.nmTattoo_LeftArm;
 	if (IsCheckboxChecked('nmTattoo_RightArm'))		NewAppearance.nmTattoo_RightArm = UniformAppearance.nmTattoo_RightArm;
-	if (IsCheckboxChecked('nmScars'))				NewAppearance.nmScars = UniformAppearance.nmScars;
-	if (IsCheckboxChecked('nmTorso_Underlay'))		NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
-	if (IsCheckboxChecked('nmArms_Underlay'))		NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
-	if (IsCheckboxChecked('nmLegs_Underlay'))		NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
-	if (IsCheckboxChecked('nmFacePaint'))			NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
-	if (IsCheckboxChecked('nmLeftArm'))				NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
-	if (IsCheckboxChecked('nmRightArm'))			NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
-	if (IsCheckboxChecked('nmLeftArmDeco'))			NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
-	if (IsCheckboxChecked('nmRightArmDeco'))		NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
-	if (IsCheckboxChecked('nmLeftForearm'))			NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
-	if (IsCheckboxChecked('nmRightForearm'))		NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
-	if (IsCheckboxChecked('nmThighs'))				NewAppearance.nmThighs = UniformAppearance.nmThighs;
-	if (IsCheckboxChecked('nmShins'))				NewAppearance.nmShins = UniformAppearance.nmShins;
-	if (IsCheckboxChecked('nmTorsoDeco'))			NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
 	//if (IsCheckboxChecked('bGhostPawn'))			NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
 }
 
@@ -1451,8 +1434,8 @@ simulated function UpdateOptionsList()
 	// HEAD
 	CreateOptionCategory(class'UICustomize_Menu'.default.m_strEditHead); 
 	
-	MaybeCreateAppearanceOption('iGender',				OriginalAppearance.iGender,				SelectedAppearance.iGender,				ECosmeticType_Int);
-	MaybeCreateAppearanceOption('iRace',				OriginalAppearance.iRace,				SelectedAppearance.iRace,				ECosmeticType_Int);
+	MaybeCreateAppearanceOption('iGender',				OriginalAppearance.iGender,				SelectedAppearance.iGender,				ECosmeticType_GenderInt);
+	//MaybeCreateAppearanceOption('iRace',				OriginalAppearance.iRace,				SelectedAppearance.iRace,				ECosmeticType_Int);
 	MaybeCreateAppearanceOption('iSkinColor',			OriginalAppearance.iSkinColor,			SelectedAppearance.iSkinColor,			ECosmeticType_Int);
 	MaybeCreateAppearanceOption('nmHead',				OriginalAppearance.nmHead,				SelectedAppearance.nmHead,				ECosmeticType_Name);
 	MaybeCreateAppearanceOption('nmHelmet',				OriginalAppearance.nmHelmet,			SelectedAppearance.nmHelmet,			ECosmeticType_Name);
@@ -1521,7 +1504,7 @@ simulated function UpdateOptionsList()
 
 	//LogAllOptions();
 
-	ActivatePreset();
+	//ActivatePreset();
 }
 
 simulated private function LogAllOptions()
@@ -1568,6 +1551,8 @@ simulated private function CreateOptionPresets()
 simulated private function MaybeCreateAppearanceOption(name OptionName, coerce string CurrentCosmetic, coerce string NewCosmetic, ECosmeticType CosmeticType)
 {	
 	local UIMechaListItem_Button SpawnedItem;
+	local bool bChecked;
+	local bool bDisabled;
 
 	`CPOLOG(`showvar(OptionName) @ `showvar(CurrentCosmetic) @ `showvar(NewCosmetic));
 
@@ -1600,23 +1585,43 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem(OptionName);
 
+	// If this option doesn't care about gender, then we load the saved preset for it.
+	if (IsOptionGenderAgnostic(OptionName))
+	{
+		bChecked = GetOptionCheckboxPosition(OptionName);
+	}
+	else if (OriginalAppearance.iGender != SelectedAppearance.iGender) // Is gender change required?
+	{
+		// Disallow toggling the checkbox if the option cares about gender and we're changing either from non-empty or to non-empty.
+		bDisabled = CosmeticType == ECosmeticType_Name && (!class'Help'.static.IsCosmeticEmpty(CurrentCosmetic) || class'Help'.static.IsCosmeticEmpty(NewCosmetic));
+
+		if (IsCheckboxChecked('iGender')) // Are we doing gender change?
+		{
+			bChecked = true;
+		}
+		else
+		{
+			bChecked = false;
+		}
+	}
+
 	switch (CosmeticType)
 	{
 		case ECosmeticType_Int:
 			SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ CurrentCosmetic @ "->" @ NewCosmetic, 
-			"", false, OptionCheckboxChanged, none);
+			"", bChecked, OptionCheckboxChanged, none);
 			break;
 		case ECosmeticType_Name:
 			SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ GetBodyPartFriendlyName(OptionName, CurrentCosmetic) @ "->" @ GetBodyPartFriendlyName(OptionName, NewCosmetic), 
-			"", false, OptionCheckboxChanged, none);
+			"", bChecked, OptionCheckboxChanged, none);
 			break;
 		case ECosmeticType_GenderInt:
 			SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName) $ ":" @ GetFriendlyGender(int(CurrentCosmetic)) @ "->" @ GetFriendlyGender(int(NewCosmetic)), 
-			"", false, OptionCheckboxChanged, none);
+			"", bChecked, OptionCheckboxChanged, none);
 			break;
 		case ECosmeticType_Biography:
 			SpawnedItem.UpdateDataCheckbox(class'UICustomize_Info'.default.m_strEditBiography, 
-			"", false, OptionCheckboxChanged, none);
+			"", bChecked, OptionCheckboxChanged, none);
 
 			SpawnedItem.UpdateDataButton(class'UICustomize_Info'.default.m_strEditBiography, "Preview", // TODO: Localize
 			OnPreviewBiographyButtonClicked);
@@ -1624,16 +1629,7 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 		default:
 			break;
 	}
-}
-
-simulated private function OnPreviewBiographyButtonClicked(UIButton ButtonSource)
-{
-	local UIScreen_Biography BioScreen;
-
-	SavePresetCheckboxPositions();
-	BioScreen = Movie.Pres.Spawn(class'UIScreen_Biography', self);
-	Movie.Pres.ScreenStack.Push(BioScreen);
-	BioScreen.ShowText(ArmoryUnit.GetBackground(), SelectedUnit.GetBackground());
+	SpawnedItem.SetDisabled(bDisabled); // Have to do this after checkbox has been assigned to the list item.
 }
 
 simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue, int iNewValue, EColorPalette PaletteType, optional bool bPrimary = true)
@@ -1652,7 +1648,7 @@ simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue
 
 	SpawnedItem.UpdateDataCheckbox(GetOptionFriendlyName(OptionName), 
 			"",
-			true, // bIsChecked
+			GetOptionCheckboxPosition(OptionName),
 			OptionCheckboxChanged, 
 			none);
 
@@ -1671,6 +1667,79 @@ simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue
 	SpawnedItem.strColorText_1 = string(iValue);
 	SpawnedItem.strColorText_2 = string(iNewValue);
 	SpawnedItem.UpdateDataColorChip(GetOptionFriendlyName(OptionName), GetHTMLColor(ParamColor));	
+}
+
+simulated private function bool IsOptionGenderAgnostic(const name OptionName)
+{
+	switch (OptionName)
+	{
+	// Gender agnostic
+	case 'iGender': return true; // Counter-intuitive, but we need to return 'true' here so that this option itself is not disabled.
+	case 'iHairColor': return true;
+	case 'iSkinColor': return true;
+	case 'iEyeColor': return true;
+	case 'nmFlag': return true;
+	case 'iVoice': return true;
+	case 'iAttitude': return true;
+	case 'iArmorTint': return true;
+	case 'iArmorTintSecondary': return true;
+	case 'iWeaponTint': return true;
+	case 'iTattooTint': return true;
+	case 'nmTattoo_LeftArm': return true;
+	case 'nmTattoo_RightArm': return true;
+	case 'nmWeaponPattern': return true;
+	case 'nmPatterns': return true;
+	case 'nmLanguage': return true;
+	case 'FirstName': return true;
+	case 'LastName': return true;
+	case 'Nickname': return true;
+
+	//Gender specific
+	case 'iRace': return false;
+	case 'nmHead': return false;
+	case 'nmHaircut': return false;
+	case 'iFacialHair': return false;
+	case 'nmBeard': return false;
+	case 'iArmorDeco': return false;
+	case 'nmPawn': return false;
+	case 'nmTorso': return false;
+	case 'nmArms': return false;
+	case 'nmLegs': return false;
+	case 'nmHelmet': return false;
+	case 'nmEye': return false;
+	case 'nmTeeth': return false;
+	case 'nmFacePropLower': return false;
+	case 'nmFacePropUpper': return false;
+	case 'nmVoice': return false;
+	case 'nmScars': return false;
+	case 'nmTorso_Underlay': return false;
+	case 'nmArms_Underlay': return false;
+	case 'nmLegs_Underlay': return false;
+	case 'nmFacePaint': return false;
+	case 'nmLeftArm': return false;
+	case 'nmRightArm': return false;
+	case 'nmLeftArmDeco': return false;
+	case 'nmRightArmDeco': return false;
+	case 'nmLeftForearm': return false;
+	case 'nmRightForearm': return false;
+	case 'nmThighs': return false;
+	case 'nmShins': return false;
+	case 'nmTorsoDeco': return false;
+	//case 'bGhostPawn': return false;
+
+	default:
+		return true;
+	}
+}
+
+simulated private function OnPreviewBiographyButtonClicked(UIButton ButtonSource)
+{
+	local UIScreen_Biography BioScreen;
+
+	SavePresetCheckboxPositions();
+	BioScreen = Movie.Pres.Spawn(class'UIScreen_Biography', self);
+	Movie.Pres.ScreenStack.Push(BioScreen);
+	BioScreen.ShowText(ArmoryUnit.GetBackground(), SelectedUnit.GetBackground());
 }
 
 simulated private function MaybeCreateOptionAttitude()
@@ -1747,6 +1816,13 @@ simulated private function UpdateHeader()
 simulated private function OptionCheckboxChanged(UICheckbox CheckBox)
 {
 	SavePresetCheckboxPositions();
+
+	if (CheckBox.GetParent(class'UIMechaListItem_Button').MCName == 'iGender')
+	{
+		`CPOLOG("Calling UpdateOptionsList" @ CheckBox.bChecked);
+		UpdateOptionsList();
+	}
+
 	UpdateUnitAppearance();
 }
 
@@ -1786,7 +1862,7 @@ simulated private function OptionPresetCheckboxChanged(UICheckbox CheckBox)
 {
 	SavePresetCheckboxPositions();
 	CurrentPreset = UIMechaListItem(CheckBox.GetParent(class'UIMechaListItem')).MCName;
-	UpdateOptionsList(); // This will call ActivatePreset()
+	ActivatePreset();
 	UpdateUnitAppearance();
 }
 
@@ -1965,9 +2041,9 @@ static simulated private function string GetOptionFriendlyName(name OptionName)
 	case'nmThighs': return class'UICustomize_Body'.default.m_strThighs;
 	case'nmShins': return class'UICustomize_Body'.default.m_strShins;
 	case'nmTorsoDeco': return class'UICustomize_Body'.default.m_strTorsoDeco;
-	case 'FirstName': return class'UICustomize_Info'.default.m_strFirstNameLabel;
-	case 'LastName': return class'UICustomize_Info'.default.m_strLastNameLabel;
-	case 'Nickname': return class'UICustomize_Info'.default.m_strNicknameLabel;
+	case'FirstName': return class'UICustomize_Info'.default.m_strFirstNameLabel;
+	case'LastName': return class'UICustomize_Info'.default.m_strLastNameLabel;
+	case'Nickname': return class'UICustomize_Info'.default.m_strNicknameLabel;
 	default:
 		return "";
 	}
@@ -1996,17 +2072,44 @@ static private function bool ShouldCopyUniformPiece(const name UniformPiece, con
 
 static final function CopyAppearance_Static(out TAppearance NewAppearance, const TAppearance UniformAppearance, const name PresetName)
 {
-	if (ShouldCopyUniformPiece('nmHead', PresetName)) {NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; }
-	if (ShouldCopyUniformPiece('iGender', PresetName)) {NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn;}
-	if (ShouldCopyUniformPiece('iRace', PresetName)) NewAppearance.iRace = UniformAppearance.iRace;
-	if (ShouldCopyUniformPiece('nmHaircut', PresetName)) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
+	local bool bGender;
+
+	bGender = ShouldCopyUniformPiece('iGender', PresetName);
+	if (bGender)
+	{
+		NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn;
+		if (ShouldCopyUniformPiece('nmHead', PresetName)) {NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; NewAppearance.nmTeeth = UniformAppearance.nmTeeth; NewAppearance.iRace = UniformAppearance.iRace;}
+		//if (ShouldCopyUniformPiece('iRace', PresetName)) NewAppearance.iRace = UniformAppearance.iRace;
+		if (ShouldCopyUniformPiece('nmHaircut', PresetName)) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
+		if (ShouldCopyUniformPiece('iFacialHair', PresetName)) NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
+		if (ShouldCopyUniformPiece('nmBeard', PresetName)) NewAppearance.nmBeard = UniformAppearance.nmBeard;
+		if (ShouldCopyUniformPiece('iVoice', PresetName)) NewAppearance.iVoice = UniformAppearance.iVoice;
+		if (ShouldCopyUniformPiece('nmTorso', PresetName)) NewAppearance.nmTorso = UniformAppearance.nmTorso;
+		if (ShouldCopyUniformPiece('nmArms', PresetName)) NewAppearance.nmArms = UniformAppearance.nmArms;
+		if (ShouldCopyUniformPiece('nmLegs', PresetName)) NewAppearance.nmLegs = UniformAppearance.nmLegs;
+		if (ShouldCopyUniformPiece('nmHelmet', PresetName)) NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
+		if (ShouldCopyUniformPiece('nmFacePropLower', PresetName)) NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
+		if (ShouldCopyUniformPiece('nmFacePropUpper', PresetName)) NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
+		if (ShouldCopyUniformPiece('nmVoice', PresetName)) NewAppearance.nmVoice = UniformAppearance.nmVoice;
+		if (ShouldCopyUniformPiece('nmScars', PresetName)) NewAppearance.nmScars = UniformAppearance.nmScars;
+		if (ShouldCopyUniformPiece('nmTorso_Underlay', PresetName)) NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
+		if (ShouldCopyUniformPiece('nmArms_Underlay', PresetName)) NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
+		if (ShouldCopyUniformPiece('nmLegs_Underlay', PresetName)) NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
+		if (ShouldCopyUniformPiece('nmFacePaint', PresetName)) NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
+		if (ShouldCopyUniformPiece('nmLeftArm', PresetName)) NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
+		if (ShouldCopyUniformPiece('nmRightArm', PresetName)) NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
+		if (ShouldCopyUniformPiece('nmLeftArmDeco', PresetName)) NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
+		if (ShouldCopyUniformPiece('nmRightArmDeco', PresetName)) NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
+		if (ShouldCopyUniformPiece('nmLeftForearm', PresetName)) NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
+		if (ShouldCopyUniformPiece('nmRightForearm', PresetName)) NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
+		if (ShouldCopyUniformPiece('nmThighs', PresetName)) NewAppearance.nmThighs = UniformAppearance.nmThighs;
+		if (ShouldCopyUniformPiece('nmShins', PresetName)) NewAppearance.nmShins = UniformAppearance.nmShins;
+		if (ShouldCopyUniformPiece('nmTorsoDeco', PresetName)) NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
+	}
 	if (ShouldCopyUniformPiece('iHairColor', PresetName)) NewAppearance.iHairColor = UniformAppearance.iHairColor;
-	if (ShouldCopyUniformPiece('iFacialHair', PresetName)) NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
-	if (ShouldCopyUniformPiece('nmBeard', PresetName)) NewAppearance.nmBeard = UniformAppearance.nmBeard;
 	if (ShouldCopyUniformPiece('iSkinColor', PresetName)) NewAppearance.iSkinColor = UniformAppearance.iSkinColor;
 	if (ShouldCopyUniformPiece('iEyeColor', PresetName)) NewAppearance.iEyeColor = UniformAppearance.iEyeColor;
 	if (ShouldCopyUniformPiece('nmFlag', PresetName)) NewAppearance.nmFlag = UniformAppearance.nmFlag;
-	if (ShouldCopyUniformPiece('iVoice', PresetName)) NewAppearance.iVoice = UniformAppearance.iVoice;
 	if (ShouldCopyUniformPiece('iAttitude', PresetName)) NewAppearance.iAttitude = UniformAppearance.iAttitude;
 	if (ShouldCopyUniformPiece('iArmorDeco', PresetName)) NewAppearance.iArmorDeco = UniformAppearance.iArmorDeco;
 	if (ShouldCopyUniformPiece('iArmorTint', PresetName)) NewAppearance.iArmorTint = UniformAppearance.iArmorTint;
@@ -2014,35 +2117,11 @@ static final function CopyAppearance_Static(out TAppearance NewAppearance, const
 	if (ShouldCopyUniformPiece('iWeaponTint', PresetName)) NewAppearance.iWeaponTint = UniformAppearance.iWeaponTint;
 	if (ShouldCopyUniformPiece('iTattooTint', PresetName)) NewAppearance.iTattooTint = UniformAppearance.iTattooTint;
 	if (ShouldCopyUniformPiece('nmWeaponPattern', PresetName)) NewAppearance.nmWeaponPattern = UniformAppearance.nmWeaponPattern;
-	//if (ShouldCopyUniformPiece('nmPawn', PresetName)) NewAppearance.nmPawn = UniformAppearance.nmPawn;
-	if (ShouldCopyUniformPiece('nmTorso', PresetName)) NewAppearance.nmTorso = UniformAppearance.nmTorso;
-	if (ShouldCopyUniformPiece('nmArms', PresetName)) NewAppearance.nmArms = UniformAppearance.nmArms;
-	if (ShouldCopyUniformPiece('nmLegs', PresetName)) NewAppearance.nmLegs = UniformAppearance.nmLegs;
-	if (ShouldCopyUniformPiece('nmHelmet', PresetName)) NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
-	//if (ShouldCopyUniformPiece('nmEye', PresetName)) NewAppearance.nmEye = UniformAppearance.nmEye;
-	if (ShouldCopyUniformPiece('nmTeeth', PresetName)) NewAppearance.nmTeeth = UniformAppearance.nmTeeth;
-	if (ShouldCopyUniformPiece('nmFacePropLower', PresetName)) NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
-	if (ShouldCopyUniformPiece('nmFacePropUpper', PresetName)) NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
 	if (ShouldCopyUniformPiece('nmPatterns', PresetName)) NewAppearance.nmPatterns = UniformAppearance.nmPatterns;
-	if (ShouldCopyUniformPiece('nmVoice', PresetName)) NewAppearance.nmVoice = UniformAppearance.nmVoice;
 	if (ShouldCopyUniformPiece('nmLanguage', PresetName)) NewAppearance.nmLanguage = UniformAppearance.nmLanguage;
 	if (ShouldCopyUniformPiece('nmTattoo_LeftArm', PresetName)) NewAppearance.nmTattoo_LeftArm = UniformAppearance.nmTattoo_LeftArm;
 	if (ShouldCopyUniformPiece('nmTattoo_RightArm', PresetName)) NewAppearance.nmTattoo_RightArm = UniformAppearance.nmTattoo_RightArm;
-	if (ShouldCopyUniformPiece('nmScars', PresetName)) NewAppearance.nmScars = UniformAppearance.nmScars;
-	if (ShouldCopyUniformPiece('nmTorso_Underlay', PresetName)) NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
-	if (ShouldCopyUniformPiece('nmArms_Underlay', PresetName)) NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
-	if (ShouldCopyUniformPiece('nmLegs_Underlay', PresetName)) NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
-	if (ShouldCopyUniformPiece('nmFacePaint', PresetName)) NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
-	if (ShouldCopyUniformPiece('nmLeftArm', PresetName)) NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
-	if (ShouldCopyUniformPiece('nmRightArm', PresetName)) NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
-	if (ShouldCopyUniformPiece('nmLeftArmDeco', PresetName)) NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
-	if (ShouldCopyUniformPiece('nmRightArmDeco', PresetName)) NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
-	if (ShouldCopyUniformPiece('nmLeftForearm', PresetName)) NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
-	if (ShouldCopyUniformPiece('nmRightForearm', PresetName)) NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
-	if (ShouldCopyUniformPiece('nmThighs', PresetName)) NewAppearance.nmThighs = UniformAppearance.nmThighs;
-	if (ShouldCopyUniformPiece('nmShins', PresetName)) NewAppearance.nmShins = UniformAppearance.nmShins;
-	if (ShouldCopyUniformPiece('nmTorsoDeco', PresetName)) NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
-	if (ShouldCopyUniformPiece('bGhostPawn', PresetName)) NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
+	//if (ShouldCopyUniformPiece('bGhostPawn', PresetName)) NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
 }
 
 static final function SetInitialSoldierListSettings()
@@ -2186,3 +2265,37 @@ simulated private function bool ShouldShowPersonalityCategory()
 			ArmoryUnit.GetBackground() == SelectedUnit.GetBackground();				
 }*/
 
+/*
+simulated private function LoadPresetCheckboxPositions()
+{
+	local UIMechaListItem		ListItem;
+	local int					Index;
+	local int i;
+
+	`CPOLOG(GetFuncName() @ "Options in the list:" @ OptionsList.ItemCount @ "Saved options:" @ CheckboxPresets.Length);
+
+	if (Presets.Length > 0)
+	{
+		i = Presets.Length + 1;
+	}
+	for (i = i; i < OptionsList.ItemCount; i++) 
+	{
+		ListItem = UIMechaListItem(OptionsList.GetItem(i));
+		if (ListItem == none || ListItem.Checkbox == none)
+			continue;
+
+		`CPOLOG(i @ "List item:" @ ListItem.MCName @ ListItem.Desc.htmlText @ "Checked:" @ ListItem.Checkbox.bChecked);
+
+		for (Index = 0; Index < CheckboxPresets.Length; Index++)
+		{
+			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
+				CheckboxPresets[Index].Preset == CurrentPreset)
+			{
+				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);
+				`CPOLOG(i @ "Found non-default entry:" @ CheckboxPresets[Index].bChecked);
+				break;
+			}
+		}
+	}
+	//SavePresetCheckboxPositions();
+}*/

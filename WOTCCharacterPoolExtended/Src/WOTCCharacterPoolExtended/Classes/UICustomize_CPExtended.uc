@@ -35,6 +35,10 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
+Lock "copy preset" button when non-default preset is selected
+
+'Show all' checkbox for the cosmetic options list that would just bypass the 'if the cosmetic part is the same' check. 
+
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
@@ -42,8 +46,7 @@ Search bar for CP units?
 # This screen
 make the HEAD, BODY and other categories have whole toggle checkboxes too, and make the list headers appear only if there's something in their category to show.
 Make clicking an item toggle its checkbox?
-
-'Show all' checkbox for the cosmetic options list?
+Way to add presets through in-game UI
 
 'Apply changes' button?
 Confirmation checkbox for barracks / armory that would ask "are you sure you want to apply these changes to the following categories: torso, head, etc" 
@@ -58,7 +61,7 @@ Per-uniform selection of which parts of the appearance are a part of the uniform
 
 ## Finalization
 0. Clean up everything. Commentate. Add private/final. Go through TODO's
-1. Localize stuff.
+1. Localize stuff. Disabled reasons for cosmetic options.
 2. Fix log error spam.
 
 ## Addressed
@@ -1852,19 +1855,64 @@ simulated private function string GetHTMLColor(LinearColor ParamColor)
 
 simulated private function CreateOptionPreset(name OptionName, string strText, string strTooltip, optional bool bChecked)
 {
-	local UIMechaListItem SpawnedItem;
+	local UIMechaListItem_Button SpawnedItem;
 
-	SpawnedItem = Spawn(class'UIMechaListItem', OptionsList.itemContainer);
+	SpawnedItem = Spawn(class'UIMechaListItem_Button', OptionsList.itemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem(OptionName);
 
 	SpawnedItem.UpdateDataCheckbox(strText, strTooltip, bChecked, OptionPresetCheckboxChanged, none);
+
+	`CPOLOG(`showvar(CurrentPreset) @ OptionName @ bChecked);
+
+	if (OptionName != 'PresetDefault')
+	{
+		SpawnedItem.UpdateDataButton(strText, "Copy Preset", // TODO: Localize
+			OnCopyPresetButtonClicked);
+	}
+}
+
+simulated private function OnCopyPresetButtonClicked(UIButton ButtonSource)
+{
+	local CheckboxPresetStruct	NewPresetStruct;
+	local name					CopyPreset;
+	local int i;
+
+	CopyPreset = ButtonSource.GetParent(class'UIMechaListItem_Button').MCName;
+
+	//`CPOLOG(`showvar(CurrentPreset) @ `showvar(CopyPreset));
+
+	for (i = CheckboxPresets.Length - 1; i >= 0; i--)
+	{
+		if (CheckboxPresets[i].Preset == CurrentPreset)
+		{
+			//`CPOLOG(i @ "removing entry for current preset" @ CheckboxPresets[i].CheckboxName @ CheckboxPresets[i].bChecked);
+			CheckboxPresets.Remove(i, 1);
+		}
+	}
+	for (i = CheckboxPresets.Length - 1; i >= 0; i--)
+	{
+		if (CheckboxPresets[i].Preset == CopyPreset)
+		{
+			//`CPOLOG(i @ "creating a copy of the preset:" @ CheckboxPresets[i].CheckboxName @ CheckboxPresets[i].bChecked);
+			NewPresetStruct = CheckboxPresets[i];
+			NewPresetStruct.Preset = CurrentPreset;
+			CheckboxPresets.AddItem(NewPresetStruct);
+		}
+	}
+
+	default.CheckboxPresets = CheckboxPresets;
+	SaveConfig();
+
+	UpdateOptionsList();
+	ActivatePreset();
+	UpdateUnitAppearance();
 }
 
 simulated private function OptionPresetCheckboxChanged(UICheckbox CheckBox)
 {
 	SavePresetCheckboxPositions();
-	CurrentPreset = UIMechaListItem(CheckBox.GetParent(class'UIMechaListItem')).MCName;
+	CurrentPreset = CheckBox.GetParent(class'UIMechaListItem_Button').MCName;
 	ActivatePreset();
 	UpdateUnitAppearance();
 }

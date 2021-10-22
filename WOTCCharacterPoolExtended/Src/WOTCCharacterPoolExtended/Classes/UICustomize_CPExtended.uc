@@ -35,7 +35,7 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-Weapon pattern copying should work by checking weapon states
+Presets are broken again
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
@@ -87,9 +87,8 @@ var private CharacterPoolManagerExtended		PoolMgr;
 var private X2BodyPartTemplateManager			BodyPartMgr;
 var private X2StrategyElementTemplateManager	StratMgr;
 var private X2ItemTemplateManager				ItemMgr;
-//var private UIPawnMgr							PawnMgr;
+var private UIPawnMgr							PawnMgr;
 var private	XComGameStateHistory				History;
-var private bool								bRefreshPawn;
 var private bool								bUniformMode;
 var private name								CurrentPreset;
 var private string								SearchText;
@@ -137,7 +136,7 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	BodyPartMgr = class'X2BodyPartTemplateManager'.static.GetBodyPartTemplateManager();
 	StratMgr = class'X2StrategyElementTemplateManager'.static.GetStrategyElementTemplateManager();
 	ItemMgr = class'X2ItemTemplateManager'.static.GetItemTemplateManager();
-	//PawnMgr = Movie.Pres.GetUIPawnMgr();
+	PawnMgr = Movie.Pres.GetUIPawnMgr();
 	History = `XCOMHISTORY;
 	CacheArmoryUnitData();
 
@@ -249,6 +248,7 @@ simulated private function CreateFiltersList()
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem('ApplyToSquad');
 	SpawnedItem.UpdateDataCheckbox(class'UIUtilities_Text'.static.CapsCheckForGermanScharfesS("squad"), "", false, none, none);
+	SpawnedItem.SetDisabled(InShell());
 
 	if (bInArmory)
 	{
@@ -672,7 +672,7 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 			DisplayString @= "(Current)"; // TODO: Localize
 		}
 
-		if (InStr(DisplayString, SearchText,, true) == INDEX_NONE) // ignore case
+		if (SearchText != "" && InStr(DisplayString, SearchText,, true) == INDEX_NONE) // ignore case
 			continue;
 		
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
@@ -720,7 +720,7 @@ simulated private function CreateAppearanceStoreEntriesForUnit(const XComGameSta
 		}
 		DisplayString @= "(Current)"; // TODO: Localize
 
-		if (InStr(DisplayString, SearchText,, true) == INDEX_NONE) // ignore case
+		if (SearchText != "" && InStr(DisplayString, SearchText,, true) == INDEX_NONE) // ignore case
 			return;
 		
 		SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
@@ -908,34 +908,24 @@ simulated private function OnUnitSelected(int ItemIndex)
 	SelectedUnit = ListItem.UnitState;
 	bNoChangeSelected = ListItem.bNoChange;
 
-	//if (ShouldRefreshPawn())
-	//{
-	//	bRefreshPawn = true;
-	//} 
-
 	UpdateOptionsList();
 	UpdateUnitAppearance();	
 }
 
 simulated private function bool ShouldRefreshPawn(const TAppearance NewAppearance)
 {
-	
 	if (PreviousAppearance.iGender != NewAppearance.iGender)
 	{
-		`CPOLOG("refreshing appearance cuz of gender");
 		return true;
 	}
 	if (PreviousAppearance.nmWeaponPattern != NewAppearance.nmWeaponPattern)
 	{
-		`CPOLOG("refreshing appearance cuz of weapon pattern" @ PreviousAppearance.nmWeaponPattern @ NewAppearance.nmWeaponPattern);
 		return true;
 	}
 	if (PreviousAppearance.iWeaponTint != NewAppearance.iWeaponTint)
 	{
-		`CPOLOG("refreshing appearance cuz of weapon tint");
 		return true;
 	}
-	`CPOLOG("not refreshing appearance");
 	return false;
 }
 
@@ -949,13 +939,13 @@ simulated private function UpdateUnitAppearance()
 	PreviousAppearance = ArmoryPawn.m_kAppearance;
 	ArmoryUnit.SetTAppearance(NewAppearance);
 	ArmoryPawn.SetAppearance(NewAppearance);
-	//ArmoryUnit.SetTAppearance(NewAppearance);
 	//CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, NewAppearance.iWeaponTint);
+
+	`CPOLOG("Calling ApplyChangesToUnitWeapons" @ PreviousAppearance.nmWeaponPattern @ NewAppearance.nmWeaponPattern @ PreviousAppearance.iWeaponTint @ NewAppearance.iWeaponTint);
+	ApplyChangesToUnitWeapons(ArmoryUnit, NewAppearance, none);
 
 	if (ShouldRefreshPawn(NewAppearance))
 	{
-		//bRefreshPawn = false;
-
 		CustomizeManager.ReCreatePawnVisuals(CustomizeManager.ActorPawn, true);
 
 		// After ReCreatePawnVisuals, the CustomizeManager.ActorPawn, ArmoryPawn and become 'none'
@@ -968,8 +958,8 @@ simulated private function UpdateUnitAppearance()
 		UpdatePawnAttitudeAnimation(); // OnRefreshPawn() will call this automatically
 	}
 
+	
 	UpdateHeader();
-	//ArmoryPawn.CreateVisualInventoryAttachments(PawnMgr, ArmoryUnit);
 }
 
 // Can't use an Event Listener in CP, so using a timer (ugh)
@@ -980,6 +970,9 @@ simulated final function OnRefreshPawn()
 	{
 		UpdatePawnLocation();
 		UpdatePawnAttitudeAnimation();
+
+		`CPOLOG("Calling ApplyChangesToUnitWeapons" @ PreviousAppearance.nmWeaponPattern @ ArmoryPawn.m_kAppearance.nmWeaponPattern @ PreviousAppearance.iWeaponTint @ ArmoryPawn.m_kAppearance.iWeaponTint);
+		ApplyChangesToUnitWeapons(ArmoryUnit, ArmoryPawn.m_kAppearance, none);
 
 		// Assign the actor pawn to the mouse guard so the pawn can be rotated by clicking and dragging
 		UIMouseGuard_RotatePawn(`SCREENSTACK.GetFirstInstanceOf(class'UIMouseGuard_RotatePawn')).SetActorPawn(CustomizeManager.ActorPawn);
@@ -1162,7 +1155,7 @@ simulated private function ApplyChanges()
 				continue;
 
 			UnitState = XComGameState_Unit(NewGameState.ModifyStateObject(UnitState.Class, UnitState.ObjectID));
-			ApplyChangesToUnit(UnitState);
+			ApplyChangesToUnit(UnitState, NewGameState);
 		}
 		`GAMERULES.SubmitGameState(NewGameState);
 	}
@@ -1175,18 +1168,18 @@ simulated private function ApplyChanges()
 		foreach UnitStates(UnitState)
 		{
 			UnitState = XComGameState_Unit(NewGameState.ModifyStateObject(UnitState.Class, UnitState.ObjectID));
-			ApplyChangesToUnit(UnitState);
+			ApplyChangesToUnit(UnitState, NewGameState);
 		}
 		`GAMERULES.SubmitGameState(NewGameState);
 	}
 }
 
-simulated private function ApplyChangesToUnit(XComGameState_Unit UnitState)
+simulated private function ApplyChangesToUnit(XComGameState_Unit UnitState, optional XComGameState NewGameState)
 {
-	local TAppearance CurrentAppearance;
-	local string strFirstName;
-	local string strNickname;
-	local string strLastName;
+	local TAppearance	NewAppearance;
+	local string		strFirstName;
+	local string		strNickname;
+	local string		strLastName;
 
 	if (IsCheckboxChecked('FirstName'))
 		strFirstName = SelectedUnit.GetFirstName();
@@ -1211,12 +1204,96 @@ simulated private function ApplyChangesToUnit(XComGameState_Unit UnitState)
 	if (IsCheckboxChecked('Biography'))
 		UnitState.SetBackground(SelectedUnit.GetBackground());
 
-	CurrentAppearance = UnitState.kAppearance;
-	CopyAppearance(CurrentAppearance, SelectedAppearance);
+	NewAppearance = UnitState.kAppearance;
+	CopyAppearance(NewAppearance, SelectedAppearance);
 
-	UnitState.SetTAppearance(CurrentAppearance);
+	UnitState.SetTAppearance(NewAppearance);
 	UnitState.UpdatePersonalityTemplate();
 	UnitState.StoreAppearance();
+
+	ApplyChangesToUnitWeapons(UnitState, NewAppearance, NewGameState);
+}
+
+simulated private function ApplyChangesToUnitWeapons(XComGameState_Unit UnitState, TAppearance NewAppearance, XComGameState NewGameState)
+{
+	local XComGameState_Item		InventoryItem;
+	local XComGameState_Item		NewInvenoryItem;
+	local array<XComGameState_Item> InventoryItems;
+	local X2WeaponTemplate			WeaponTemplate;
+	local bool						bSubmit;
+
+	`CPOLOG("Tint:" @ IsCheckboxChecked('iWeaponTint') @ "pattern:" @ IsCheckboxChecked('nmWeaponPattern'));
+
+	// There are two separate tasks: updating weapon appearance in Shell (in CP) and in Armory.
+	// In CP this happens automatically, because when we refresh the pawn, the unit's weapons automatically draw their customization from the unit state.
+	// So we exit early out of this function.
+	if (InShell())
+		return;
+
+	// While in Armory, we have to actually update the weapon appearance on Item States, which always requires submitting a Game State.
+	// So if a NewGameState wasn't provided, we create our own, ~~with blackjack and hookers~~
+	if (NewGameState == none)
+	{		
+		NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("Apply weeapon appearance changes");
+		bSubmit = true;
+	}
+	InventoryItems = UnitState.GetAllInventoryItems(NewGameState, true);
+	`CPOLOG("Num inventory items:" @ InventoryItems.Length);
+	foreach InventoryItems(InventoryItem)
+	{
+		WeaponTemplate = X2WeaponTemplate(InventoryItem.GetMyTemplate());
+		if (WeaponTemplate == none)
+			continue;
+
+		`CPOLOG(WeaponTemplate.DataName @ InventoryItem.InventorySlot @ InventoryItem.ObjectID);
+		
+		NewInvenoryItem = XComGameState_Item(NewGameState.ModifyStateObject(InventoryItem.Class, InventoryItem.ObjectID));
+		if (IsCheckboxChecked('iWeaponTint'))
+		{
+			if (WeaponTemplate.bUseArmorAppearance)
+			{
+				NewInvenoryItem.WeaponAppearance.iWeaponTint = NewAppearance.iArmorTint;
+			}
+			else
+			{
+				NewInvenoryItem.WeaponAppearance.iWeaponTint = NewAppearance.iWeaponTint;
+			}
+		}
+		else
+		{
+			if (WeaponTemplate.bUseArmorAppearance)
+			{
+				NewInvenoryItem.WeaponAppearance.iWeaponTint = OriginalAppearance.iArmorTint;
+			}
+			else
+			{
+				NewInvenoryItem.WeaponAppearance.iWeaponTint = OriginalAppearance.iWeaponTint;
+			}
+		}
+
+		if (IsCheckboxChecked('nmWeaponPattern'))
+		{
+			NewInvenoryItem.WeaponAppearance.nmWeaponPattern = NewAppearance.nmWeaponPattern;
+		}
+		else
+		{
+			NewInvenoryItem.WeaponAppearance.nmWeaponPattern = OriginalAppearance.nmWeaponPattern;
+		}
+		
+	}
+	if (bSubmit)
+	{
+		if (NewGameState.GetNumGameStateObjects() > 0)
+		{
+			`GAMERULES.SubmitGameState(NewGameState);
+		}
+		else
+		{
+			History.CleanupPendingGameState(NewGameState);
+		}
+	}
+	// This doesn't seem to do anything.
+	//ArmoryPawn.CreateVisualInventoryAttachments(Movie.Pres.GetUIPawnMgr(), UnitState, NewGameState);
 }
 
 simulated private function ApplyChangesToArmoryUnit()
@@ -1255,43 +1332,30 @@ simulated private function ApplyChangesToArmoryUnit()
 	if (IsCheckboxChecked('Biography'))
 		ArmoryUnit.SetBackground(SelectedUnit.GetBackground());
 
+	ArmoryUnit.StoreAppearance();
 	CustomizeManager.SubmitUnitCustomizationChanges();
 
-	NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("Apply appearance changes");
-	ArmoryUnit = XComGameState_Unit(NewGameState.ModifyStateObject(ArmoryUnit.Class, ArmoryUnit.ObjectID));
-	ArmoryUnit.UpdatePersonalityTemplate();
-	
-	//if (IsCheckboxChecked('AppearanceStore'))
-	//{
-		// TODO: Replace this with a proper function that would append/replace appearance store
-	//	ArmoryUnit.AppearanceStore = SelectedUnit.AppearanceStore;
-	//}
+	if (!InShell())
+	{
+		NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("Apply appearance changes");
+		ArmoryUnit = XComGameState_Unit(NewGameState.ModifyStateObject(ArmoryUnit.Class, ArmoryUnit.ObjectID));
+		ArmoryUnit.UpdatePersonalityTemplate();
 
-	ArmoryUnit.StoreAppearance();
-	`GAMERULES.SubmitGameState(NewGameState);
-
+		ApplyChangesToUnitWeapons(ArmoryUnit, ArmoryPawn.m_kAppearance, NewGameState);
+		`GAMERULES.SubmitGameState(NewGameState);
+	}
 	ArmoryPawn.CustomizationIdleAnim = ArmoryUnit.GetPersonalityTemplate().IdleAnimName;
-
-	//CustomizeManager.UpdatedUnitState = ArmoryUnit;
-
-	//CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, ArmoryPawn.m_kAppearance.iWeaponTint);
-	//CustomizeManager.OnCategoryValueChange(eUICustomizeCat_Personality, 0, ArmoryPawn.m_kAppearance.iAttitude);
 }
 
 simulated function CancelChanges()
 {
-	if (ArmoryPawn.m_kAppearance.iGender != OriginalAppearance.iGender)
-	{
-		bRefreshPawn = true;
-	}
-
+	PreviousAppearance = ArmoryPawn.m_kAppearance;
 	ArmoryUnit.SetTAppearance(OriginalAppearance);
 	ArmoryPawn.SetAppearance(OriginalAppearance);
 
-	if (bRefreshPawn)
+	if (ShouldRefreshPawn(OriginalAppearance))
 	{
 		CustomizeManager.ReCreatePawnVisuals(CustomizeManager.ActorPawn, true);
-		bRefreshPawn = false;
 	}	
 	else
 	{
@@ -1304,8 +1368,6 @@ simulated function CancelChanges()
 
 simulated private function CopyAppearance(out TAppearance NewAppearance, const out TAppearance UniformAppearance)
 {
-	//NewAppearance = UniformAppearance;
-
 	if (IsCheckboxChecked('nmHead'))				{NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; }
 	if (IsCheckboxChecked('iGender'))				{NewAppearance.iGender = UniformAppearance.iGender; NewAppearance.nmPawn = UniformAppearance.nmPawn; }
 	if (IsCheckboxChecked('iRace'))					NewAppearance.iRace = UniformAppearance.iRace;
@@ -1376,6 +1438,8 @@ simulated private function SetCheckbox(name OptionName, bool bChecked)
 
 simulated function UpdateOptionsList()
 {
+	SavePresetCheckboxPositions();
+
 	OptionsList.ClearItems();
 
 	// PRESETS

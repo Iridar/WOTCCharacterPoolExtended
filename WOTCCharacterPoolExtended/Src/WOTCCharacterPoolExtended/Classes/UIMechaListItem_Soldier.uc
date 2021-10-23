@@ -4,7 +4,7 @@ class UIMechaListItem_Soldier extends UIMechaListItem;
 
 var AppearanceInfo					StoredAppearance;
 var X2SoldierPersonalityTemplate	PersonalityTemplate;
-var bool							bNoChange;
+var bool							bOriginalAppearance;
 var XComGameState_Unit				UnitState;
 
 simulated final function SetPersonalityTemplate()

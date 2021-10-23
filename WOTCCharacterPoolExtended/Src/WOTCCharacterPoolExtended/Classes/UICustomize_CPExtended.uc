@@ -37,20 +37,19 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-Lock "copy preset" button when non-default preset is selected
-Show "empty" button only for parts that actually can be empty
-get it working by setting '_BLANK' and similar to cosmetic slots instead of '', which doesn't work.
+Lock "copy preset" button when non-default preset is selected.
+make the HEAD, BODY and other categories have whole toggle checkboxes too, and make the list headers appear only if there's something in their category to show.
+Add 'Apply changes' button, with a pop-up that offers to exit without changes, and lists the number of soldiers the changes will be applied to.
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
 
 # This screen
-make the HEAD, BODY and other categories have whole toggle checkboxes too, and make the list headers appear only if there's something in their category to show.
+
 Make clicking an item toggle its checkbox?
 Way to add presets through in-game UI
 
-'Apply changes' button?
 Confirmation checkbox for barracks / armory that would ask "are you sure you want to apply these changes to the following categories: torso, head, etc" 
 
 # Uniforms
@@ -94,7 +93,7 @@ var private string								SearchText;
 // Info about selected CP unit
 var private TAppearance						SelectedAppearance;
 var private X2SoldierPersonalityTemplate	SelectedAttitude;
-var private bool							bNoChangeSelected;
+var private bool							bOriginalAppearanceSelected;
 var private XComGameState_Unit				SelectedUnit;
 
 // Info about Armory unit
@@ -307,7 +306,7 @@ simulated function CacheArmoryUnitData()
 {
 	local X2ItemTemplate ArmorTemplate;
 
-	bNoChangeSelected = true;
+	bOriginalAppearanceSelected = true;
 
 	ArmoryUnit = CustomizeManager.UpdatedUnitState;
 	if (ArmoryUnit == none)
@@ -389,9 +388,9 @@ simulated function UpdateSoldierList()
 	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem();
-	SpawnedItem.UpdateDataCheckbox("ORIGINAL APPEARANCE", "", bNoChangeSelected, SoldierCheckboxChanged, none); // TODO: Localize
+	SpawnedItem.UpdateDataCheckbox("ORIGINAL APPEARANCE", "", bOriginalAppearanceSelected, SoldierCheckboxChanged, none); // TODO: Localize
 	SpawnedItem.StoredAppearance.Appearance = OriginalAppearance;
-	SpawnedItem.bNoChange = true;
+	SpawnedItem.bOriginalAppearance = true;
 
 	// Uniforms
 	SpawnedItem = Spawn(class'UIMechaListItem_Soldier', List.ItemContainer);
@@ -788,7 +787,7 @@ simulated private function OnUnitSelected(int ItemIndex)
 	SelectedAppearance = ListItem.StoredAppearance.Appearance;
 	SelectedAttitude = ListItem.PersonalityTemplate;
 	SelectedUnit = ListItem.UnitState;
-	bNoChangeSelected = ListItem.bNoChange;
+	bOriginalAppearanceSelected = ListItem.bOriginalAppearance;
 
 	UpdateOptionsList();
 	UpdateUnitAppearance();	
@@ -890,14 +889,14 @@ simulated private function UpdatePawnAttitudeAnimation()
 
 simulated function CloseScreen()
 {	
-	if (bNoChangeSelected && !bShowAllCosmeticOptions) // DEBUG ONLY
-	{
-		CancelChanges();
-	}
-	else
-	{
+	//if (bOriginalAppearanceSelected)
+	//{
+	//	CancelChanges();
+	//}
+	//else
+	//{
 		ApplyChanges();
-	}
+	//}
 	ArmoryPawn.SetLocation(OriginalPawnLocation);
 	SavePresetCheckboxPositions();
 	super.CloseScreen();
@@ -966,7 +965,6 @@ simulated private function ApplyPresetCheckboxPositions()
 			SetCheckbox(CheckboxPreset.CheckboxName, CheckboxPreset.bChecked);
 		}
 	}
-	
 }
 
 simulated private function bool GetOptionCheckboxPosition(const name OptionName)
@@ -995,6 +993,12 @@ simulated private function ApplyChanges()
 	{
 		ApplyChangesToArmoryUnit();
 	}
+	else
+	{
+		CancelChanges();
+	}
+
+	// Character Pool
 	if (GetFilterListCheckboxStatus('ApplyToCharPool'))
 	{
 		foreach PoolMgr.CharacterPool(UnitState)
@@ -1322,7 +1326,7 @@ simulated function UpdateOptionsList()
 	// PRESETS
 	CreateOptionPresets();
 
-	if (!bShowAllCosmeticOptions && bNoChangeSelected)
+	if (!bShowAllCosmeticOptions && bOriginalAppearanceSelected)
 		return;
 
 	// HEAD
@@ -1518,8 +1522,6 @@ simulated private function MaybeCreateAppearanceOption(name OptionName, coerce s
 				strDesc = GetOptionFriendlyName(OptionName) $ ":" @ GetBodyPartFriendlyName(OptionName, CurrentCosmetic) @ "->" @ GetBodyPartFriendlyName(OptionName, NewCosmetic);
 			
 			SpawnedItem.UpdateDataCheckbox(strDesc, "", bChecked, OptionCheckboxChanged, none);
-			if (bShowAllCosmeticOptions)
-				SpawnedItem.UpdateDataButton(strDesc, "EMPTY", OnEmptyCosmeticOptionButtonClicked); // TODO: Localize	
 
 			break;
 		case ECosmeticType_GenderInt:
@@ -1579,56 +1581,6 @@ simulated private function MaybeCreateOptionColorInt(name OptionName, int iValue
 	SpawnedItem.strColorText_1 = string(iValue);
 	SpawnedItem.strColorText_2 = string(iNewValue);
 	SpawnedItem.UpdateDataColorChip(GetOptionFriendlyName(OptionName), GetHTMLColor(ParamColor));	
-}
-
-simulated private function OnEmptyCosmeticOptionButtonClicked(UIButton ButtonSource)
-{
-	`CPOLOG(ButtonSource.GetParent(class'UIMechaListItem_Button').MCName);
-
-	switch (ButtonSource.GetParent(class'UIMechaListItem_Button').MCName)
-	{
-		case 'nmFlag': SelectedAppearance.nmFlag = ''; break;
-		case 'nmTattoo_LeftArm': SelectedAppearance.nmTattoo_LeftArm = ''; break;
-		case 'nmTattoo_RightArm': SelectedAppearance.nmTattoo_RightArm = ''; break;
-		case 'nmWeaponPattern': SelectedAppearance.nmWeaponPattern = ''; break;
-		case 'nmPatterns': SelectedAppearance.nmPatterns = ''; break;
-		case 'nmLanguage': SelectedAppearance.nmLanguage = ''; break;
-		//case 'FirstName': SelectedAppearance.FirstName = ''; break;
-		//case 'LastName': SelectedAppearance.LastName = ''; break;
-		//case 'Nickname': SelectedAppearance.Nickname = ''; break;
-		//case 'nmHead': SelectedAppearance.nmHead = ''; break;
-		case 'nmHaircut': SelectedAppearance.nmHaircut = ''; break;
-		case 'nmBeard': SelectedAppearance.nmBeard = ''; break;
-		//case 'nmPawn': SelectedAppearance.nmPawn = ''; break;
-		case 'nmTorso': SelectedAppearance.nmTorso = ''; break;
-		case 'nmArms': SelectedAppearance.nmArms = ''; break;
-		case 'nmLegs': SelectedAppearance.nmLegs = ''; break;
-		case 'nmHelmet': SelectedAppearance.nmHelmet = ''; break;
-		case 'nmEye': SelectedAppearance.nmEye = ''; break;
-		case 'nmTeeth': SelectedAppearance.nmTeeth = ''; break;
-		case 'nmFacePropLower': SelectedAppearance.nmFacePropLower = ''; break;
-		case 'nmFacePropUpper': SelectedAppearance.nmFacePropUpper = ''; break;
-		case 'nmVoice': SelectedAppearance.nmVoice = ''; break;
-		case 'nmScars': SelectedAppearance.nmScars = ''; break;
-		case 'nmTorso_Underlay': SelectedAppearance.nmTorso_Underlay = ''; break;
-		case 'nmArms_Underlay': SelectedAppearance.nmArms_Underlay = ''; break;
-		case 'nmLegs_Underlay': SelectedAppearance.nmLegs_Underlay = ''; break;
-		case 'nmFacePaint': SelectedAppearance.nmFacePaint = ''; break;
-		case 'nmLeftArm': SelectedAppearance.nmLeftArm = ''; break;
-		case 'nmRightArm': SelectedAppearance.nmRightArm = ''; break;
-		case 'nmLeftArmDeco': SelectedAppearance.nmLeftArmDeco = ''; break;
-		case 'nmRightArmDeco': SelectedAppearance.nmRightArmDeco = ''; break;
-		case 'nmLeftForearm': SelectedAppearance.nmLeftForearm = ''; break;
-		case 'nmRightForearm': SelectedAppearance.nmRightForearm = ''; break;
-		case 'nmThighs': SelectedAppearance.nmThighs = ''; break;
-		case 'nmShins': SelectedAppearance.nmShins = ''; break;
-		case 'nmTorsoDeco': SelectedAppearance.nmTorsoDeco = ''; break;
-		default:
-			break;
-	}
-	//SavePresetCheckboxPositions();
-	UpdateOptionsList();
-	UpdateUnitAppearance();
 }
 
 simulated private function bool IsOptionGenderAgnostic(const name OptionName)

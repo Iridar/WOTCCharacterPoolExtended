@@ -38,6 +38,8 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 # Priority
 
 Lock "copy preset" button when non-default preset is selected
+Show "empty" button only for parts that actually can be empty
+get it working by setting '_BLANK' and similar to cosmetic slots instead of '', which doesn't work.
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
@@ -321,6 +323,7 @@ simulated function CacheArmoryUnitData()
 		ArmorTemplateName = ArmorTemplate.DataName;
 	}
 
+	SelectedUnit = ArmoryUnit;
 	OriginalAppearance = ArmoryPawn.m_kAppearance;
 	SelectedAppearance = OriginalAppearance;
 	OriginalAttitude = ArmoryUnit.GetPersonalityTemplate();
@@ -363,7 +366,6 @@ simulated function UpdateData()
 	UpdateOptionsList();
 	UpdateUnitAppearance();
 }
-
 
 // ================================================================================================================================================
 // LIVE UPDATE FUNCTIONS - called when toggling checkboxes or selecting a new CP unit.
@@ -819,6 +821,9 @@ simulated private function UpdateUnitAppearance()
 	PreviousAppearance = ArmoryPawn.m_kAppearance;
 	ArmoryUnit.SetTAppearance(NewAppearance);
 	ArmoryPawn.SetAppearance(NewAppearance);
+
+	`CPOLOG(PreviousAppearance.nmHelmet @ NewAppearance.nmHelmet);
+
 	//CustomizeManager.OnCategoryValueChange(eUICustomizeCat_WeaponColor, 0, NewAppearance.iWeaponTint);
 
 	`CPOLOG("Calling ApplyChangesToUnitWeapons" @ PreviousAppearance.nmWeaponPattern @ NewAppearance.nmWeaponPattern @ PreviousAppearance.iWeaponTint @ NewAppearance.iWeaponTint);
@@ -885,7 +890,7 @@ simulated private function UpdatePawnAttitudeAnimation()
 
 simulated function CloseScreen()
 {	
-	if (bNoChangeSelected)
+	if (bNoChangeSelected && !bShowAllCosmeticOptions) // DEBUG ONLY
 	{
 		CancelChanges();
 	}
@@ -912,7 +917,7 @@ simulated private function SavePresetCheckboxPositions()
 
 	if (Presets.Length > 0)
 	{
-		i = Presets.Length + 1;
+		i = Presets.Length + 2; // 2 list members above the 0th preset.
 	}
 	for (i = i; i < OptionsList.ItemCount; i++) // "i = i" bypasses compile error. Just need to have something in there.
 	{
@@ -1621,7 +1626,7 @@ simulated private function OnEmptyCosmeticOptionButtonClicked(UIButton ButtonSou
 		default:
 			break;
 	}
-	SavePresetCheckboxPositions();
+	//SavePresetCheckboxPositions();
 	UpdateOptionsList();
 	UpdateUnitAppearance();
 }
@@ -1907,7 +1912,7 @@ simulated function OptionsListItemClicked(UIList ContainerList, int ItemIndex)
 {
 	local UIMechaListItem ListItem;
 
-	if (ItemIndex > Presets.Length)
+	if (ItemIndex >= Presets.Length + 2) // +2 members above the first preset in the list
 		return;
 	
 	ListItem = UIMechaListItem(OptionsList.GetItem(ItemIndex));

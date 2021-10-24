@@ -37,6 +37,8 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
+Fix the Convert To Uniform / Convert To Soldier button not updating in time.
+
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
@@ -404,7 +406,7 @@ simulated function UpdateSoldierList()
 	{
 		foreach PoolMgr.CharacterPool(CheckUnit)
 		{
-			if (PoolMgr.IsUnitUniform(CheckUnit))
+			if (class'Help'.static.IsUnitUniform(CheckUnit))
 			{
 				CreateAppearanceStoreEntriesForUnit(CheckUnit, true);
 			}
@@ -421,7 +423,7 @@ simulated function UpdateSoldierList()
 	{
 		foreach PoolMgr.CharacterPool(CheckUnit)
 		{
-			if (!PoolMgr.IsUnitUniform(CheckUnit))
+			if (!class'Help'.static.IsUnitUniform(CheckUnit))
 			{
 				CreateAppearanceStoreEntriesForUnit(CheckUnit, true);
 			}

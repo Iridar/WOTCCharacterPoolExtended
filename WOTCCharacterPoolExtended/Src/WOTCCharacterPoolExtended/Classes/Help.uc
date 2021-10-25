@@ -85,10 +85,6 @@ static final function bool IsCosmeticEmpty(coerce string Cosmetic)
 	return false;
 }
 
-static final function bool IsUnitUniform(const XComGameState_Unit UnitState)
-{
-	return UnitState.GetFirstName() == class'UISL_CPExtended'.default.strUniform;
-}
 
 /*
 static final function X2SoldierPersonalityTemplate GetPersonalityTemplate(const int iAttitude)

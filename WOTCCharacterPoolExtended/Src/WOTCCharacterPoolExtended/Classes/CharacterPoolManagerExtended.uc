@@ -64,7 +64,7 @@ event InitSoldier( XComGameState_Unit Unit, const out CharacterPoolDataElement C
 
 	InitSoldierOld(Unit, CharacterPoolData);
 	GetUnitData();
-	UnitData.ApplyAppearanceStore(Unit);
+	UnitData.LoadExtraData(Unit);
 }
 
 function SaveCharacterPool()
@@ -207,29 +207,39 @@ private final function int SortCharacterPoolBySoldierClassFn(XComGameState_Unit 
 // Serialize all character pool units, including their appearance store, into the "extended" Character Pool file format, and write it to disk.
 final function SaveCharacterPoolExtended()
 {
-	local CPExtendedStruct		CPExtendedUnitData;
-	local CPExtendedStruct		EmptyCPExtendedUnitData;
+	//local CPExtendedStruct		CPExtendedUnitData;
+	//local CPExtendedStruct		EmptyCPExtendedUnitData;
 	local bool					Success;
 	local XComGameState_Unit	UnitState;
 
-	UnitData = new class'CPUnitData';
+	//UnitData = new class'CPUnitData';
+	GetUnitData();
 
 	foreach CharacterPool(UnitState)
 	{
-		CPExtendedUnitData = EmptyCPExtendedUnitData;
+		//CPExtendedUnitData = EmptyCPExtendedUnitData;
 
-		FillCharacterPoolData(UnitState); // This saves UnitState to 'CharacterPoolSerializeHelper' 
-		CPExtendedUnitData.CharacterPoolData = CharacterPoolSerializeHelper;
-		CPExtendedUnitData.AppearanceStore = UnitState.AppearanceStore;
+		//FillCharacterPoolData(UnitState); // This saves UnitState to 'CharacterPoolSerializeHelper' 
 
-		UnitData.CharacterPoolDatas.AddItem(CPExtendedUnitData);
+		UnitData.UpdateOrAddUnit(UnitState);
+		//CPExtendedUnitData.CharacterPoolData = CharacterPoolSerializeHelper;
+		//CPExtendedUnitData.AppearanceStore = UnitState.AppearanceStore;
+		//CPExtendedUnitData.bIsUniform = IsUnitUniform(UnitState);
+		//CPExtendedUnitData.bIsAnyClassUniform = class'Help'.static.IsUnitAnyClassUniform(UnitState);
 
-		`CPOLOG("Adding" @ UnitState.GetFullName() @ "to CPUnitData, including stored appearances:" @ CPExtendedUnitData.AppearanceStore.Length);
+		//UnitData.CharacterPoolDatas.AddItem(CPExtendedUnitData);
+
+		`CPOLOG("Adding" @ UnitState.GetFullName() @ "to CPUnitData, including stored appearances:" @ UnitState.AppearanceStore.Length);
 	}
 
-    Success = class'Engine'.static.BasicSaveObject(UnitData, class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedFilePath, false, 1);
+    Success = SaveDefaultCharacterPool();
 
     `CPOLOG("Was able to successfully write Extended Character Pool file to disk:" @ Success);
+}
+
+final function bool SaveDefaultCharacterPool()
+{
+	return class'Engine'.static.BasicSaveObject(UnitData, class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedFilePath, false, 1);
 }
 
 // Read the "extended" Character Pool file from disk.
@@ -303,11 +313,58 @@ simulated final function ValidateUnitAppearance(XComGameState_Unit UnitState)
 	}
 }
 
-simulated final function bool IsUniformValidForUnit(const XComGameState_Unit UnitState, const XComGameState_Unit UniformUnit)
-{	
-	// TODO: Add soldier class check here
-	return true;
+// ---------------------------------------------------------------------------
+// UNIFORM STATUS
+final function bool IsUnitUniform(XComGameState_Unit UnitState)
+{
+	GetUnitData();
+
+	if (UnitData != none)
+	{
+		return UnitData.IsUnitUniform(UnitState);
+	}
+	return false;
 }
+
+final function bool IsUnitAnyClassUniform(XComGameState_Unit UnitState)
+{
+	GetUnitData();
+
+	if (UnitData != none)
+	{
+		return UnitData.IsUnitAnyClassUniform(UnitState);
+	}
+	return false;
+}
+
+final function SetIsUnitUniform(XComGameState_Unit UnitState, bool bValue)
+{
+	GetUnitData();
+
+	if (UnitData != none)
+	{
+		UnitData.SetIsUnitUniform(UnitState, bValue);
+		SaveDefaultCharacterPool();
+	}
+}
+
+final function SetIsUnitAnyClassUniform(XComGameState_Unit UnitState, bool bValue)
+{
+	GetUnitData();
+
+	if (UnitData != none)
+	{
+		UnitData.SetIsUnitAnyClassUniform(UnitState, bValue);
+		SaveDefaultCharacterPool();
+	}
+}
+
+final function bool IsUniformValidForUnit(const XComGameState_Unit UnitState, const XComGameState_Unit UniformUnit)
+{	
+	return UnitState.GetSoldierClassTemplateName() == UniformUnit.GetSoldierClassTemplateName() || IsUnitAnyClassUniform(UniformUnit);
+}
+
+// ---------------------------------------------------------------------------
 
 // ============================================================================
 // INTERNAL HELPERS

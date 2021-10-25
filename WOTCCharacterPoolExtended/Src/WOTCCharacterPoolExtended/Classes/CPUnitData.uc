@@ -8,10 +8,13 @@ struct CPExtendedStruct
 
 	// Store appearance store separately, because 'CharacterPoolDataElement' doesn't include it.
 	var array<AppearanceInfo> AppearanceStore;
+	
+	var bool bIsUniform;
+	var bool bIsAnyClassUniform; // Whether this unit's appearance can be applied to any soldier class, or only the matching ones.
 };
 var array<CPExtendedStruct> CharacterPoolDatas;
 
-final function bool ApplyAppearanceStore(XComGameState_Unit UnitState)
+final function bool LoadExtraData(XComGameState_Unit UnitState)
 {
 	local int Index;
 
@@ -20,6 +23,16 @@ final function bool ApplyAppearanceStore(XComGameState_Unit UnitState)
 		return false;
 
 	UnitState.AppearanceStore = CharacterPoolDatas[Index].AppearanceStore;
+
+	`CPOLOG(UnitState.GetFullName() @ CharacterPoolDatas[Index].bIsUniform);
+
+	if (CharacterPoolDatas[Index].bIsUniform)
+	{
+		UnitState.bAllowedTypeSoldier = false;
+		UnitState.bAllowedTypeVIP = false;
+		UnitState.bAllowedTypeDarkVIP = false;
+	}	
+
 	return true;
 }
 
@@ -41,6 +54,109 @@ final function UpdateOrAddUnit(XComGameState_Unit UnitState)
 		CharacterPoolDatas.AddItem(NewCPExtendedData);
 	}
 }
+
+// ---------------------------------------------------------------------------
+// UNIFORM STATUS
+final function bool IsUnitUniform(XComGameState_Unit UnitState)
+{
+	local int Index;
+
+	Index = FindUnitIndex(UnitState);
+	if (Index != INDEX_NONE)
+	{
+		return CharacterPoolDatas[Index].bIsUniform;
+	}
+	return false;
+}
+
+final function bool IsUnitAnyClassUniform(XComGameState_Unit UnitState)
+{
+	local int Index;
+
+	Index = FindUnitIndex(UnitState);
+	if (Index != INDEX_NONE)
+	{
+		return CharacterPoolDatas[Index].bIsAnyClassUniform;
+	}
+	return false;
+}
+
+final function SetIsUnitUniform(XComGameState_Unit UnitState, bool bValue)
+{
+	local int Index;
+
+	Index = FindUnitIndex(UnitState);
+	if (Index != INDEX_NONE)
+	{
+		CharacterPoolDatas[Index].bIsUniform = bValue;
+	}
+}
+
+final function SetIsUnitAnyClassUniform(XComGameState_Unit UnitState, bool bValue)
+{
+	local int Index;
+
+	Index = FindUnitIndex(UnitState);
+	if (Index != INDEX_NONE)
+	{
+		CharacterPoolDatas[Index].bIsAnyClassUniform = bValue;
+	}
+}
+// ---------------------------------------------------------------------------
+
+final function array<string> GetUnitsFriendlyExtraData()
+{
+	local array<string>		ReturnArray;
+	local string			SoldierString;
+	local CPExtendedStruct	CPExtendedData;
+	local X2SoldierClassTemplate			ClassTemplate;
+	local X2SoldierClassTemplateManager		ClassMgr;
+
+	ClassMgr = class'X2SoldierClassTemplateManager'.static.GetSoldierClassTemplateManager();
+
+	foreach CharacterPoolDatas(CPExtendedData)	
+	{
+		ClassTemplate = ClassMgr.FindSoldierClassTemplate(CPExtendedData.CharacterPoolData.m_SoldierClassTemplateName);
+		if (ClassTemplate != none)
+		{
+			SoldierString = ClassTemplate.DisplayName $ ": ";
+		}
+		else
+		{
+			SoldierString = "";
+		}
+
+		if (CPExtendedData.CharacterPoolData.strNickName != "")
+		{
+			SoldierString $= CPExtendedData.CharacterPoolData.strFirstName @ "\"" $ CPExtendedData.CharacterPoolData.strNickName $ "\"" @ CPExtendedData.CharacterPoolData.strLastName;
+		}
+		else
+		{
+			SoldierString $= CPExtendedData.CharacterPoolData.strFirstName @ CPExtendedData.CharacterPoolData.strLastName;
+		}
+
+		ReturnArray.AddItem(SoldierString);
+	}
+	return ReturnArray;
+}
+
+final function SortCharacterPoolBySoldierClass()
+{
+	CharacterPoolDatas.Sort(SortCharacterPoolBySoldierClassFn);
+}
+
+final function SortCharacterPoolBySoldierName()
+{
+	CharacterPoolDatas.Sort(SortCharacterPoolBySoldierNameFn);
+}
+
+final function int GetNumUnits()
+{
+	return CharacterPoolDatas.Length;
+}
+
+// -------------------------------------------------------------------
+//	INTERNAL FUNCTIONS
 
 private function int FindUnitIndex(XComGameState_Unit UnitState)
 {
@@ -79,75 +195,6 @@ private function CharacterPoolDataElement GetCharacterPoolDataFromUnit(XComGameS
 	CharacterPoolSerializeHelper.BackgroundText = Unit.GetBackground();
 
 	return CharacterPoolSerializeHelper;
-}
-
-final function int GetNumUnits()
-{
-	return CharacterPoolDatas.Length;
-}
-
-final function array<string> GetUnitsFriendly()
-{
-	local array<string> ReturnArray;
-
-	local CPExtendedStruct CPExtendedData;
-
-	foreach CharacterPoolDatas(CPExtendedData)
-	{
-		
-		if (CPExtendedData.CharacterPoolData.strNickName != "")
-			ReturnArray.AddItem(CPExtendedData.CharacterPoolData.strFirstName @ "\"" $ CPExtendedData.CharacterPoolData.strNickName $ "\"" @ CPExtendedData.CharacterPoolData.strLastName);
-		else
-			ReturnArray.AddItem(CPExtendedData.CharacterPoolData.strFirstName @ CPExtendedData.CharacterPoolData.strLastName);
-	}
-	return ReturnArray;
-}
-
-final function array<string> GetUnitsFriendlyExtraData()
-{
-	local array<string>		ReturnArray;
-	local string			SoldierString;
-	local CPExtendedStruct	CPExtendedData;
-	local X2SoldierClassTemplate			ClassTemplate;
-	local X2SoldierClassTemplateManager		ClassMgr;
-
-	ClassMgr = class'X2SoldierClassTemplateManager'.static.GetSoldierClassTemplateManager();
-
-	foreach CharacterPoolDatas(CPExtendedData)	
-	{
-		ClassTemplate = ClassMgr.FindSoldierClassTemplate(CPExtendedData.CharacterPoolData.m_SoldierClassTemplateName);
-		if (ClassTemplate != none)
-		{
-			SoldierString = ClassTemplate.DisplayName $ ": ";
-		}
-		else
-		{
-			SoldierString = "";
-		}
-
-		if (CPExtendedData.CharacterPoolData.strNickName != "")
-		{
-			SoldierString $= CPExtendedData.CharacterPoolData.strFirstName @ "\"" $ CPExtendedData.CharacterPoolData.strNickName $ "\"" @ CPExtendedData.CharacterPoolData.strLastName;
-		}
-		else
-		{
-			SoldierString $= CPExtendedData.CharacterPoolData.strFirstName @ CPExtendedData.CharacterPoolData.strLastName;
-		}
-
-		ReturnArray.AddItem(SoldierString);
-	}
-	return ReturnArray;
-}
-
-
-final function SortCharacterPoolBySoldierClass()
-{
-	CharacterPoolDatas.Sort(SortCharacterPoolBySoldierClassFn);
-}
-
-final function SortCharacterPoolBySoldierName()
-{
-	CharacterPoolDatas.Sort(SortCharacterPoolBySoldierNameFn);
 }
 
 private function int SortCharacterPoolBySoldierNameFn(CPExtendedStruct UnitA, CPExtendedStruct UnitB)
@@ -216,3 +263,21 @@ private function int SortCharacterPoolBySoldierClassFn(CPExtendedStruct UnitA, C
 	}
 	return -1;
 }
+
+/*
+final function array<string> GetUnitsFriendly()
+{
+	local array<string> ReturnArray;
+
+	local CPExtendedStruct CPExtendedData;
+
+	foreach CharacterPoolDatas(CPExtendedData)
+	{
+		
+		if (CPExtendedData.CharacterPoolData.strNickName != "")
+			ReturnArray.AddItem(CPExtendedData.CharacterPoolData.strFirstName @ "\"" $ CPExtendedData.CharacterPoolData.strNickName $ "\"" @ CPExtendedData.CharacterPoolData.strLastName);
+		else
+			ReturnArray.AddItem(CPExtendedData.CharacterPoolData.strFirstName @ CPExtendedData.CharacterPoolData.strLastName);
+	}
+	return ReturnArray;
+}*/

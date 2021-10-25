@@ -66,9 +66,9 @@ simulated function AddButtons()
 			}
 		}
 
-		bUnitIsUniform = class'Help'.static.IsUnitUniform(CustomizeScreen.GetUnit());
+		bUnitIsUniform = `CHARACTERPOOLMGRXTD.IsUnitUniform(CustomizeScreen.GetUnit());
 
-		`CPOLOG(CustomizeScreen.GetUnit().GetFullName() @ "Is uniform:" @ class'Help'.static.IsUnitUniform(CustomizeScreen.GetUnit()));
+		`CPOLOG(CustomizeScreen.GetUnit().GetFullName() @ "Is uniform:" @ bUnitIsUniform);
 
 		if (!bListItemAlreadyExists)
 		{	
@@ -130,6 +130,8 @@ simulated private function OnUseForAllClassesCheckboxChanged(UICheckbox CheckBox
 	local UICustomize_Menu CustomizeScreen;
 
 	CustomizeScreen = UICustomize_Menu(CheckBox.Screen);
+
+	`CHARACTERPOOLMGRXTD.SetIsUnitAnyClassUniform(CustomizeScreen.GetUnit(), CheckBox.bChecked);
 	
 	`CPOLOG("Got screen" @ CustomizeScreen != none @ CustomizeScreen.CustomizeManager.UpdatedUnitState.GetFullName());
 }
@@ -206,6 +208,8 @@ simulated private function OnSoldierButtonClicked(UIButton ButtonSource)
 	UnitState.SetCharacterName(strFirstName, strLastName, CharGen.kSoldier.strNickName);
 	CustomizeScreen.CustomizeManager.CommitChanges();
 	CustomizeScreen.UpdateData();
+
+	`CHARACTERPOOLMGRXTD.SetIsUnitUniform(UnitState, false);
 	
 	UpdateCustomizeMenuList(CustomizeScreen.List, false);
 }
@@ -213,21 +217,26 @@ simulated private function OnSoldierButtonClicked(UIButton ButtonSource)
 // TODO: Add a popup with confirmation prompt here
 simulated private function OnUniformButtonClicked(UIButton ButtonSource)
 {
-	local UICustomize_Menu CustomizeScreen;
+	local UICustomize_Menu		CustomizeScreen;
+	local XComGameState_Unit	UnitState;
 
 	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
 	if (CustomizeScreen == none)
 		return;
 
-	CustomizeScreen.CustomizeManager.UpdatedUnitState.SetCharacterName(strUniform, "", "");
-	CustomizeScreen.CustomizeManager.UpdatedUnitState.kAppearance.iAttitude = 0; // Set by the Book attitude so the soldier stops squirming.
-	CustomizeScreen.CustomizeManager.UpdatedUnitState.UpdatePersonalityTemplate();
-	CustomizeScreen.CustomizeManager.UpdatedUnitState.bAllowedTypeSoldier = false;
-	CustomizeScreen.CustomizeManager.UpdatedUnitState.bAllowedTypeVIP = false;
-	CustomizeScreen.CustomizeManager.UpdatedUnitState.bAllowedTypeDarkVIP = false;
+	UnitState = CustomizeScreen.CustomizeManager.UpdatedUnitState;
+
+	UnitState.SetCharacterName(strUniform, GetFriendlyGender(UnitState.kAppearance.iGender), "");
+	UnitState.kAppearance.iAttitude = 0; // Set by the Book attitude so the soldier stops squirming.
+	UnitState.UpdatePersonalityTemplate();
+	UnitState.bAllowedTypeSoldier = false;
+	UnitState.bAllowedTypeVIP = false;
+	UnitState.bAllowedTypeDarkVIP = false;
 	CustomizeScreen.CustomizeManager.CommitChanges();
 	CustomizeScreen.CustomizeManager.ReCreatePawnVisuals(CustomizeScreen.CustomizeManager.ActorPawn, true);
 	CustomizeScreen.UpdateData();
+
+	`CHARACTERPOOLMGRXTD.SetIsUnitUniform(UnitState, true);
 	
 	UpdateCustomizeMenuList(CustomizeScreen.List, true);
 }
@@ -237,7 +246,7 @@ simulated private function UpdateCustomizeMenuList(UIList List, bool bUnitIsUnif
 	local UIMechaListItem ListItem;
 	local int i;
 
-	`CPOLOG(`showvar(bUnitIsUniform));
+	//`CPOLOG(`showvar(bUnitIsUniform));
 
 	if (bUnitIsUniform)
 	{
@@ -246,7 +255,7 @@ simulated private function UpdateCustomizeMenuList(UIList List, bool bUnitIsUnif
 			ListItem = UIMechaListItem(List.GetItem(i));
 			if (ListItem.Desc.htmlText == class'UICustomize_Menu'.default.m_strAllowTypeSoldier)
 			{
-				ListItem.UpdateDataCheckbox("Use for all classes", "", false, OnUseForAllClassesCheckboxChanged, none);
+				ListItem.UpdateDataCheckbox("Use for all classes", "", `CHARACTERPOOLMGRXTD.IsUnitAnyClassUniform(UICustomize_Menu(List.Screen).GetUnit()), OnUseForAllClassesCheckboxChanged, none); // TODO: Unnoodle this.
 			}
 
 			if (ListItem.Desc.htmlText == class'UICustomize_Menu'.default.m_strAllowTypeVIP)
@@ -271,11 +280,29 @@ simulated private function UpdateCustomizeMenuList(UIList List, bool bUnitIsUnif
 	{
 		for (i = List.ItemCount - 1; i >= 0; i--)
 		{
+			ListItem = UIMechaListItem(List.GetItem(i));
 			if (ListItem.MCName == 'ConvertUniformSoldier' && ListItem.Desc.htmlText != "Convert to Uniform")
 			{
 				ListItem.UpdateDataButton("Convert to Uniform", "Convert", OnUniformButtonClicked); // TODO: Localize
 			}
 		}
+	}
+}
+
+simulated private function string GetFriendlyGender(int iGender)
+{
+	local EGender EnumGender;
+
+	EnumGender = EGender(iGender);
+
+	switch (EnumGender)
+	{
+	case eGender_Male:
+		return class'XComCharacterCustomization'.default.Gender_Male;
+	case eGender_Female:
+		return class'XComCharacterCustomization'.default.Gender_Female;
+	default:
+		return "";
 	}
 }
 
@@ -364,6 +391,8 @@ simulated private function OnLoadoutButtonClicked()
 	ArmoryScreen.CustomizationManager = Pres.GetCustomizeManager();
 	ArmoryScreen.InitArmory(UnitState.GetReference());
 }
+
+
 /*
 simulated private function OnLoadout()
 {

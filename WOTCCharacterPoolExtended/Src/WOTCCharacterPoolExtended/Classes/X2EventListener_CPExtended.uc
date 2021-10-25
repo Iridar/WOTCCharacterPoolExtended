@@ -180,7 +180,7 @@ static private function MaybeApplyCharacterPoolAppearance(XComGameState_Unit Uni
 
 	foreach CharacterPool.CharacterPool(CPUnitState)
 	{
-		if (class'Help'.static.IsUnitUniform(CPUnitState) && CharacterPool.IsUniformValidForUnit(UnitState, CPUnitState) &&
+		if (CharacterPool.IsUnitUniform(CPUnitState) && CharacterPool.IsUniformValidForUnit(UnitState, CPUnitState) &&
 			CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName)) 
 		{
 			`CPOLOG("Found uniform unit:" @ CPUnitState.GetFullName() $ ", importing their appearance.");

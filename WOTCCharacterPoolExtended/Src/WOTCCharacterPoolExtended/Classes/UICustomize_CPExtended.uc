@@ -37,20 +37,21 @@ var private config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-Fix the Convert To Uniform / Convert To Soldier button not updating in time.
+Fix wrong unit being opened in CP sometimes. (Has to do with deleting units?)
+-- Apparently the problem is the CP opens the unit you had selected when the interface раздупляется, а не тот юнит по которому кликал. Это ваниллы проблема. Можно пофиксить, наверное
+
+Lost its own CPImport file, shame shame
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
+Import uniforms from mod-added pools automatically?
+Issue a warning if soldiers with duplicate names are present
 
 # This screen
 
 Make clicking an item toggle its checkbox?
 Way to add presets through in-game UI
-
-# Uniforms
-Soldier Class filtering for uniforms (maybe add "universal uniform" checbox? Store uniform status as unit value?
-Per-uniform selection of which parts of the appearance are a part of the uniform.
 
 ## Checks:
 1. Check if you can customize a unit with all armors in the campaign, then save them into CP, and that they will actually have all that appearance in the next campaign
@@ -406,7 +407,7 @@ simulated function UpdateSoldierList()
 	{
 		foreach PoolMgr.CharacterPool(CheckUnit)
 		{
-			if (class'Help'.static.IsUnitUniform(CheckUnit))
+			if (PoolMgr.IsUnitUniform(CheckUnit))
 			{
 				CreateAppearanceStoreEntriesForUnit(CheckUnit, true);
 			}
@@ -423,7 +424,7 @@ simulated function UpdateSoldierList()
 	{
 		foreach PoolMgr.CharacterPool(CheckUnit)
 		{
-			if (!class'Help'.static.IsUnitUniform(CheckUnit))
+			if (!PoolMgr.IsUnitUniform(CheckUnit))
 			{
 				CreateAppearanceStoreEntriesForUnit(CheckUnit, true);
 			}
@@ -2209,7 +2210,7 @@ simulated private function string GetFriendlyCountryName(coerce name CountryTemp
 	return CountryTemplate != none ? CountryTemplate.DisplayName : string(CountryTemplateName);
 }
 
-simulated function string GetFriendlyGender(int iGender)
+simulated private function string GetFriendlyGender(int iGender)
 {
 	local EGender EnumGender;
 

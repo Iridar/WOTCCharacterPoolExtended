@@ -266,9 +266,11 @@ simulated function DoImportCharacter(string FilenameForImport, int IndexOfCharac
 		ShowInfoPopup("ERROR!", "Failed to import unit" @ CPData.strFirstName @ CPData.strLastName @ "with character template:" @ CPData.CharacterTemplateName @ ", maybe you're mising a mod?", eDialog_Warning);
 		return; 
 	}
+	//TODO: Maybe create soldier instead to attempt to salvage appearance?
 	
 	CharacterPool.InitSoldierOld(NewUnitState, CPData);
-	NewUnitState.AppearanceStore = UnitData.CharacterPoolDatas[IndexOfCharacter].AppearanceStore;
+	//NewUnitState.AppearanceStore = UnitData.CharacterPoolDatas[IndexOfCharacter].AppearanceStore;
+	UnitData.LoadExtraData(NewUnitState); // This will copy Appearance Store and some other stuff.
 
 	CharacterPool.CharacterPool.AddItem(NewUnitState);
 	CharacterPool.SaveCharacterPool();

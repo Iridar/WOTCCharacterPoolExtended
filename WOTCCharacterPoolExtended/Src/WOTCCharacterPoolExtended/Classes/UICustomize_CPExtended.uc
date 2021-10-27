@@ -11,42 +11,39 @@ enum ECosmeticType
 struct CheckboxPresetStruct
 {
 	var name Preset;
-	var name CheckboxName;
+	var name OptionName;
 	var bool bChecked;
 };
-var config(WOTCCharacterPoolExtended_DEFAULT) array<CheckboxPresetStruct> CheckboxPresetsDefaults;
 var config(WOTCCharacterPoolExtended) array<CheckboxPresetStruct> CheckboxPresets;
+var config(WOTCCharacterPoolExtended) array<name> Presets;
 
-var config(WOTCCharacterPoolExtended_DEFAULT) array<name> Presets;
-
-var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowCharPoolSoldiers_DEFAULT;
-var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowUniformSoldiers_DEFAULT;
-var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowBarracksSoldiers_DEFAULT;
-var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowDeadSoldiers_DEFAULT;
-var private config(WOTCCharacterPoolExtended_DEFAULT) bool bShowAllCosmeticOptions_DEFAULT;
-
-var private config(WOTCCharacterPoolExtended) bool bShowCharPoolSoldiers;
-var private config(WOTCCharacterPoolExtended) bool bShowUniformSoldiers;
-var private config(WOTCCharacterPoolExtended) bool bShowBarracksSoldiers;
-var private config(WOTCCharacterPoolExtended) bool bShowDeadSoldiers;
-var private config(WOTCCharacterPoolExtended) bool bShowAllCosmeticOptions;
-var private config(WOTCCharacterPoolExtended) bool bInitComplete;
-
+var protected config(WOTCCharacterPoolExtended) bool bShowCharPoolSoldiers;
+var protected config(WOTCCharacterPoolExtended) bool bShowUniformSoldiers;
+var protected config(WOTCCharacterPoolExtended) bool bShowBarracksSoldiers;
+var protected config(WOTCCharacterPoolExtended) bool bShowDeadSoldiers;
+var protected config(WOTCCharacterPoolExtended) bool bShowAllCosmeticOptions;
+var protected config(WOTCCharacterPoolExtended) bool bInitComplete;
 
 // TODO:
 /*
 # Priority
 
-Fix wrong unit being opened in CP sometimes. (Has to do with deleting units?)
--- Apparently the problem is the CP opens the unit you had selected when the interface раздупляется, а не тот юнит по которому кликал. Это ваниллы проблема. Можно пофиксить, наверное
+Lost its own CPImport file, shame shame: problem with eating backslashes. Replace with forward slashes for storage?
 
-Lost its own CPImport file, shame shame
+Allow user to select which cosmetic options are a part of the uniform
+Can't select Gender on uniform screen
+
+Prioritize class-specific uniforms in the event listener, probably via double cycle
+Select random uniform out of all valid ones
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
 Search bar for CP units?
 Import uniforms from mod-added pools automatically?
 Issue a warning if soldiers with duplicate names are present
+
+Fix wrong unit being opened in CP sometimes. (Has to do with deleting units?)
+-- Apparently the problem is the CP opens the unit you had selected when the interface раздупляется, а не тот юнит по которому кликал. Это ваниллы проблема. Можно пофиксить, наверное
 
 # This screen
 
@@ -77,46 +74,46 @@ Enter photobooth from CP. Looks like it would require reworking a lot of the PB'
 */
 
 // Internal cached info
-var private CharacterPoolManagerExtended		PoolMgr;
-var private X2BodyPartTemplateManager			BodyPartMgr;
-var private X2StrategyElementTemplateManager	StratMgr;
-var private X2ItemTemplateManager				ItemMgr;
-var private UIPawnMgr							PawnMgr;
-var private	XComGameStateHistory				History;
+var protected CharacterPoolManagerExtended		PoolMgr;
+var protected X2BodyPartTemplateManager			BodyPartMgr;
+var protected X2StrategyElementTemplateManager	StratMgr;
+var protected X2ItemTemplateManager				ItemMgr;
+var protected UIPawnMgr							PawnMgr;
+var protected	XComGameStateHistory			History;
 //var private bool								bUniformMode;
-var private name								CurrentPreset;
-var private string								SearchText;
-var private bool								bCanExitWithoutPopup;
+var protected name								CurrentPreset;
+var protected string							SearchText;
+var protected bool								bCanExitWithoutPopup;
 
-var private bool bShowCategoryHead;
-var private bool bShowCategoryBody;
-var private bool bShowCategoryTattoos;
-var private bool bShowCategoryArmorPattern;
-var private bool bShowCategoryWeaponPattern;
-var private bool bShowCategoryPersonality;
+var protected bool bShowCategoryHead;
+var protected bool bShowCategoryBody;
+var protected bool bShowCategoryTattoos;
+var protected bool bShowCategoryArmorPattern;
+var protected bool bShowCategoryWeaponPattern;
+var protected bool bShowCategoryPersonality;
 
 // Info about selected CP unit
-var private TAppearance						SelectedAppearance;
-var private X2SoldierPersonalityTemplate	SelectedAttitude;
-var private bool							bOriginalAppearanceSelected;
-var private XComGameState_Unit				SelectedUnit;
+var protected TAppearance					SelectedAppearance;
+var protected X2SoldierPersonalityTemplate	SelectedAttitude;
+var protected bool							bOriginalAppearanceSelected;
+var protected XComGameState_Unit			SelectedUnit;
 
 // Info about Armory unit
-var private XComHumanPawn					ArmoryPawn;
-var private XComGameState_Unit				ArmoryUnit;
-var private vector							OriginalPawnLocation;
-var private TAppearance						OriginalAppearance; // Appearance to restore if the player exits the screen without selecting anything
-var private TAppearance						PreviousAppearance; // Briefly cached appearance, used to check if we need to refresh pawn
-var private name							ArmorTemplateName;
-var private X2SoldierPersonalityTemplate	OriginalAttitude;
+var protected XComHumanPawn					ArmoryPawn;
+var protected XComGameState_Unit			ArmoryUnit;
+var protected vector						OriginalPawnLocation;
+var protected TAppearance					OriginalAppearance; // Appearance to restore if the player exits the screen without selecting anything
+var protected TAppearance					PreviousAppearance; // Briefly cached appearance, used to check if we need to refresh pawn
+var protected name							ArmorTemplateName;
+var protected X2SoldierPersonalityTemplate	OriginalAttitude;
 
 // Left list with lotta checkboxes for selecting which parts of the CP unit appearance are being carried over.
-var private UIBGBox OptionsBG;
-var private UIList	OptionsList;
+var protected UIBGBox	OptionsBG;
+var protected UIList	OptionsList;
 
 // Upper right list with a few checkboxes for filtering the list of CP units
-var private UIBGBox FiltersBG;
-var private UIList	FiltersList;
+var protected UIBGBox	FiltersBG;
+var protected UIList	FiltersList;
 
 // ================================================================================================================================================
 // INITIAL SETUP - called once when screen is pushed, or when switching to a new armory unit.
@@ -216,7 +213,7 @@ simulated private function FixScreenPosition()
 	SetTimer(0.1f, false, nameof(FixScreenPosition), self);
 }
 
-simulated private function CreateFiltersList()
+simulated function CreateFiltersList()
 {
 	local UIMechaListItem SpawnedItem;
 
@@ -1006,7 +1003,7 @@ simulated private function SavePresetCheckboxPositions()
 		bFound = false;
 		for (Index = 0; Index < CheckboxPresets.Length; Index++)
 		{
-			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
+			if (CheckboxPresets[Index].OptionName == ListItem.MCName &&
 				CheckboxPresets[Index].Preset == CurrentPreset)
 			{
 				CheckboxPresets[Index].bChecked = ListItem.Checkbox.bChecked;
@@ -1017,7 +1014,7 @@ simulated private function SavePresetCheckboxPositions()
 
 		if (!bFound)
 		{
-			NewStruct.CheckboxName = ListItem.MCName;
+			NewStruct.OptionName = ListItem.MCName;
 			NewStruct.bChecked = ListItem.Checkbox.bChecked;
 			CheckboxPresets.AddItem(NewStruct);
 		}
@@ -1035,11 +1032,12 @@ simulated private function ApplyPresetCheckboxPositions()
 	{
 		if (CheckboxPreset.Preset == CurrentPreset)
 		{
-			`CPOLOG("Setting preset checkbox:" @ CheckboxPreset.CheckboxName @ CheckboxPreset.bChecked);
-			SetCheckbox(CheckboxPreset.CheckboxName, CheckboxPreset.bChecked);
+			`CPOLOG("Setting preset checkbox:" @ CheckboxPreset.OptionName @ CheckboxPreset.bChecked);
+			SetCheckbox(CheckboxPreset.OptionName, CheckboxPreset.bChecked);
 		}
 	}
 }
+
 
 simulated private function bool GetOptionCheckboxPosition(const name OptionName)
 {
@@ -1047,7 +1045,7 @@ simulated private function bool GetOptionCheckboxPosition(const name OptionName)
 
 	foreach CheckboxPresets(CheckboxPreset)
 	{
-		if (CheckboxPreset.Preset == CurrentPreset && CheckboxPreset.CheckboxName == OptionName)
+		if (CheckboxPreset.Preset == CurrentPreset && CheckboxPreset.OptionName == OptionName)
 		{
 			return CheckboxPreset.bChecked;
 		}
@@ -1379,7 +1377,7 @@ simulated private function bool IsCheckboxChecked(name OptionName)
 	return ListItem != none && ListItem.Checkbox.bChecked;
 }
 
-simulated private function SetCheckbox(name OptionName, bool bChecked)
+simulated final function SetCheckbox(name OptionName, bool bChecked)
 {
 	local UIMechaListItem ListItem;
 
@@ -1812,7 +1810,7 @@ simulated private function UpdateHeader()
 						flagIcon, ArmoryUnit.ShowPromoteIcon(), StatusTimeValue @ StatusTimeLabel);
 }
 
-simulated private function OptionCheckboxChanged(UICheckbox CheckBox)
+simulated function OptionCheckboxChanged(UICheckbox CheckBox)
 {
 	SavePresetCheckboxPositions();
 
@@ -1991,7 +1989,7 @@ simulated private function OptionCategoryCheckboxChanged(UICheckbox CheckBox)
 	UpdateOptionsList();
 }
 
-simulated private function CreateOptionShowAll()
+simulated function CreateOptionShowAll()
 {
 	local UIMechaListItem_Button SpawnedItem;
 
@@ -1999,7 +1997,7 @@ simulated private function CreateOptionShowAll()
 	SpawnedItem.bAnimateOnInit = false;
 	SpawnedItem.InitListItem('bShowAllCosmeticOptions'); 
 	//SpawnedItem.SetDisabled(true);
-	SpawnedItem.UpdateDataCheckbox("SHOW ALL OPTIONS", "", bShowAllCosmeticOptions, OptionCheckboxChanged, none);
+	SpawnedItem.UpdateDataCheckbox("SHOW ALL OPTIONS", "", bShowAllCosmeticOptions, OptionCheckboxChanged, none);  // TODO: Localize
 }
 
 simulated private function string GetHTMLColor(LinearColor ParamColor)
@@ -2047,7 +2045,7 @@ simulated private function OnCopyPresetButtonClicked(UIButton ButtonSource)
 	{
 		if (CheckboxPresets[i].Preset == CurrentPreset)
 		{
-			//`CPOLOG(i @ "removing entry for current preset" @ CheckboxPresets[i].CheckboxName @ CheckboxPresets[i].bChecked);
+			//`CPOLOG(i @ "removing entry for current preset" @ CheckboxPresets[i].OptionName @ CheckboxPresets[i].bChecked);
 			CheckboxPresets.Remove(i, 1);
 		}
 	}
@@ -2055,7 +2053,7 @@ simulated private function OnCopyPresetButtonClicked(UIButton ButtonSource)
 	{
 		if (CheckboxPresets[i].Preset == CopyPreset)
 		{
-			//`CPOLOG(i @ "creating a copy of the preset:" @ CheckboxPresets[i].CheckboxName @ CheckboxPresets[i].bChecked);
+			//`CPOLOG(i @ "creating a copy of the preset:" @ CheckboxPresets[i].OptionName @ CheckboxPresets[i].bChecked);
 			NewPresetStruct = CheckboxPresets[i];
 			NewPresetStruct.Preset = CurrentPreset;
 			CheckboxPresets.AddItem(NewPresetStruct);
@@ -2097,7 +2095,7 @@ simulated private function OptionPresetCheckboxChanged(UICheckbox CheckBox)
 	}
 }
 
-simulated private function ActivatePreset()
+simulated final function ActivatePreset()
 {
 	local name Preset;
 
@@ -2295,7 +2293,7 @@ static private function bool ShouldCopyUniformPiece(const name UniformPiece, con
 
 	foreach default.CheckboxPresets(CheckboxPreset)
 	{
-		if (CheckboxPreset.CheckboxName == UniformPiece &&
+		if (CheckboxPreset.OptionName == UniformPiece &&
 			CheckboxPreset.Preset == PresetName)
 		{
 			return CheckboxPreset.bChecked;
@@ -2365,6 +2363,12 @@ static final function CopyAppearance_Static(out TAppearance NewAppearance, const
 	//if (ShouldCopyUniformPiece('bGhostPawn', PresetName)) NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
 }
 
+final function string GetGenderArmorTemplate()
+{
+	return ArmorTemplateName $ ArmoryUnit.kAppearance.iGender;
+}
+
+
 static final function SetInitialSoldierListSettings()
 {
 	local UICustomize_CPExtended CDO;
@@ -2374,12 +2378,13 @@ static final function SetInitialSoldierListSettings()
 		CDO = UICustomize_CPExtended(class'XComEngine'.static.GetClassDefaultObject(class'UICustomize_CPExtended'));
 
 		CDO.bInitComplete = true;
-		CDO.bShowCharPoolSoldiers = CDO.bShowCharPoolSoldiers_DEFAULT;
-		CDO.bShowUniformSoldiers = CDO.bShowUniformSoldiers_DEFAULT;		
-		CDO.bShowBarracksSoldiers = CDO.bShowBarracksSoldiers_DEFAULT;
-		CDO.bShowDeadSoldiers = CDO.bShowDeadSoldiers_DEFAULT;
-		CDO.CheckboxPresets = CDO.CheckboxPresetsDefaults;
-		CDO.bShowAllCosmeticOptions = CDO.bShowAllCosmeticOptions_DEFAULT;
+		CDO.bShowCharPoolSoldiers = class'WOTCCharacterPoolExtended_Defaults'.default.bShowCharPoolSoldiers_DEFAULT;
+		CDO.bShowUniformSoldiers = class'WOTCCharacterPoolExtended_Defaults'.default.bShowUniformSoldiers_DEFAULT;		
+		CDO.bShowBarracksSoldiers = class'WOTCCharacterPoolExtended_Defaults'.default.bShowBarracksSoldiers_DEFAULT;
+		CDO.bShowDeadSoldiers = class'WOTCCharacterPoolExtended_Defaults'.default.bShowDeadSoldiers_DEFAULT;
+		CDO.bShowAllCosmeticOptions = class'WOTCCharacterPoolExtended_Defaults'.default.bShowAllCosmeticOptions_DEFAULT;
+		CDO.Presets = class'WOTCCharacterPoolExtended_Defaults'.default.Presets_DEFAULT;
+		CDO.CheckboxPresets = class'WOTCCharacterPoolExtended_Defaults'.default.CheckboxPresetsDefaults;
 		CDO.SaveConfig();
 	}
 }
@@ -2457,7 +2462,7 @@ simulated private function LoadPresetCheckboxPositions()
 
 		for (Index = 0; Index < CheckboxPresets.Length; Index++)
 		{
-			if (CheckboxPresets[Index].CheckboxName == ListItem.MCName &&
+			if (CheckboxPresets[Index].OptionName == ListItem.MCName &&
 				CheckboxPresets[Index].Preset == CurrentPreset)
 			{
 				ListItem.Checkbox.SetChecked(CheckboxPresets[Index].bChecked, false);

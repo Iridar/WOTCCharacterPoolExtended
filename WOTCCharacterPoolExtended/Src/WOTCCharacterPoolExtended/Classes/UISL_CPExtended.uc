@@ -78,6 +78,14 @@ simulated function AddButtons()
 			ListItem.InitListItem('CPExtended_ManageAppearance_Button');
 			ListItem.UpdateDataDescription("Manage Appearance", OnManageAppearanceButtonClicked); // TODO: Localize
 
+			if (bUnitIsUniform)
+			{
+				ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+				ListItem.bAnimateOnInit = false;
+				ListItem.InitListItem('CPExtended_ConfigureUniform_Button');
+				ListItem.UpdateDataDescription("Configure Uniform", OnConfigureUniformButtonClicked); // TODO: Localize
+			}			
+
 			if (!CustomizeScreen.bInArmory)
 			{
 				ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
@@ -169,6 +177,24 @@ simulated private function OnManageAppearanceButtonClicked()
 	Pres.ScreenStack.Push(CustomizeScreen);
 	CustomizeScreen.UpdateData();
 }
+
+simulated private function OnConfigureUniformButtonClicked()
+{
+	local UICustomize_CPExtended_ConfigureUniform CustomizeScreen;
+	local XComPresentationLayerBase	Pres;
+	
+	Pres = `PRESBASE;
+	if (Pres == none || Pres.ScreenStack == none)
+	{
+		`CPOLOG("No pres:" @ Pres == none @ "or screenstack:" @  Pres.ScreenStack == none);
+		return;
+	}
+
+	CustomizeScreen = Pres.Spawn(class'UICustomize_CPExtended_ConfigureUniform', Pres);
+	Pres.ScreenStack.Push(CustomizeScreen);
+	CustomizeScreen.UpdateData();
+}
+
 
 simulated private function OnSoldierButtonClicked(UIButton ButtonSource)
 {

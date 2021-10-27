@@ -1,5 +1,17 @@
 class CPUnitData extends Object;
 
+struct CosmeticOptionStruct
+{
+	var name OptionName; // Name of the cosmetic option that's part of the TAppearance, e.g. 'nmHead'
+	var bool bChecked; // Bool flag that determines whether this part of TAppearance is a part of the uniform.
+};
+
+struct UniformSettingsStruct
+{
+	var string GenderArmorTemplate; // Same as in the AppearanceStore
+	var array<CosmeticOptionStruct> CosmeticOptions;
+};
+
 struct CPExtendedStruct
 {
 	// Stores most of the info regarding character pool unit: name, bio, current appearance.
@@ -8,9 +20,11 @@ struct CPExtendedStruct
 
 	// Store appearance store separately, because 'CharacterPoolDataElement' doesn't include it.
 	var array<AppearanceInfo> AppearanceStore;
+
+	var array<UniformSettingsStruct> UniformSettings; // For each stored appearance, determines which part of the appearance count as a part of the uniform.
 	
-	var bool bIsUniform;
-	var bool bIsAnyClassUniform; // Whether this unit's appearance can be applied to any soldier class, or only the matching ones.
+	var bool bIsUniform;			// Whether this unit is a uniform.
+	var bool bIsAnyClassUniform;	// Whether this unit's appearance can be applied to any soldier class, or only the matching ones.
 };
 var array<CPExtendedStruct> CharacterPoolDatas;
 
@@ -102,6 +116,49 @@ final function SetIsUnitAnyClassUniform(XComGameState_Unit UnitState, bool bValu
 		CharacterPoolDatas[Index].bIsAnyClassUniform = bValue;
 	}
 }
+
+final function array<CosmeticOptionStruct> GetCosmeticOptionsForUnit(const XComGameState_Unit UnitState, const string GenderArmorTemplate)
+{
+	local int Index;
+	local int SettingsIndex;
+	local array<CosmeticOptionStruct> ReturnArray;
+
+	Index = FindUnitIndex(UnitState);
+	if (Index != INDEX_NONE)
+	{
+		SettingsIndex = CharacterPoolDatas[Index].UniformSettings.Find('GenderArmorTemplate', GenderArmorTemplate);
+		if (SettingsIndex != INDEX_NONE)
+		{
+			ReturnArray = CharacterPoolDatas[Index].UniformSettings[SettingsIndex].CosmeticOptions;
+		}
+	}
+
+	return ReturnArray;
+}
+
+final function SaveCosmeticOptionsForUnit(const array<CosmeticOptionStruct> CosmeticOptions, const XComGameState_Unit UnitState, const string GenderArmorTemplate)
+{	
+	local UniformSettingsStruct NewUniformSetting;
+	local int SettingsIndex;
+	local int Index;
+
+	Index = FindUnitIndex(UnitState);
+	if (Index != INDEX_NONE)
+	{
+		SettingsIndex = CharacterPoolDatas[Index].UniformSettings.Find('GenderArmorTemplate', GenderArmorTemplate);
+		if (SettingsIndex != INDEX_NONE)
+		{
+			CharacterPoolDatas[Index].UniformSettings[SettingsIndex].CosmeticOptions = CosmeticOptions;
+		}
+		else
+		{
+			NewUniformSetting.GenderArmorTemplate = GenderArmorTemplate;
+			NewUniformSetting.CosmeticOptions = CosmeticOptions;
+			CharacterPoolDatas[Index].UniformSettings.AddItem(NewUniformSetting);
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 
 final function array<string> GetUnitsFriendlyExtraData()

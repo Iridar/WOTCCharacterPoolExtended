@@ -130,6 +130,8 @@ simulated private function bool FillPlayerPoolFilePathAndValidate(out PoolInfoSt
 {
 	PoolInfo.FilePath = class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ PlayerPoolFileImportFolderPath $ PoolInfo.PoolName $ ".bin";
 
+	PoolInfo.FilePath = Repl(PoolInfo.FilePath, "\\", "\\\\");
+
 	`CPOLOG("Generated player-added pool path:" @ PoolInfo.FilePath);
 
 	return LoadPool(PoolInfo);
@@ -434,6 +436,8 @@ simulated function array<string> GetListOfPools()
 
 	Items.AddItem("ADD NEW POOL"); // TODO: Localize
 
+	`CPOLOG("");
+
 	foreach CharacterPoolFiles(PoolInfo)
 	{
 		if (LoadPool(PoolInfo))
@@ -496,6 +500,8 @@ simulated private function ShowInfoPopup(string strTitle, string strText, option
 simulated private function bool LoadPool(PoolInfoStruct PoolInfo)
 {
 	UnitData = new class'CPUnitData';
+
+	`CPOLOG("Attempting to load pool:" @ PoolInfo.PoolName @ PoolInfo.FilePath);
 
 	return class'Engine'.static.BasicLoadObject(UnitData, PoolInfo.FilePath, false, 1);
 }

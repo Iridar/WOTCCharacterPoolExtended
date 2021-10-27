@@ -110,6 +110,9 @@
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICustomize_CPExtended.uc">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="Src\WOTCCharacterPoolExtended\Classes\UICustomize_CPExtended_ConfigureUniform.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\WOTCCharacterPoolExtended\Classes\UIMechaListItem_Button.uc">
       <SubType>Content</SubType>
     </Content>

@@ -389,67 +389,175 @@ final function SaveCosmeticOptionsForUnit(const array<CosmeticOptionStruct> Cosm
 	}
 }
 
-final function CopyUniformAppearance(out TAppearance NewAppearance, const XComGameState_Unit UniformState)
+final function bool GetUniformAppearanceForUnit(out TAppearance NewAppearance, const XComGameState_Unit UnitState, const name ArmorTemplateName)
 {
-	local bool bGenderChange;
-
-	class'UICustomize_CPExtended'.static.CopyAppearance_Static(NewAppearance, UniformAppearancece, 'PresetUniform');
-
-	if (ShouldCopyUniformPiece('iGender', PresetName))
+	local array<XComGameState_Unit> UniformStates;
+	local XComGameState_Unit		UniformState;
+	
+	UniformStates = GetClassSpecificUniforms(ArmorTemplateName, NewAppearance.iGender, UnitState.GetSoldierClassTemplateName());
+	if (UniformStates.Length > 0)
 	{
-		bGenderChange = true;
-		NewAppearance.iGender = UniformAppearance.iGender; 
-		NewAppearance.nmPawn = UniformAppearance.nmPawn;
-		NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
-		NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
-		NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
+		UniformState = UniformStates[`SYNC_RAND(UniformStates.Length)];
+
+		`CPOLOG("Selected random class uniform:" @ UniformState.GetFullName() @ "Out of possible:" @ UniformStates.Length);
+
+		CopyUniformAppearance(NewAppearance, UniformState, ArmorTemplateName);
+		return true;		
 	}
-	if (bGenderChange || NewAppearance.iGender == UniformAppearance.iGender)
-	{		
-		if (ShouldCopyUniformPiece('nmHead', PresetName)) {NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; NewAppearance.nmTeeth = UniformAppearance.nmTeeth; NewAppearance.iRace = UniformAppearance.iRace;}
-		//if (ShouldCopyUniformPiece('iRace', PresetName)) NewAppearance.iRace = UniformAppearance.iRace;
-		if (ShouldCopyUniformPiece('nmHaircut', PresetName)) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
-		//if (ShouldCopyUniformPiece('iFacialHair', PresetName)) NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
-		if (ShouldCopyUniformPiece('nmBeard', PresetName)) NewAppearance.nmBeard = UniformAppearance.nmBeard;
-		//if (ShouldCopyUniformPiece('iVoice', PresetName)) NewAppearance.iVoice = UniformAppearance.iVoice;
-		if (ShouldCopyUniformPiece('nmTorso', PresetName)) NewAppearance.nmTorso = UniformAppearance.nmTorso;
-		if (ShouldCopyUniformPiece('nmArms', PresetName)) NewAppearance.nmArms = UniformAppearance.nmArms;
-		if (ShouldCopyUniformPiece('nmLegs', PresetName)) NewAppearance.nmLegs = UniformAppearance.nmLegs;
-		if (ShouldCopyUniformPiece('nmHelmet', PresetName)) NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
-		if (ShouldCopyUniformPiece('nmFacePropLower', PresetName)) NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
-		if (ShouldCopyUniformPiece('nmFacePropUpper', PresetName)) NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
-		if (ShouldCopyUniformPiece('nmVoice', PresetName)) NewAppearance.nmVoice = UniformAppearance.nmVoice;
-		if (ShouldCopyUniformPiece('nmScars', PresetName)) NewAppearance.nmScars = UniformAppearance.nmScars;
-		//if (ShouldCopyUniformPiece('nmTorso_Underlay', PresetName)) NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
-		//if (ShouldCopyUniformPiece('nmArms_Underlay', PresetName)) NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
-		//if (ShouldCopyUniformPiece('nmLegs_Underlay', PresetName)) NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
-		if (ShouldCopyUniformPiece('nmFacePaint', PresetName)) NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
-		if (ShouldCopyUniformPiece('nmLeftArm', PresetName)) NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
-		if (ShouldCopyUniformPiece('nmRightArm', PresetName)) NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
-		if (ShouldCopyUniformPiece('nmLeftArmDeco', PresetName)) NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
-		if (ShouldCopyUniformPiece('nmRightArmDeco', PresetName)) NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
-		if (ShouldCopyUniformPiece('nmLeftForearm', PresetName)) NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
-		if (ShouldCopyUniformPiece('nmRightForearm', PresetName)) NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
-		if (ShouldCopyUniformPiece('nmThighs', PresetName)) NewAppearance.nmThighs = UniformAppearance.nmThighs;
-		if (ShouldCopyUniformPiece('nmShins', PresetName)) NewAppearance.nmShins = UniformAppearance.nmShins;
-		if (ShouldCopyUniformPiece('nmTorsoDeco', PresetName)) NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
+
+	UniformStates = GetAnyClassUniforms(ArmorTemplateName, NewAppearance.iGender);
+	if (UniformStates.Length > 0)
+	{
+		UniformState = UniformStates[`SYNC_RAND(UniformStates.Length)];
+
+		`CPOLOG("Selected random ANY class uniform:" @ UniformState.GetFullName() @ "Out of possible:" @ UniformStates.Length);
+
+		CopyUniformAppearance(NewAppearance, UniformState, ArmorTemplateName);
+		return true;
 	}
-	if (ShouldCopyUniformPiece('iHairColor', PresetName)) NewAppearance.iHairColor = UniformAppearance.iHairColor;
-	if (ShouldCopyUniformPiece('iSkinColor', PresetName)) NewAppearance.iSkinColor = UniformAppearance.iSkinColor;
-	if (ShouldCopyUniformPiece('iEyeColor', PresetName)) NewAppearance.iEyeColor = UniformAppearance.iEyeColor;
-	if (ShouldCopyUniformPiece('nmFlag', PresetName)) NewAppearance.nmFlag = UniformAppearance.nmFlag;
-	if (ShouldCopyUniformPiece('iAttitude', PresetName)) NewAppearance.iAttitude = UniformAppearance.iAttitude;
-	//if (ShouldCopyUniformPiece('iArmorDeco', PresetName)) NewAppearance.iArmorDeco = UniformAppearance.iArmorDeco;
-	if (ShouldCopyUniformPiece('iArmorTint', PresetName)) NewAppearance.iArmorTint = UniformAppearance.iArmorTint;
-	if (ShouldCopyUniformPiece('iArmorTintSecondary', PresetName)) NewAppearance.iArmorTintSecondary = UniformAppearance.iArmorTintSecondary;
-	if (ShouldCopyUniformPiece('iWeaponTint', PresetName)) NewAppearance.iWeaponTint = UniformAppearance.iWeaponTint;
-	if (ShouldCopyUniformPiece('iTattooTint', PresetName)) NewAppearance.iTattooTint = UniformAppearance.iTattooTint;
-	if (ShouldCopyUniformPiece('nmWeaponPattern', PresetName)) NewAppearance.nmWeaponPattern = UniformAppearance.nmWeaponPattern;
-	if (ShouldCopyUniformPiece('nmPatterns', PresetName)) NewAppearance.nmPatterns = UniformAppearance.nmPatterns;
-	//if (ShouldCopyUniformPiece('nmLanguage', PresetName)) NewAppearance.nmLanguage = UniformAppearance.nmLanguage;
-	if (ShouldCopyUniformPiece('nmTattoo_LeftArm', PresetName)) NewAppearance.nmTattoo_LeftArm = UniformAppearance.nmTattoo_LeftArm;
-	if (ShouldCopyUniformPiece('nmTattoo_RightArm', PresetName)) NewAppearance.nmTattoo_RightArm = UniformAppearance.nmTattoo_RightArm;
-	//if (ShouldCopyUniformPiece('bGhostPawn', PresetName)) NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
+
+	return false;
+}
+
+private function array<XComGameState_Unit> GetClassSpecificUniforms(const name ArmorTemplateName, const int iGender, const name SoldierClass)
+{
+	local array<XComGameState_Unit> UniformStates;
+	local XComGameState_Unit		UniformState;
+
+	foreach CharacterPool(UniformState)
+	{
+		if (IsUnitUniform(UniformState) && 
+			!IsUnitAnyClassUniform(UniformState) && 
+			UniformState.GetSoldierClassTemplateName() == SoldierClass && 
+			UniformState.HasStoredAppearance(iGender, ArmorTemplateName))
+		{
+			UniformStates.AddItem(UniformState);
+		}
+	}
+	return UniformStates;
+}
+private function array<XComGameState_Unit> GetAnyClassUniforms(const name ArmorTemplateName, const int iGender)
+{
+	local array<XComGameState_Unit> UniformStates;
+	local XComGameState_Unit		UniformState;
+
+	foreach CharacterPool(UniformState)
+	{
+		if (IsUnitUniform(UniformState) && 
+			IsUnitAnyClassUniform(UniformState) &&
+			UniformState.HasStoredAppearance(iGender, ArmorTemplateName))
+		{
+			UniformStates.AddItem(UniformState);
+		}
+	}
+	return UniformStates;
+}
+
+
+private function CopyUniformAppearance(out TAppearance NewAppearance, const XComGameState_Unit UniformState, const name ArmorTemplateName)
+{
+	local TAppearance					UniformAppearance;
+	local array<CosmeticOptionStruct>	CosmeticOptions;
+	local bool							bGenderChange;
+	local string						GenderArmorTemplate;
+
+	UniformState.GetStoredAppearance(UniformAppearance, NewAppearance.iGender, ArmorTemplateName);
+
+	GetUnitData();
+	if (UnitData != none)
+	{
+		GenderArmorTemplate = ArmorTemplateName $ NewAppearance.iGender;
+		CosmeticOptions = UnitData.GetCosmeticOptionsForUnit(UniformState, GenderArmorTemplate);
+	}
+	if (CosmeticOptions.Length > 0)
+	{	
+		if (ShouldCopyUniformPiece('iGender', CosmeticOptions))
+		{
+			bGenderChange = true;
+			NewAppearance.iGender = UniformAppearance.iGender; 
+			NewAppearance.nmPawn = UniformAppearance.nmPawn;
+			NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
+			NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
+			NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
+		}
+		if (bGenderChange || NewAppearance.iGender == UniformAppearance.iGender)
+		{		
+			if (ShouldCopyUniformPiece('nmHead', CosmeticOptions)) {NewAppearance.nmHead = UniformAppearance.nmHead; NewAppearance.nmEye = UniformAppearance.nmEye; NewAppearance.nmTeeth = UniformAppearance.nmTeeth; NewAppearance.iRace = UniformAppearance.iRace;}
+			//if (ShouldCopyUniformPiece('iRace', CosmeticOptions)) NewAppearance.iRace = UniformAppearance.iRace;
+			if (ShouldCopyUniformPiece('nmHaircut', CosmeticOptions)) NewAppearance.nmHaircut = UniformAppearance.nmHaircut;
+			//if (ShouldCopyUniformPiece('iFacialHair', CosmeticOptions)) NewAppearance.iFacialHair = UniformAppearance.iFacialHair;
+			if (ShouldCopyUniformPiece('nmBeard', CosmeticOptions)) NewAppearance.nmBeard = UniformAppearance.nmBeard;
+			//if (ShouldCopyUniformPiece('iVoice', CosmeticOptions)) NewAppearance.iVoice = UniformAppearance.iVoice;
+			if (ShouldCopyUniformPiece('nmTorso', CosmeticOptions)) NewAppearance.nmTorso = UniformAppearance.nmTorso;
+			if (ShouldCopyUniformPiece('nmArms', CosmeticOptions)) NewAppearance.nmArms = UniformAppearance.nmArms;
+			if (ShouldCopyUniformPiece('nmLegs', CosmeticOptions)) NewAppearance.nmLegs = UniformAppearance.nmLegs;
+			if (ShouldCopyUniformPiece('nmHelmet', CosmeticOptions)) NewAppearance.nmHelmet = UniformAppearance.nmHelmet;
+			if (ShouldCopyUniformPiece('nmFacePropLower', CosmeticOptions)) NewAppearance.nmFacePropLower = UniformAppearance.nmFacePropLower;
+			if (ShouldCopyUniformPiece('nmFacePropUpper', CosmeticOptions)) NewAppearance.nmFacePropUpper = UniformAppearance.nmFacePropUpper;
+			if (ShouldCopyUniformPiece('nmVoice', CosmeticOptions)) NewAppearance.nmVoice = UniformAppearance.nmVoice;
+			if (ShouldCopyUniformPiece('nmScars', CosmeticOptions)) NewAppearance.nmScars = UniformAppearance.nmScars;
+			//if (ShouldCopyUniformPiece('nmTorso_Underlay', CosmeticOptions)) NewAppearance.nmTorso_Underlay = UniformAppearance.nmTorso_Underlay;
+			//if (ShouldCopyUniformPiece('nmArms_Underlay', CosmeticOptions)) NewAppearance.nmArms_Underlay = UniformAppearance.nmArms_Underlay;
+			//if (ShouldCopyUniformPiece('nmLegs_Underlay', CosmeticOptions)) NewAppearance.nmLegs_Underlay = UniformAppearance.nmLegs_Underlay;
+			if (ShouldCopyUniformPiece('nmFacePaint', CosmeticOptions)) NewAppearance.nmFacePaint = UniformAppearance.nmFacePaint;
+			if (ShouldCopyUniformPiece('nmLeftArm', CosmeticOptions)) NewAppearance.nmLeftArm = UniformAppearance.nmLeftArm;
+			if (ShouldCopyUniformPiece('nmRightArm', CosmeticOptions)) NewAppearance.nmRightArm = UniformAppearance.nmRightArm;
+			if (ShouldCopyUniformPiece('nmLeftArmDeco', CosmeticOptions)) NewAppearance.nmLeftArmDeco = UniformAppearance.nmLeftArmDeco;
+			if (ShouldCopyUniformPiece('nmRightArmDeco', CosmeticOptions)) NewAppearance.nmRightArmDeco = UniformAppearance.nmRightArmDeco;
+			if (ShouldCopyUniformPiece('nmLeftForearm', CosmeticOptions)) NewAppearance.nmLeftForearm = UniformAppearance.nmLeftForearm;
+			if (ShouldCopyUniformPiece('nmRightForearm', CosmeticOptions)) NewAppearance.nmRightForearm = UniformAppearance.nmRightForearm;
+			if (ShouldCopyUniformPiece('nmThighs', CosmeticOptions)) NewAppearance.nmThighs = UniformAppearance.nmThighs;
+			if (ShouldCopyUniformPiece('nmShins', CosmeticOptions)) NewAppearance.nmShins = UniformAppearance.nmShins;
+			if (ShouldCopyUniformPiece('nmTorsoDeco', CosmeticOptions)) NewAppearance.nmTorsoDeco = UniformAppearance.nmTorsoDeco;
+		}
+		if (ShouldCopyUniformPiece('iHairColor', CosmeticOptions)) NewAppearance.iHairColor = UniformAppearance.iHairColor;
+		if (ShouldCopyUniformPiece('iSkinColor', CosmeticOptions)) NewAppearance.iSkinColor = UniformAppearance.iSkinColor;
+		if (ShouldCopyUniformPiece('iEyeColor', CosmeticOptions)) NewAppearance.iEyeColor = UniformAppearance.iEyeColor;
+		if (ShouldCopyUniformPiece('nmFlag', CosmeticOptions)) NewAppearance.nmFlag = UniformAppearance.nmFlag;
+		if (ShouldCopyUniformPiece('iAttitude', CosmeticOptions)) NewAppearance.iAttitude = UniformAppearance.iAttitude;
+		//if (ShouldCopyUniformPiece('iArmorDeco', CosmeticOptions)) NewAppearance.iArmorDeco = UniformAppearance.iArmorDeco;
+		if (ShouldCopyUniformPiece('iArmorTint', CosmeticOptions)) NewAppearance.iArmorTint = UniformAppearance.iArmorTint;
+		if (ShouldCopyUniformPiece('iArmorTintSecondary', CosmeticOptions)) NewAppearance.iArmorTintSecondary = UniformAppearance.iArmorTintSecondary;
+		if (ShouldCopyUniformPiece('iWeaponTint', CosmeticOptions)) NewAppearance.iWeaponTint = UniformAppearance.iWeaponTint;
+		if (ShouldCopyUniformPiece('iTattooTint', CosmeticOptions)) NewAppearance.iTattooTint = UniformAppearance.iTattooTint;
+		if (ShouldCopyUniformPiece('nmWeaponPattern', CosmeticOptions)) NewAppearance.nmWeaponPattern = UniformAppearance.nmWeaponPattern;
+		if (ShouldCopyUniformPiece('nmPatterns', CosmeticOptions)) NewAppearance.nmPatterns = UniformAppearance.nmPatterns;
+		//if (ShouldCopyUniformPiece('nmLanguage', CosmeticOptions)) NewAppearance.nmLanguage = UniformAppearance.nmLanguage;
+		if (ShouldCopyUniformPiece('nmTattoo_LeftArm', CosmeticOptions)) NewAppearance.nmTattoo_LeftArm = UniformAppearance.nmTattoo_LeftArm;
+		if (ShouldCopyUniformPiece('nmTattoo_RightArm', CosmeticOptions)) NewAppearance.nmTattoo_RightArm = UniformAppearance.nmTattoo_RightArm;
+		//if (ShouldCopyUniformPiece('bGhostPawn', CosmeticOptions)) NewAppearance.bGhostPawn = UniformAppearance.bGhostPawn;
+	}
+	else
+	{
+		class'UICustomize_CPExtended'.static.CopyAppearance_Static(NewAppearance, UniformAppearance, 'PresetUniform');
+	}
+}
+
+private function bool ShouldCopyUniformPiece(const name OptionName, const out array<CosmeticOptionStruct> CosmeticOptions)
+{
+	local int Index;
+
+	Index = CosmeticOptions.Find('OptionName', OptionName);
+	if (Index != INDEX_NONE)
+	{
+		return CosmeticOptions[Index].bChecked;
+	}
+	return false;
+}
+
+final function bool IsCharacterPoolCharacter(const XComGameState_Unit UnitState)
+{
+	local int Index;	
+
+	for (Index = 0; Index < CharacterPool.Length; ++Index)
+	{
+		if (UnitState.GetFullName() == CharacterPool[Index].GetFullName())
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 // ---------------------------------------------------------------------------
 

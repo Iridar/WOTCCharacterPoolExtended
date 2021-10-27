@@ -109,15 +109,22 @@ static function EventListenerReturn OnItemAddedToSlot(Object EventData, Object E
 
 	`CPOLOG(UnitState.GetFullName() @ "equipped armor:" @ ItemState.GetMyTemplateName());
 
-	MaybeApplyCharacterPoolAppearance(UnitState, ItemState.GetMyTemplateName());
+	if (UnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ItemState.GetMyTemplateName()))
+	{
+		`CPOLOG(UnitState.GetFullName() @ "already has stored appearance for" @ ItemState.GetMyTemplateName() $ ", exiting.");
+		return ELR_NoInterrupt;
+	}
+
+	MaybeApplyUniformAppearance(UnitState, ItemState.GetMyTemplateName());
 
 	return ELR_NoInterrupt;
 }
 
 static function EventListenerReturn OnItemAddedToSlot_CampaignStart(Object EventData, Object EventSource, XComGameState NewGameState, Name Event, Object CallbackData)
 {
-	local XComGameState_Item	ItemState;
-	local XComGameState_Unit	UnitState;
+	local XComGameState_Item			ItemState;
+	local XComGameState_Unit			UnitState;
+	local CharacterPoolManagerExtended	CharacterPool;
 
 	ItemState = XComGameState_Item(EventData);
 	if (ItemState == none || X2ArmorTemplate(ItemState.GetMyTemplate()) == none)
@@ -137,63 +144,43 @@ static function EventListenerReturn OnItemAddedToSlot_CampaignStart(Object Event
 	// However, we can allow ourselves to ignore this at campaign start. 
 	// If the unit was randomly generated, then we want to replace their appearance with a uniform anyway.
 	// If the unit is present in CP, then we'll just import their appearance on top of them again anyway, and no actual changes will happen.
-	MaybeApplyCharacterPoolAppearance(UnitState, ItemState.GetMyTemplateName(), true);
+
+	//if (UnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName))
+	//{
+	//	`CPOLOG(UnitState.GetFullName() @ "already has stored appearance for" @ ArmorTemplateName $ ", exiting.");
+	//	return;
+	//}
+
+	// This will have to do for now. Assume if the character is present in CP, they will at least have some initial appearance configured.
+	// EDIT: Duh, just cuz a char is in CP doesn't mean user doesn't want uniform for them. Removing.
+	//CharacterPool = `CHARACTERPOOLMGRXTD;
+	//if (CharacterPool == none)
+	//	return ELR_NoInterrupt;
+
+	//if (IsCharacterPoolCharacter(UnitState))
+	//	return ELR_NoInterrupt;
+
+	MaybeApplyUniformAppearance(UnitState, ItemState.GetMyTemplateName());
 
 	return ELR_NoInterrupt;
 }
 
-static private function MaybeApplyCharacterPoolAppearance(XComGameState_Unit UnitState, name ArmorTemplateName, optional bool bSkipStoredAppearanceCheck = false)
+static private function MaybeApplyUniformAppearance(XComGameState_Unit UnitState, name ArmorTemplateName)
 {
-	local XComGameState_Unit			CPUnitState;
 	local CharacterPoolManagerExtended	CharacterPool;
-	local TAppearance					CPAppearance;
 	local TAppearance					NewAppearance;
-
-	if (!bSkipStoredAppearanceCheck)
-	{
-		if (UnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName))
-		{
-			`CPOLOG(UnitState.GetFullName() @ "already has stored appearance for" @ ArmorTemplateName $ ", exiting.");
-			return;
-		}
-	}
 	
-	CharacterPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
+	CharacterPool = `CHARACTERPOOLMGRXTD;
 	if (CharacterPool == none)
 		return;
 
-	CPUnitState = CharacterPool.GetCharacter(UnitState.GetFullName());
-	if (CPUnitState != none)
+	NewAppearance = UnitState.kAppearance;
+
+	`CPOLOG(UnitState.GetFullName() @ ArmorTemplateName);
+	if (CharacterPool.GetUniformAppearanceForUnit(NewAppearance, UnitState, ArmorTemplateName))
 	{
-		`CPOLOG(UnitState.GetFullName() @ "is present in Character Pool.");
-		if (CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName))
-		{
-			`CPOLOG(UnitState.GetFullName() @ "in Character Pool has stored appearance for" @ ArmorTemplateName $ ", importing it.");
-
-			CPUnitState.GetStoredAppearance(CPAppearance, UnitState.kAppearance.iGender, ArmorTemplateName);
-			UnitState.SetTAppearance(CPAppearance);
-			UnitState.StoreAppearance(UnitState.kAppearance.iGender, ArmorTemplateName);
-			return;
-		}
-		`CPOLOG(UnitState.GetFullName() @ "in Character Pool has no stored appearance for" @ ArmorTemplateName $ ".");
-	}
-
-	foreach CharacterPool.CharacterPool(CPUnitState)
-	{
-		if (CharacterPool.IsUnitUniform(CPUnitState) && CharacterPool.IsUniformValidForUnit(UnitState, CPUnitState) &&
-			CPUnitState.HasStoredAppearance(UnitState.kAppearance.iGender, ArmorTemplateName)) 
-		{
-			`CPOLOG("Found uniform unit:" @ CPUnitState.GetFullName() $ ", importing their appearance.");
-
-			CPUnitState.GetStoredAppearance(CPAppearance, UnitState.kAppearance.iGender, ArmorTemplateName);
-
-			NewAppearance = UnitState.kAppearance;
-			class'UICustomize_CPExtended'.static.CopyAppearance_Static(NewAppearance, CPAppearance, 'PresetUniform');
-
-			UnitState.SetTAppearance(NewAppearance);
-			UnitState.StoreAppearance(UnitState.kAppearance.iGender, ArmorTemplateName);
-			return;
-		}
+		UnitState.SetTAppearance(NewAppearance);
+		UnitState.StoreAppearance(UnitState.kAppearance.iGender, ArmorTemplateName);
 	}
 }
 

@@ -30,11 +30,11 @@ var protected config(WOTCCharacterPoolExtended) bool bInitComplete;
 
 Lost its own CPImport file, shame shame: problem with eating backslashes. Replace with forward slashes for storage?
 
-Allow user to select which cosmetic options are a part of the uniform
 Can't select Gender on uniform screen
 
-Prioritize class-specific uniforms in the event listener, probably via double cycle
-Select random uniform out of all valid ones
+Also apply class specific uniforms on unit rank up?
+
+Way to exempt specific soldiers from being uniform'd.
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?

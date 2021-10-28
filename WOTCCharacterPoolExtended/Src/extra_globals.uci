@@ -1,3 +1,5 @@
 `define CPOLOG(msg) `LOG(GetFuncName() @ `msg, class'WOTCCharacterPoolExtended_Defaults'.default.VERSION_CFG > class'WOTCCharacterPoolExtended_MCMScreen'.default.VERSION_CFG ? class'WOTCCharacterPoolExtended_Defaults'.default.DEBUG_LOGGING : class'WOTCCharacterPoolExtended_MCMScreen'.default.DEBUG_LOGGING, 'CharacterPoolOverhaul')
 
 `define CHARACTERPOOLMGRXTD CharacterPoolManagerExtended(CharacterPoolManager(class'Engine'.static.GetEngine().GetCharacterPoolManager()))
+
+`define XOR(a, b) !`a && `b || `a && !`b

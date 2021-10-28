@@ -25,6 +25,12 @@ struct CPExtendedStruct
 	
 	var bool bIsUniform;			// Whether this unit is a uniform.
 	var bool bIsAnyClassUniform;	// Whether this unit's appearance can be applied to any soldier class, or only the matching ones.
+	var bool bShouldAutoManageUniform; // Whether this unit should receive uniforms automatically.
+
+	structdefaultproperties
+	{
+		bShouldAutoManageUniform = false;
+	}
 };
 var array<CPExtendedStruct> CharacterPoolDatas;
 
@@ -156,6 +162,30 @@ final function SaveCosmeticOptionsForUnit(const array<CosmeticOptionStruct> Cosm
 			NewUniformSetting.CosmeticOptions = CosmeticOptions;
 			CharacterPoolDatas[Index].UniformSettings.AddItem(NewUniformSetting);
 		}
+	}
+}
+
+final function bool ShouldAutoManageUniform(const XComGameState_Unit UnitState)
+{
+	local int Index;
+
+	Index = FindUnitIndex(UnitState);
+	if (Index != INDEX_NONE)
+	{
+		`CPOLOG("Found auto manage uniform value:" @ CharacterPoolDatas[Index].bShouldAutoManageUniform);
+		return CharacterPoolDatas[Index].bShouldAutoManageUniform;
+	}
+	return false;
+}
+
+final function SetAutoManageUniform(const XComGameState_Unit UnitState, const bool bValue)
+{
+	local int Index;
+
+	Index = FindUnitIndex(UnitState);
+	if (Index != INDEX_NONE)
+	{
+		CharacterPoolDatas[Index].bShouldAutoManageUniform = bValue;
 	}
 }
 

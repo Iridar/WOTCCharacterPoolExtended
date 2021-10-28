@@ -3,6 +3,7 @@ class UISL_CPExtended extends UIScreenListener;
 // This UISL adds a few buttons to UICustomize_Menu screens.
 
 var localized string strUniform;
+var name AutoManageUniformValueName;
 
 `include(WOTCCharacterPoolExtended\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
@@ -40,14 +41,22 @@ simulated function AddButtons()
 	local UIMechaListItem	ListItem;
 	local bool				bListItemAlreadyExists;
 	local bool				bUnitIsUniform;
+
+	local XComGameState_Unit			UnitState;
+	local CharacterPoolManagerExtended	CharPoolMgr;
 	local int i;
 
 	CustomizeScreen = UICustomize_Menu(`SCREENSTACK.GetCurrentScreen());
 	if (CustomizeScreen == none)
-	{
-		//`CPOLOG("Stopping timer cuz of wrong screen");
 		return;
-	}
+	
+	CharPoolMgr = `CHARACTERPOOLMGRXTD;
+	if (CharPoolMgr == none)
+		return;
+
+	UnitState = CustomizeScreen.GetUnit();
+	if (UnitState == none)
+		return;
 
 	//`CPOLOG("List has items:" @ CustomizeScreen.List.ItemCount);
 
@@ -66,9 +75,10 @@ simulated function AddButtons()
 			}
 		}
 
-		bUnitIsUniform = `CHARACTERPOOLMGRXTD.IsUnitUniform(CustomizeScreen.GetUnit());
+		
+		bUnitIsUniform = CharPoolMgr.IsUnitUniform(UnitState);
 
-		`CPOLOG(CustomizeScreen.GetUnit().GetFullName() @ "Is uniform:" @ bUnitIsUniform);
+		`CPOLOG(UnitState.GetFullName() @ "Is uniform:" @ bUnitIsUniform);
 
 		if (!bListItemAlreadyExists)
 		{	
@@ -84,6 +94,21 @@ simulated function AddButtons()
 				ListItem.bAnimateOnInit = false;
 				ListItem.InitListItem('CPExtended_ConfigureUniform_Button');
 				ListItem.UpdateDataDescription("Configure Uniform", OnConfigureUniformButtonClicked); // TODO: Localize
+			}
+			else
+			{
+				ListItem = CustomizeScreen.Spawn(class'UIMechaListItem', CustomizeScreen.List.ItemContainer);
+				ListItem.bAnimateOnInit = false;
+				ListItem.InitListItem('CPExtended_ConfigureUniform_Button');
+
+				if (`GETMCMVAR(AUTOMATIC_UNIFORM_MANAGEMENT))
+				{
+					ListItem.UpdateDataCheckbox("Disable automatic uniform management", "", CharPoolMgr.IsAutoManageUniformFlagSet(UnitState), OnAutoManageUniformCheckboxChanged, none);
+				}
+				else
+				{
+					ListItem.UpdateDataCheckbox("Enable automatic uniform management", "", CharPoolMgr.IsAutoManageUniformFlagSet(UnitState), OnAutoManageUniformCheckboxChanged, none);
+				}				
 			}			
 
 			if (!CustomizeScreen.bInArmory)
@@ -131,6 +156,52 @@ simulated function AddButtons()
 		UpdateCustomizeMenuList(CustomizeScreen.List, bUnitIsUniform);
 	}
 	CustomizeScreen.SetTimer(0.25f, false, nameof(AddButtons), self);
+}
+
+simulated private function OnAutoManageUniformCheckboxChanged(UICheckbox CheckBox)
+{
+	local UICustomize_Menu				CustomizeScreen;
+	local CharacterPoolManagerExtended	CharPoolMgr;
+	local XComGameState_Unit			UnitState;
+
+	CustomizeScreen = UICustomize_Menu(CheckBox.Screen);
+	if (CustomizeScreen == none)
+		return;
+
+	CharPoolMgr = `CHARACTERPOOLMGRXTD;
+	if (CharPoolMgr == none)
+		return;
+
+	UnitState = CustomizeScreen.GetUnit();
+	if (UnitState == none)
+		return;
+
+	if (CharPoolMgr.IsCharacterPoolCharacter(UnitState))
+	{
+		CharPoolMgr.SetAutoManageUniform(UnitState, CheckBox.bChecked);
+	}
+	else
+	{
+		SetAutoManageUniform(UnitState, CheckBox.bChecked);
+	}
+}
+
+simulated private function SetAutoManageUniform(XComGameState_Unit UnitState, const bool bValue)
+{
+	local XComGameState NewGameState;
+
+	NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState(GetFuncName() @ UnitState.GetFullName() @ bValue);
+
+	UnitState = XComGameState_Unit(NewGameState.ModifyStateObject(UnitState.Class, UnitState.ObjectID));
+	if (bValue)
+	{
+		UnitState.SetUnitFloatValue(AutoManageUniformValueName, 1.0f, eCleanup_Never);
+	}
+	else
+	{
+		UnitState.ClearUnitValue(AutoManageUniformValueName);
+	}
+	`GAMERULES.SubmitGameState(NewGameState);
 }
 
 simulated private function OnUseForAllClassesCheckboxChanged(UICheckbox CheckBox)
@@ -418,6 +489,10 @@ simulated private function OnLoadoutButtonClicked()
 	ArmoryScreen.InitArmory(UnitState.GetReference());
 }
 
+defaultproperties
+{
+	AutoManageUniformValueName = "IRI_AutoManageUniform_Value"
+}
 
 /*
 simulated private function OnLoadout()

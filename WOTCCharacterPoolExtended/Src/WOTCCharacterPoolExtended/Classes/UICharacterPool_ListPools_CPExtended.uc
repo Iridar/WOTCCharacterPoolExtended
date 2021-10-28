@@ -22,9 +22,6 @@ struct PoolInfoStruct
 	// Alternatively, can be specified directly by the mod in config.
 	var string FriendlyName;
 };
-// Mods should use this array to add their character pool files. Examply entry:
-// +DefaultCharacterPoolFiles = (DLCName = "WOTCCharacterPoolTest", PoolName = "ModAddedPool")
-var private config(WOTCCharacterPoolExtended_DEFAULT) array<PoolInfoStruct> DefaultCharacterPoolFiles;
 
 // Array of all character pool files this mod has access to, both for mod-added pools and player-created ones.
 // Cached and validated on this screen's Init
@@ -51,9 +48,9 @@ simulated private function BuildCharacterPoolFilesList()
 	local PoolInfoStruct PoolInfo;
 	local int Index;
 
-	`CPOLOG("Building character pool files. Default pools:" @ DefaultCharacterPoolFiles.Length $ ", cached pools:" @ CharacterPoolFiles.Length);
+	`CPOLOG("Building character pool files. Default pools:" @ class'WOTCCharacterPoolExtended_Defaults'.default.DefaultCharacterPoolFiles.Length $ ", cached pools:" @ CharacterPoolFiles.Length);
 
-	foreach DefaultCharacterPoolFiles(PoolInfo)
+	foreach class'WOTCCharacterPoolExtended_Defaults'.default.DefaultCharacterPoolFiles(PoolInfo)
 	{		
 		`CPOLOG("Default pool:" @ GeneratePoolText(PoolInfo));
 		if (PoolInfo.PoolName == '')
@@ -113,7 +110,12 @@ simulated private function bool FillDLCPoolFilePathAndValidate(out PoolInfoStruc
 		if (Item.Filename == string(PoolInfo.DLCName))
 		{
 			PoolInfo.FilePath = Item.ContentPath $ "\\Content\\" $ PoolInfo.PoolName $ ".bin";
-			PoolInfo.FilePath = Repl(PoolInfo.FilePath, "\\", "\\\\");
+
+			// File Path needs to be stored encoded, otherwise there are constant issues with `\` character being eaten when the string is saved to config.
+			// Thanks to Tenga for the idea of using encoding.
+			PoolInfo.FilePath = class'WebRequest'.static.EncodeBase64(PoolInfo.FilePath);
+
+			//PoolInfo.FilePath = Repl(PoolInfo.FilePath, "\\", "\\\\");
 			`CPOLOG("Generated mod-added pool path:" @ PoolInfo.FilePath);
 			return LoadPool(PoolInfo);
 		}
@@ -130,7 +132,7 @@ simulated private function bool FillPlayerPoolFilePathAndValidate(out PoolInfoSt
 {
 	PoolInfo.FilePath = class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ PlayerPoolFileImportFolderPath $ PoolInfo.PoolName $ ".bin";
 
-	PoolInfo.FilePath = Repl(PoolInfo.FilePath, "\\", "\\\\");
+	PoolInfo.FilePath = class'WebRequest'.static.EncodeBase64(PoolInfo.FilePath);
 
 	`CPOLOG("Generated player-added pool path:" @ PoolInfo.FilePath);
 
@@ -499,16 +501,24 @@ simulated private function ShowInfoPopup(string strTitle, string strText, option
 
 simulated private function bool LoadPool(PoolInfoStruct PoolInfo)
 {
+	local string strFilePath;
+
 	UnitData = new class'CPUnitData';
 
-	`CPOLOG("Attempting to load pool:" @ PoolInfo.PoolName @ PoolInfo.FilePath);
+	strFilePath = class'WebRequest'.static.DecodeBase64(PoolInfo.FilePath);
 
-	return class'Engine'.static.BasicLoadObject(UnitData, PoolInfo.FilePath, false, 1);
+	`CPOLOG("Attempting to load pool:" @ PoolInfo.PoolName @ strFilePath);
+
+	return class'Engine'.static.BasicLoadObject(UnitData, strFilePath, false, 1);
 }
 
 simulated private function bool SaveCurrentlyOpenPool()
 {
-	return class'Engine'.static.BasicSaveObject(UnitData, CurrentPoolInfo.FilePath, false, 1);
+	local string strFilePath;
+
+	strFilePath = class'WebRequest'.static.DecodeBase64(CurrentPoolInfo.FilePath);
+
+	return class'Engine'.static.BasicSaveObject(UnitData, strFilePath, false, 1);
 }
 
 /*

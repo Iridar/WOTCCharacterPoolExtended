@@ -122,9 +122,8 @@ static function EventListenerReturn OnItemAddedToSlot(Object EventData, Object E
 
 static function EventListenerReturn OnItemAddedToSlot_CampaignStart(Object EventData, Object EventSource, XComGameState NewGameState, Name Event, Object CallbackData)
 {
-	local XComGameState_Item			ItemState;
-	local XComGameState_Unit			UnitState;
-	local CharacterPoolManagerExtended	CharacterPool;
+	local XComGameState_Item	ItemState;
+	local XComGameState_Unit	UnitState;
 
 	ItemState = XComGameState_Item(EventData);
 	if (ItemState == none || X2ArmorTemplate(ItemState.GetMyTemplate()) == none)
@@ -171,7 +170,7 @@ static private function MaybeApplyUniformAppearance(XComGameState_Unit UnitState
 	local TAppearance					NewAppearance;
 	
 	CharacterPool = `CHARACTERPOOLMGRXTD;
-	if (CharacterPool == none)
+	if (CharacterPool == none || !CharacterPool.ShouldAutoManageUniform(UnitState))
 		return;
 
 	NewAppearance = UnitState.kAppearance;

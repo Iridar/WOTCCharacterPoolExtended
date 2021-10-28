@@ -8,12 +8,14 @@ var localized string GroupHeader;
 
 `include(WOTCCharacterPoolExtended\Src\ModConfigMenuAPI\MCM_API_Includes.uci)
 
+`MCM_API_AutoCheckBoxVars(AUTOMATIC_UNIFORM_MANAGEMENT);
 `MCM_API_AutoCheckBoxVars(DISABLE_APPEARANCE_VALIDATION_REVIEW);
 `MCM_API_AutoCheckBoxVars(DISABLE_APPEARANCE_VALIDATION_DEBUG);
 `MCM_API_AutoCheckBoxVars(DEBUG_LOGGING);
 
 `include(WOTCCharacterPoolExtended\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
+`MCM_API_AutoCheckBoxFns(AUTOMATIC_UNIFORM_MANAGEMENT, 1);
 `MCM_API_AutoCheckBoxFns(DISABLE_APPEARANCE_VALIDATION_REVIEW, 1);
 `MCM_API_AutoCheckBoxFns(DISABLE_APPEARANCE_VALIDATION_DEBUG, 1);
 `MCM_API_AutoCheckBoxFns(DEBUG_LOGGING, 1);
@@ -37,6 +39,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 
 	Group = Page.AddGroup('Group', GroupHeader);
 
+	`MCM_API_AutoAddCheckBox(Group, AUTOMATIC_UNIFORM_MANAGEMENT);	
 	`MCM_API_AutoAddCheckBox(Group, DISABLE_APPEARANCE_VALIDATION_REVIEW);	
 	`MCM_API_AutoAddCheckBox(Group, DISABLE_APPEARANCE_VALIDATION_DEBUG);	
 	`MCM_API_AutoAddCheckBox(Group, DEBUG_LOGGING);
@@ -48,6 +51,7 @@ simulated function ClientModCallback(MCM_API_Instance ConfigAPI, int GameMode)
 
 simulated function LoadSavedSettings()
 {
+	AUTOMATIC_UNIFORM_MANAGEMENT = `GETMCMVAR(AUTOMATIC_UNIFORM_MANAGEMENT);
 	DISABLE_APPEARANCE_VALIDATION_REVIEW = `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_REVIEW);
 	DISABLE_APPEARANCE_VALIDATION_DEBUG = `GETMCMVAR(DISABLE_APPEARANCE_VALIDATION_DEBUG);
 	DEBUG_LOGGING = `GETMCMVAR(DEBUG_LOGGING);
@@ -55,6 +59,7 @@ simulated function LoadSavedSettings()
 
 simulated function ResetButtonClicked(MCM_API_SettingsPage Page)
 {
+	`MCM_API_AutoReset(AUTOMATIC_UNIFORM_MANAGEMENT);
 	`MCM_API_AutoReset(DISABLE_APPEARANCE_VALIDATION_REVIEW);
 	`MCM_API_AutoReset(DISABLE_APPEARANCE_VALIDATION_DEBUG);
 	`MCM_API_AutoReset(DEBUG_LOGGING);

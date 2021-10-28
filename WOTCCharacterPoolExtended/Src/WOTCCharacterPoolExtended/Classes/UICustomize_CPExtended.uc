@@ -28,13 +28,9 @@ var protected config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-Lost its own CPImport file, shame shame: problem with eating backslashes. Replace with forward slashes for storage?
-
 Can't select Gender on uniform screen
 
 Also apply class specific uniforms on unit rank up?
-
-Way to exempt specific soldiers from being uniform'd.
 
 # Character Pool
 Fix weapons / Dual Wielding not working in CP?
@@ -45,6 +41,9 @@ Issue a warning if soldiers with duplicate names are present
 Fix wrong unit being opened in CP sometimes. (Has to do with deleting units?)
 -- Apparently the problem is the CP opens the unit you had selected when the interface раздупляется, а не тот юнит по которому кликал. Это ваниллы проблема. Можно пофиксить, наверное
 
+If the MCM setting was enabled globally, and the player disabled it for some soldiers, and then the player disabled it globally, the setting will be enabled for those specific soldiers. 
+This is undesirable. Figure out what to do about it. (probably wipe the setting when the MCM setting is disabled)
+
 # This screen
 
 Make clicking an item toggle its checkbox?
@@ -53,6 +52,7 @@ Way to add presets through in-game UI
 ## Checks:
 1. Check if you can customize a unit with all armors in the campaign, then save them into CP, and that they will actually have all that appearance in the next campaign
 2. Working with character pool files: creating new one, creating (importing) an existing one, deleting. exporting/importing units with appearance store.
+3. Test automatic uniform managemennt settings. 
 
 ## Finalization
 0. Clean up everything. Commentate. Add private/final. Go through TODO's
@@ -64,6 +64,10 @@ Way to add presets through in-game UI
 Maybe allow Appearance Store button to work as a "reskin armor" button? - redundant, can be done with this mod's customization screen by importing unit's own appearance from another armor.
 
 ## Ideas for later
+
+AU units with custom rookie class should be able to choose from different classes in CP
+I have no idea how they coded that, but it would appear that they stem from a separate species specific rookie template, then get a class independently, while the game properly treats them as rookies, allowing them to train in GTS. however in the character pool there is no option to change their class, which is an issue for anyone using the "use my class" mod
+
 When copying biography, automatically update soldier name and country (MCM toggle)
 Equipping weapons in CP will reskin them automatically with XSkin (RustyDios). Probably use a Tuple.
 

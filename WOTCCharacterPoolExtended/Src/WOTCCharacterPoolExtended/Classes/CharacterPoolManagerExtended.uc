@@ -559,6 +559,39 @@ final function bool IsCharacterPoolCharacter(const XComGameState_Unit UnitState)
 
 	return false;
 }
+
+final function bool ShouldAutoManageUniform(const XComGameState_Unit UnitState)
+{
+	return `XOR(`GETMCMVAR(AUTOMATIC_UNIFORM_MANAGEMENT), IsAutoManageUniformFlagSet(UnitState));
+}
+
+final function bool IsAutoManageUniformFlagSet(const XComGameState_Unit UnitState)
+{
+	local UnitValue UV;
+
+	if (IsCharacterPoolCharacter(UnitState))
+	{
+		GetUnitData();
+		if (UnitData != none)
+		{
+			return UnitData.ShouldAutoManageUniform(UnitState);
+		}
+		return false;
+	}
+	return UnitState.GetUnitValue(class'UISL_CPExtended'.default.AutoManageUniformValueName, UV);
+}
+
+final function SetAutoManageUniform(const XComGameState_Unit UnitState, const bool bValue)
+{
+	GetUnitData();
+	if (UnitData != none)
+	{
+		UnitData.SetAutoManageUniform(UnitState, bValue);
+		SaveDefaultCharacterPool();
+	}
+}
+
+
 // ---------------------------------------------------------------------------
 
 // ============================================================================

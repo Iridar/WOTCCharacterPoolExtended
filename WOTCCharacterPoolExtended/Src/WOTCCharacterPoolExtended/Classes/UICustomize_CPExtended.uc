@@ -28,8 +28,6 @@ var protected config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
-Can't select Gender on uniform screen
-
 Also apply class specific uniforms on unit rank up?
 
 # Character Pool
@@ -2099,7 +2097,7 @@ simulated private function OptionPresetCheckboxChanged(UICheckbox CheckBox)
 	}
 }
 
-simulated final function ActivatePreset()
+simulated function ActivatePreset()
 {
 	local name Preset;
 

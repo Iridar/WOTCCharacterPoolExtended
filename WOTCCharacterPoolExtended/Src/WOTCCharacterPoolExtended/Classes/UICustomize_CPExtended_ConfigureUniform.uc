@@ -27,8 +27,30 @@ simulated function UpdateSoldierList() {}
 simulated function UpdateOptionsList()
 {
 	super.UpdateOptionsList();
-
+	
 	SetCheckboxPositions();
+	DisableGenderOption();
+}
+
+simulated function ActivatePreset()
+{
+	super.ActivatePreset();
+
+	DisableGenderOption();
+}
+
+simulated private function DisableGenderOption()
+{
+	local UIMechaListItem ListItem;
+
+	// Uniforms are gender-specific by necessity. A female uniform will never be considered for a male soldier, and vice versa.
+	// So uniforms that forcibly change unit's gender are not a possibility. 
+	ListItem = UIMechaListItem(OptionsList.GetChildByName('iGender'));
+	if (ListItem != none && ListItem.Checkbox != none)
+	{
+		ListItem.Checkbox.SetChecked(false, false); // TODO: Add some localized tooltip here to explain why gender is blocked
+		ListItem.SetDisabled(true);
+	}
 }
 
 simulated private function SetCheckboxPositions()
@@ -43,6 +65,9 @@ simulated private function SetCheckboxPositions()
 		`CPOLOG("Loading CosmeticOptions for unit" @ CosmeticOptions.Length);
 		foreach CosmeticOptions(CosmeticOption)
 		{
+			if (!IsCosmeticOption(CosmeticOption.OptionName))
+				continue;
+
 			`CPOLOG(`showvar(CheckboxPreset.OptionName) @ `showvar(CheckboxPreset.bChecked));
 			SetCheckbox(CosmeticOption.OptionName, CosmeticOption.bChecked);
 		}

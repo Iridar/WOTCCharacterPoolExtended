@@ -7,9 +7,16 @@ class CharacterPoolManagerExtended extends CharacterPoolManager dependson(CPUnit
 // only if the mod is configured to do so via MCM. 
 // This is done so that people's Character Pool isn't immediately broken the moment they dare to run the game with a few mods disabled.
 
-var private CPUnitData UnitData; // Use GetUnitData() before accessing it
+var CPUnitData UnitData; // Use GetUnitData() before accessing it
 
 var string CharPoolExtendedFilePath;
+
+// This array is parallel to the 'CharacterPool' array of Unit States present in Character Pool.
+// CP Unit State's Object ID is used as a key to sync thse parallel array.
+// This way of storing extra data is necessary in case the CP Unit is renamed, and then
+// soldier's name cannot e used as a key to properly update existing unit's entry 
+// in 'UnitData', causing us to lose the extra data stored there that was relevant to this soldier.
+var array<CPExtendedExtraDataStruct> CPExtraDatas;
 
 `include(WOTCCharacterPoolExtended\Src\ModConfigMenuAPI\MCM_API_CfgHelpers.uci)
 
@@ -22,7 +29,7 @@ simulated final function InitSoldierOld(XComGameState_Unit Unit, const out Chara
 	local XGCharacterGenerator CharacterGenerator;
 	local TSoldier             CharacterGeneratorResult;
 
-	`CPOLOG("called for unit:" @ Unit.GetFullName());
+	//`CPOLOG("called for unit:" @ Unit.GetFullName());
 
 	Unit.SetSoldierClassTemplate(CharacterPoolData.m_SoldierClassTemplateName);
 	Unit.SetCharacterName(CharacterPoolData.strFirstName, CharacterPoolData.strLastName, CharacterPoolData.strNickName);
@@ -58,13 +65,22 @@ simulated final function InitSoldierOld(XComGameState_Unit Unit, const out Chara
 	}
 }
 
-event InitSoldier( XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData )
+// This is called by native code for each unit present in the default character pool.
+event InitSoldier(XComGameState_Unit Unit, const out CharacterPoolDataElement CharacterPoolData)
 {
-	`CPOLOG("called for unit:" @ Unit.GetFullName());
+	local CPExtendedExtraDataStruct CPExtraData;
+
+	`CPOLOG("called for unit:" @ Unit.GetFullName() @ "|" @ Unit.ObjectID);
 
 	InitSoldierOld(Unit, CharacterPoolData);
 	GetUnitData();
-	UnitData.LoadExtraData(Unit);
+	
+	if (UnitData.LoadExtraData(Unit, CPExtraData))
+	{
+		`CPOLOG("Loaded extra data, unit is uniform:" @ CPExtraData.bIsUniform);
+		// Store extra data regarding this unit in the parallel array.
+		CPExtraDatas.AddItem(CPExtraData);
+	}	
 }
 
 function SaveCharacterPool()
@@ -76,7 +92,8 @@ function SaveCharacterPool()
 }
 
 // Replace pointless 'assert' with 'return none' so we can do error detecting
-// in case player attempts to import a unit with a custom char template that's not present with their current modlist
+// in case player attempts to import a unit with a custom char template that's not present with their current modlist.
+// Also adding CPExtraData parallel array member here.
 event XComGameState_Unit CreateSoldier(name DataTemplateName)
 {
 	local XComGameState					SoldierContainerState;
@@ -87,6 +104,8 @@ event XComGameState_Unit CreateSoldier(name DataTemplateName)
 	local XGCharacterGenerator          CharacterGenerator;
 	local XComGameStateHistory			History;
 	local XComGameStateContext_ChangeContainer ChangeContainer;
+
+	local CPExtendedExtraDataStruct		NewCPExtraData; // Added
 
 	History = `XCOMHISTORY;
 	
@@ -129,117 +148,52 @@ event XComGameState_Unit CreateSoldier(name DataTemplateName)
 	//Tell the history that we don't actually want this game state
 	History.CleanupPendingGameState(SoldierContainerState);
 
+	// Added
+	NewCPExtraData.ObjectID = NewSoldierState.ObjectID;
+	CPExtraDatas.AddItem(NewCPExtraData);
+
 	return NewSoldierState;
 }
 
 // ============================================================================
 // INTERNAL FUNCTIONS
 
-final function SortCharacterPoolBySoldierClass()
-{
-	CharacterPool.Sort(SortCharacterPoolBySoldierClassFn);
-}
-
-final function SortCharacterPoolBySoldierName()
-{
-	CharacterPool.Sort(SortCharacterPoolBySoldierNameFn);
-}
-
-private final function int SortCharacterPoolBySoldierNameFn(XComGameState_Unit UnitA, XComGameState_Unit UnitB)
-{
-	if (UnitA.GetFullName() < UnitB.GetFullName())
-	{
-		return 1;
-	}
-	else if (UnitA.GetFullName() > UnitB.GetFullName())
-	{
-		return -1;
-	}
-	return 0;
-}
-
-private final function int SortCharacterPoolBySoldierClassFn(XComGameState_Unit UnitA, XComGameState_Unit UnitB)
-{
-	local X2SoldierClassTemplate TemplateA;
-	local X2SoldierClassTemplate TemplateB;
-
-	TemplateA = UnitA.GetSoldierClassTemplate();
-	TemplateB = UnitB.GetSoldierClassTemplate();
-
-	// Put units without soldier class template below those with one.
-	if (TemplateA == none)
-	{
-		if (TemplateB == none)
-		{
-			return 0;	
-		}		
-		else
-		{
-			return -1;
-		}
-	}
-	else if (TemplateB == none)
-	{
-		return 1;
-	}
-
-	if (TemplateA.DisplayName == TemplateB.DisplayName)
-	{
-		return 0;
-	}
-	
-	if (TemplateA.DataName == 'Rookie')
-	{
-		return 1;
-	}
-	if (TemplateB.DataName == 'Rookie')
-	{
-		return -1;
-	}
-	
-	if (TemplateA.DisplayName < TemplateB.DisplayName)
-	{
-		return 1;
-	}
-	return -1;
-}
-
 // Serialize all character pool units, including their appearance store, into the "extended" Character Pool file format, and write it to disk.
 final function SaveCharacterPoolExtended()
 {
-	//local CPExtendedStruct		CPExtendedUnitData;
-	//local CPExtendedStruct		EmptyCPExtendedUnitData;
+	local CPExtendedStruct		CPExtendedUnitData;
+	local CPExtendedStruct		EmptyCPExtendedUnitData;
+	local int					Index;
 	local bool					Success;
 	local XComGameState_Unit	UnitState;
 
-	//UnitData = new class'CPUnitData';
-	GetUnitData();
+	UnitData = new class'CPUnitData';
 
 	foreach CharacterPool(UnitState)
 	{
-		//CPExtendedUnitData = EmptyCPExtendedUnitData;
+		`CPOLOG("Adding" @ UnitState.GetFullName() @ "|" @ UnitState.ObjectID @ "to CPUnitData, including stored appearances:" @ UnitState.AppearanceStore.Length);
 
-		//FillCharacterPoolData(UnitState); // This saves UnitState to 'CharacterPoolSerializeHelper' 
+		CPExtendedUnitData = EmptyCPExtendedUnitData;
+		FillCharacterPoolData(UnitState); // This saves UnitState to 'CharacterPoolSerializeHelper' 
 
-		UnitData.UpdateOrAddUnit(UnitState);
-		//CPExtendedUnitData.CharacterPoolData = CharacterPoolSerializeHelper;
-		//CPExtendedUnitData.AppearanceStore = UnitState.AppearanceStore;
-		//CPExtendedUnitData.bIsUniform = IsUnitUniform(UnitState);
-		//CPExtendedUnitData.bIsAnyClassUniform = class'Help'.static.IsUnitAnyClassUniform(UnitState);
+		//UnitData.UpdateOrAddUnit(UnitState);
+		CPExtendedUnitData.CharacterPoolData = CharacterPoolSerializeHelper;
+		CPExtendedUnitData.AppearanceStore = UnitState.AppearanceStore;
 
-		//UnitData.CharacterPoolDatas.AddItem(CPExtendedUnitData);
+		Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+		if (Index != INDEX_NONE)
+		{
+			CPExtendedUnitData.CPExtraData = CPExtraDatas[Index];
+			CPExtendedUnitData.CPExtraData.ObjectID = -1;
+		}
+		else `CPOLOG("Failed to locate CPExtra Data for this unit");
 
-		`CPOLOG("Adding" @ UnitState.GetFullName() @ "to CPUnitData, including stored appearances:" @ UnitState.AppearanceStore.Length);
+		UnitData.CharacterPoolDatas.AddItem(CPExtendedUnitData);
 	}
 
-    Success = SaveDefaultCharacterPool();
+    Success = class'Engine'.static.BasicSaveObject(UnitData, class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedFilePath, false, 1);
 
     `CPOLOG("Was able to successfully write Extended Character Pool file to disk:" @ Success);
-}
-
-final function bool SaveDefaultCharacterPool()
-{
-	return class'Engine'.static.BasicSaveObject(UnitData, class'Engine'.static.GetEnvironmentVariable("USERPROFILE") $ CharPoolExtendedFilePath, false, 1);
 }
 
 // Read the "extended" Character Pool file from disk.
@@ -314,82 +268,164 @@ simulated final function ValidateUnitAppearance(XComGameState_Unit UnitState)
 }
 
 // ---------------------------------------------------------------------------
-// UNIFORM STATUS
+// EXTRA DATA MANAGEMENT
+
+function RemoveUnit( XComGameState_Unit Character )
+{
+	local int Index;
+
+	super.RemoveUnit(Character);
+
+	Index = CPExtraDatas.Find('ObjectID', Character.ObjectID);
+	if (Index != INDEX_NONE)
+	{
+		CPExtraDatas.Remove(Index, 1);
+	}
+}
 final function bool IsUnitUniform(XComGameState_Unit UnitState)
 {
-	GetUnitData();
+	local int Index;
 
-	if (UnitData != none)
+	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+	if (Index != INDEX_NONE)
 	{
-		return UnitData.IsUnitUniform(UnitState);
+		`CPOLOG(UnitState.GetFullName() @ CPExtraDatas[Index].bIsUniform);
+		return CPExtraDatas[Index].bIsUniform;
 	}
+	`CPOLOG(UnitState.GetFullName() @ "No extra data for unit");
 	return false;
 }
 
 final function bool IsUnitAnyClassUniform(XComGameState_Unit UnitState)
 {
-	GetUnitData();
+	local int Index;
 
-	if (UnitData != none)
+	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+	if (Index != INDEX_NONE)
 	{
-		return UnitData.IsUnitAnyClassUniform(UnitState);
+		return CPExtraDatas[Index].bIsAnyClassUniform;
 	}
 	return false;
 }
 
+
+final function bool IsAutoManageUniform(const XComGameState_Unit UnitState)
+{
+	local int Index;
+
+	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+	if (Index != INDEX_NONE)
+	{
+		return CPExtraDatas[Index].bAutoManageUniform;
+	}
+	return false;
+}
+
+
 final function SetIsUnitUniform(XComGameState_Unit UnitState, bool bValue)
 {
-	GetUnitData();
+	local int Index;
 
-	if (UnitData != none)
+	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+	if (Index != INDEX_NONE)
 	{
-		UnitData.SetIsUnitUniform(UnitState, bValue);
-		SaveDefaultCharacterPool();
-	}
+		CPExtraDatas[Index].bIsUniform = bValue;
+		SaveCharacterPoolExtended();
+	} 
+	else `CPOLOG("Failed to locate Extra Data for:" @ UnitState.GetFullName());
 }
+
 
 final function SetIsUnitAnyClassUniform(XComGameState_Unit UnitState, bool bValue)
 {
-	GetUnitData();
+	local int Index;
 
-	if (UnitData != none)
+	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+	if (Index != INDEX_NONE)
 	{
-		UnitData.SetIsUnitAnyClassUniform(UnitState, bValue);
-		SaveDefaultCharacterPool();
-	}
+		CPExtraDatas[Index].bIsAnyClassUniform = bValue;
+		SaveCharacterPoolExtended();
+	} 
+	else `CPOLOG("Failed to locate Extra Data for:" @ UnitState.GetFullName());
 }
 
-final function bool IsUniformValidForUnit(const XComGameState_Unit UnitState, const XComGameState_Unit UniformUnit)
-{	
-	return UnitState.GetSoldierClassTemplateName() == UniformUnit.GetSoldierClassTemplateName() || IsUnitAnyClassUniform(UniformUnit);
+
+final function SetAutoManageUniform(const XComGameState_Unit UnitState, const bool bValue)
+{
+	local int Index;
+
+	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+	if (Index != INDEX_NONE)
+	{
+		CPExtraDatas[Index].bAutoManageUniform = bValue;
+		SaveCharacterPoolExtended();
+	} 
+	else `CPOLOG("Failed to locate Extra Data for:" @ UnitState.GetFullName());
 }
 
 final function array<CosmeticOptionStruct> GetCosmeticOptionsForUnit(const XComGameState_Unit UnitState, const string GenderArmorTemplate)
 {
-	local array<CosmeticOptionStruct> EmptyArray;
+	local array<CosmeticOptionStruct> ReturnArray;
+	local int SettingsIndex;
+	local int Index;
 
-	GetUnitData();
-	if (UnitData != none)
+	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+	if (Index != INDEX_NONE)
 	{
-		return UnitData.GetCosmeticOptionsForUnit(UnitState, GenderArmorTemplate);
-	}
-
-	EmptyArray.Length = 0; // Get rid of compile warning
-	return EmptyArray;
+		SettingsIndex = CPExtraDatas[Index].UniformSettings.Find('GenderArmorTemplate', GenderArmorTemplate);
+		if (SettingsIndex != INDEX_NONE)
+		{
+			ReturnArray = CPExtraDatas[Index].UniformSettings[SettingsIndex].CosmeticOptions;
+		}
+	} 
+	return ReturnArray;
 }
 
 final function SaveCosmeticOptionsForUnit(const array<CosmeticOptionStruct> CosmeticOptions, const XComGameState_Unit UnitState, const string GenderArmorTemplate)
 {
-	GetUnitData();
-	if (UnitData != none)
+	local UniformSettingsStruct NewUniformSetting;
+	local int SettingsIndex;
+	local int Index;
+
+	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
+	if (Index != INDEX_NONE)
 	{
-		`CPOLOG(CosmeticOptions.length @ UnitState.GetFullName() @ GenderArmorTemplate);
-		UnitData.SaveCosmeticOptionsForUnit(CosmeticOptions, UnitState, GenderArmorTemplate);
-		SaveDefaultCharacterPool();
-	}
+		SettingsIndex = CPExtraDatas[Index].UniformSettings.Find('GenderArmorTemplate', GenderArmorTemplate);
+		if (SettingsIndex != INDEX_NONE)
+		{
+			CPExtraDatas[Index].UniformSettings[SettingsIndex].CosmeticOptions = CosmeticOptions;
+		}
+		else
+		{
+			NewUniformSetting.GenderArmorTemplate = GenderArmorTemplate;
+			NewUniformSetting.CosmeticOptions = CosmeticOptions;
+			CPExtraDatas[Index].UniformSettings.AddItem(NewUniformSetting);
+		}
+		SaveCharacterPoolExtended();
+	} 
+	else `CPOLOG("Failed to locate Extra Data for:" @ UnitState.GetFullName());
 }
 
-final function bool GetUniformAppearanceForUnit(out TAppearance NewAppearance, const XComGameState_Unit UnitState, const name ArmorTemplateName)
+
+final function bool ShouldAutoManageUniform(const XComGameState_Unit UnitState)
+{
+	return `XOR(`GETMCMVAR(AUTOMATIC_UNIFORM_MANAGEMENT), IsAutoManageUniformFlagSet(UnitState));
+}
+
+final function bool IsAutoManageUniformFlagSet(const XComGameState_Unit UnitState)
+{
+	local UnitValue UV;
+
+	if (IsCharacterPoolCharacter(UnitState))
+	{
+		return IsAutoManageUniform(UnitState);
+	}
+	return UnitState.GetUnitValue(class'UISL_CPExtended'.default.AutoManageUniformValueName, UV);
+}
+
+// ---------------------------------------------------------------------------
+// UNIFORM FUNCTIONS
+final function bool GetUniformAppearanceForUnit(out TAppearance NewAppearance, const XComGameState_Unit UnitState, const name ArmorTemplateName, optional bool bClassUniformOnly = false)
 {
 	local array<XComGameState_Unit> UniformStates;
 	local XComGameState_Unit		UniformState;
@@ -404,6 +440,9 @@ final function bool GetUniformAppearanceForUnit(out TAppearance NewAppearance, c
 		CopyUniformAppearance(NewAppearance, UniformState, ArmorTemplateName);
 		return true;		
 	}
+
+	if (bClassUniformOnly)
+		return false;
 
 	UniformStates = GetAnyClassUniforms(ArmorTemplateName, NewAppearance.iGender);
 	if (UniformStates.Length > 0)
@@ -431,6 +470,7 @@ private function array<XComGameState_Unit> GetClassSpecificUniforms(const name A
 			UniformState.GetSoldierClassTemplateName() == SoldierClass && 
 			UniformState.HasStoredAppearance(iGender, ArmorTemplateName))
 		{
+			`CPOLOG(UniformState.GetFullName() @ "is class uniform for:" @ SoldierClass);
 			UniformStates.AddItem(UniformState);
 		}
 	}
@@ -447,6 +487,7 @@ private function array<XComGameState_Unit> GetAnyClassUniforms(const name ArmorT
 			IsUnitAnyClassUniform(UniformState) &&
 			UniformState.HasStoredAppearance(iGender, ArmorTemplateName))
 		{
+			`CPOLOG(UniformState.GetFullName() @ "is any class uniform");
 			UniformStates.AddItem(UniformState);
 		}
 	}
@@ -463,12 +504,9 @@ private function CopyUniformAppearance(out TAppearance NewAppearance, const XCom
 
 	UniformState.GetStoredAppearance(UniformAppearance, NewAppearance.iGender, ArmorTemplateName);
 
-	GetUnitData();
-	if (UnitData != none)
-	{
-		GenderArmorTemplate = ArmorTemplateName $ NewAppearance.iGender;
-		CosmeticOptions = UnitData.GetCosmeticOptionsForUnit(UniformState, GenderArmorTemplate);
-	}
+	GenderArmorTemplate = ArmorTemplateName $ NewAppearance.iGender;
+	CosmeticOptions = GetCosmeticOptionsForUnit(UniformState, GenderArmorTemplate);
+	
 	if (CosmeticOptions.Length > 0)
 	{	
 		if (ShouldCopyUniformPiece('iGender', CosmeticOptions))
@@ -545,6 +583,11 @@ private function bool ShouldCopyUniformPiece(const name OptionName, const out ar
 	return false;
 }
 
+// ---------------------------------------------------------------------------
+
+// ============================================================================
+// INTERNAL HELPERS
+
 final function bool IsCharacterPoolCharacter(const XComGameState_Unit UnitState)
 {
 	local int Index;	
@@ -560,43 +603,6 @@ final function bool IsCharacterPoolCharacter(const XComGameState_Unit UnitState)
 	return false;
 }
 
-final function bool ShouldAutoManageUniform(const XComGameState_Unit UnitState)
-{
-	return `XOR(`GETMCMVAR(AUTOMATIC_UNIFORM_MANAGEMENT), IsAutoManageUniformFlagSet(UnitState));
-}
-
-final function bool IsAutoManageUniformFlagSet(const XComGameState_Unit UnitState)
-{
-	local UnitValue UV;
-
-	if (IsCharacterPoolCharacter(UnitState))
-	{
-		GetUnitData();
-		if (UnitData != none)
-		{
-			return UnitData.ShouldAutoManageUniform(UnitState);
-		}
-		return false;
-	}
-	return UnitState.GetUnitValue(class'UISL_CPExtended'.default.AutoManageUniformValueName, UV);
-}
-
-final function SetAutoManageUniform(const XComGameState_Unit UnitState, const bool bValue)
-{
-	GetUnitData();
-	if (UnitData != none)
-	{
-		UnitData.SetAutoManageUniform(UnitState, bValue);
-		SaveDefaultCharacterPool();
-	}
-}
-
-
-// ---------------------------------------------------------------------------
-
-// ============================================================================
-// INTERNAL HELPERS
-
 private function PrintCP()
 {
 	local XComGameState_Unit UnitState;
@@ -611,6 +617,78 @@ private function PrintCP()
 
 	`CPOLOG("####" @ GetFuncName() @ "END");
 }
+
+// ============================================================================
+// SORTING FUNCTIONS
+final function SortCharacterPoolBySoldierClass()
+{
+	CharacterPool.Sort(SortCharacterPoolBySoldierClassFn);
+}
+
+final function SortCharacterPoolBySoldierName()
+{
+	CharacterPool.Sort(SortCharacterPoolBySoldierNameFn);
+}
+
+private final function int SortCharacterPoolBySoldierNameFn(XComGameState_Unit UnitA, XComGameState_Unit UnitB)
+{
+	if (UnitA.GetFullName() < UnitB.GetFullName())
+	{
+		return 1;
+	}
+	else if (UnitA.GetFullName() > UnitB.GetFullName())
+	{
+		return -1;
+	}
+	return 0;
+}
+
+private final function int SortCharacterPoolBySoldierClassFn(XComGameState_Unit UnitA, XComGameState_Unit UnitB)
+{
+	local X2SoldierClassTemplate TemplateA;
+	local X2SoldierClassTemplate TemplateB;
+
+	TemplateA = UnitA.GetSoldierClassTemplate();
+	TemplateB = UnitB.GetSoldierClassTemplate();
+
+	// Put units without soldier class template below those with one.
+	if (TemplateA == none)
+	{
+		if (TemplateB == none)
+		{
+			return 0;	
+		}		
+		else
+		{
+			return -1;
+		}
+	}
+	else if (TemplateB == none)
+	{
+		return 1;
+	}
+
+	if (TemplateA.DisplayName == TemplateB.DisplayName)
+	{
+		return 0;
+	}
+	
+	if (TemplateA.DataName == 'Rookie')
+	{
+		return 1;
+	}
+	if (TemplateB.DataName == 'Rookie')
+	{
+		return -1;
+	}
+	
+	if (TemplateA.DisplayName < TemplateB.DisplayName)
+	{
+		return 1;
+	}
+	return -1;
+}
+// ----------------------------------------------------------------------------
 
 // ============================================================================
 // These don't appear to be getting called.

@@ -12,51 +12,55 @@ struct UniformSettingsStruct
 	var array<CosmeticOptionStruct> CosmeticOptions;
 };
 
+struct CPExtendedExtraDataStruct
+{
+	// Used to sync parallel arrays while in Character Pool.
+	var int ObjectID; 
+
+	// Uniforms.
+	var array<UniformSettingsStruct> UniformSettings; // For each stored appearance, determines which part of the appearance counts as a part of the uniform.
+	var bool bIsUniform;		// Whether this unit is a uniform.
+	var bool bIsAnyClassUniform;// Whether this unit's appearance can be applied to any soldier class, or only the matching ones.
+	var bool bAutoManageUniform;// Universal flag. 
+								// If automatic uniform management is enabled in MCM, then if this flag is 'true', this unit will be excluded from uniform management.
+								// If automatic uniform management is disabled in MCM, then if this flag is 'true', this unit will receive uniform management.
+};
+
 struct CPExtendedStruct
 {
 	// Stores most of the info regarding character pool unit: name, bio, current appearance.
 	// Same as vanilla.
 	var CharacterPoolDataElement CharacterPoolData;
 
-	// Store appearance store separately, because 'CharacterPoolDataElement' doesn't include it.
 	var array<AppearanceInfo> AppearanceStore;
 
-	var array<UniformSettingsStruct> UniformSettings; // For each stored appearance, determines which part of the appearance count as a part of the uniform.
-	
-	var bool bIsUniform;			// Whether this unit is a uniform.
-	var bool bIsAnyClassUniform;	// Whether this unit's appearance can be applied to any soldier class, or only the matching ones.
-	var bool bShouldAutoManageUniform; // Whether this unit should receive uniforms automatically.
-
-	structdefaultproperties
-	{
-		bShouldAutoManageUniform = false;
-	}
+	// Additional data about the unit that is not included into 'CharacterPoolDataElement'.
+	var CPExtendedExtraDataStruct CPExtraData;
 };
 var array<CPExtendedStruct> CharacterPoolDatas;
 
-final function bool LoadExtraData(XComGameState_Unit UnitState)
+final function bool LoadExtraData(XComGameState_Unit UnitState, out CPExtendedExtraDataStruct CPExtraData)
 {
 	local int Index;
+
+	`CPOLOG(UnitState.GetFullName() @ "|" @ UnitState.ObjectID);
 
 	Index = FindUnitIndex(UnitState);
 	if (Index == INDEX_NONE)
 		return false;
 
+	//`CPOLOG("Is uniform:" @ CharacterPoolDatas[Index].CPExtraData.bIsUniform);
+
 	UnitState.AppearanceStore = CharacterPoolDatas[Index].AppearanceStore;
+	CPExtraData = CharacterPoolDatas[Index].CPExtraData;
+	CPExtraData.ObjectID = UnitState.ObjectID;
 
-	`CPOLOG(UnitState.GetFullName() @ CharacterPoolDatas[Index].bIsUniform);
-
-	if (CharacterPoolDatas[Index].bIsUniform)
-	{
-		UnitState.bAllowedTypeSoldier = false;
-		UnitState.bAllowedTypeVIP = false;
-		UnitState.bAllowedTypeDarkVIP = false;
-	}	
+	`CPOLOG(/*UnitState.GetFullName() @ */"Is uniform:" @ CPExtraData.bIsUniform);
 
 	return true;
 }
 
-final function UpdateOrAddUnit(XComGameState_Unit UnitState)
+final function UpdateOrAddUnit(const XComGameState_Unit UnitState, const CPExtendedExtraDataStruct CPExtraData)
 {
 	local CPExtendedStruct NewCPExtendedData;
 	local int Index;
@@ -64,128 +68,20 @@ final function UpdateOrAddUnit(XComGameState_Unit UnitState)
 	Index = FindUnitIndex(UnitState);
 	if (Index != INDEX_NONE)
 	{
+		`CPOLOG(UnitState.GetFullName() @ "|" @ UnitState.ObjectID @ "found existing unit." @ CPExtraData.ObjectID @ CPExtraData.bIsUniform);
+
 		CharacterPoolDatas[Index].CharacterPoolData = GetCharacterPoolDataFromUnit(UnitState);
 		CharacterPoolDatas[Index].AppearanceStore = UnitState.AppearanceStore;
+		CharacterPoolDatas[Index].CPExtraData = CPExtraData;
 	}
 	else
 	{
+		`CPOLOG(UnitState.GetFullName() @ "|" @ UnitState.ObjectID @ "creating new unit." @ CPExtraData.ObjectID @ CPExtraData.bIsUniform);
+
 		NewCPExtendedData.CharacterPoolData = GetCharacterPoolDataFromUnit(UnitState);
 		NewCPExtendedData.AppearanceStore = UnitState.AppearanceStore;
+		NewCPExtendedData.CPExtraData = CPExtraData;
 		CharacterPoolDatas.AddItem(NewCPExtendedData);
-	}
-}
-
-// ---------------------------------------------------------------------------
-// UNIFORM STATUS
-final function bool IsUnitUniform(XComGameState_Unit UnitState)
-{
-	local int Index;
-
-	Index = FindUnitIndex(UnitState);
-	if (Index != INDEX_NONE)
-	{
-		return CharacterPoolDatas[Index].bIsUniform;
-	}
-	return false;
-}
-
-final function bool IsUnitAnyClassUniform(XComGameState_Unit UnitState)
-{
-	local int Index;
-
-	Index = FindUnitIndex(UnitState);
-	if (Index != INDEX_NONE)
-	{
-		return CharacterPoolDatas[Index].bIsAnyClassUniform;
-	}
-	return false;
-}
-
-final function SetIsUnitUniform(XComGameState_Unit UnitState, bool bValue)
-{
-	local int Index;
-
-	Index = FindUnitIndex(UnitState);
-	if (Index != INDEX_NONE)
-	{
-		CharacterPoolDatas[Index].bIsUniform = bValue;
-	}
-}
-
-final function SetIsUnitAnyClassUniform(XComGameState_Unit UnitState, bool bValue)
-{
-	local int Index;
-
-	Index = FindUnitIndex(UnitState);
-	if (Index != INDEX_NONE)
-	{
-		CharacterPoolDatas[Index].bIsAnyClassUniform = bValue;
-	}
-}
-
-final function array<CosmeticOptionStruct> GetCosmeticOptionsForUnit(const XComGameState_Unit UnitState, const string GenderArmorTemplate)
-{
-	local int Index;
-	local int SettingsIndex;
-	local array<CosmeticOptionStruct> ReturnArray;
-
-	Index = FindUnitIndex(UnitState);
-	if (Index != INDEX_NONE)
-	{
-		SettingsIndex = CharacterPoolDatas[Index].UniformSettings.Find('GenderArmorTemplate', GenderArmorTemplate);
-		if (SettingsIndex != INDEX_NONE)
-		{
-			ReturnArray = CharacterPoolDatas[Index].UniformSettings[SettingsIndex].CosmeticOptions;
-		}
-	}
-
-	return ReturnArray;
-}
-
-final function SaveCosmeticOptionsForUnit(const array<CosmeticOptionStruct> CosmeticOptions, const XComGameState_Unit UnitState, const string GenderArmorTemplate)
-{	
-	local UniformSettingsStruct NewUniformSetting;
-	local int SettingsIndex;
-	local int Index;
-
-	Index = FindUnitIndex(UnitState);
-	if (Index != INDEX_NONE)
-	{
-		SettingsIndex = CharacterPoolDatas[Index].UniformSettings.Find('GenderArmorTemplate', GenderArmorTemplate);
-		if (SettingsIndex != INDEX_NONE)
-		{
-			CharacterPoolDatas[Index].UniformSettings[SettingsIndex].CosmeticOptions = CosmeticOptions;
-		}
-		else
-		{
-			NewUniformSetting.GenderArmorTemplate = GenderArmorTemplate;
-			NewUniformSetting.CosmeticOptions = CosmeticOptions;
-			CharacterPoolDatas[Index].UniformSettings.AddItem(NewUniformSetting);
-		}
-	}
-}
-
-final function bool ShouldAutoManageUniform(const XComGameState_Unit UnitState)
-{
-	local int Index;
-
-	Index = FindUnitIndex(UnitState);
-	if (Index != INDEX_NONE)
-	{
-		`CPOLOG("Found auto manage uniform value:" @ CharacterPoolDatas[Index].bShouldAutoManageUniform);
-		return CharacterPoolDatas[Index].bShouldAutoManageUniform;
-	}
-	return false;
-}
-
-final function SetAutoManageUniform(const XComGameState_Unit UnitState, const bool bValue)
-{
-	local int Index;
-
-	Index = FindUnitIndex(UnitState);
-	if (Index != INDEX_NONE)
-	{
-		CharacterPoolDatas[Index].bShouldAutoManageUniform = bValue;
 	}
 }
 
@@ -253,8 +149,25 @@ private function int FindUnitIndex(XComGameState_Unit UnitState)
 	foreach CharacterPoolDatas(CPExtendedData, Index)
 	{
 		if (CPExtendedData.CharacterPoolData.strFirstName == UnitState.GetFirstName() &&
-			CPExtendedData.CharacterPoolData.strLastName == UnitState.GetLastName() &&
-			CPExtendedData.CharacterPoolData.kAppearance.iGender == UnitState.kAppearance.iGender)
+			CPExtendedData.CharacterPoolData.strLastName == UnitState.GetLastName() /*&&
+			CPExtendedData.CharacterPoolData.kAppearance.iGender == UnitState.kAppearance.iGender*/)
+		{
+			return Index;
+		}
+	}
+
+	return INDEX_NONE;
+}
+
+private function int FindUnitNameIndex(const string strFirstName, const string strLastName)
+{
+	local CPExtendedStruct CPExtendedData;
+	local int Index;
+
+	foreach CharacterPoolDatas(CPExtendedData, Index)
+	{
+		if (CPExtendedData.CharacterPoolData.strFirstName == strFirstName &&
+			CPExtendedData.CharacterPoolData.strLastName == strLastName)
 		{
 			return Index;
 		}

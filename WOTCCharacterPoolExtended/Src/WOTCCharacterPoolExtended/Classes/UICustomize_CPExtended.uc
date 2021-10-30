@@ -28,6 +28,11 @@ var protected config(WOTCCharacterPoolExtended) bool bInitComplete;
 /*
 # Priority
 
+Extra Data parallel array doesn't appear to interact properly with importing/exporting units. Log everything, I guess.
+
+Uniform extra info storag woes
+https://discord.com/channels/165245941664710656/165245941664710656/903420519213318184
+
 Also apply class specific uniforms on unit rank up?
 
 # Character Pool

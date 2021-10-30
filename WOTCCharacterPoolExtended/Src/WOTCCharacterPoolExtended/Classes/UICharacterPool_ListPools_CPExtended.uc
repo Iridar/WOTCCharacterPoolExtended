@@ -171,8 +171,16 @@ simulated function UpdateData( bool _bIsExporting )
 
 simulated function DoExportCharacters(string FilenameForExport)
 {
-	local int i;
+	local CharacterPoolManagerExtended CharPoolMgr;
 	local XComGameState_Unit ExportUnit;
+	local CPExtendedExtraDataStruct CPExtraData;
+	local CPExtendedExtraDataStruct CPEmptyData;
+	local int Index;
+	local int i;
+
+	CharPoolMgr = `CHARACTERPOOLMGRXTD;
+	if (CharPoolMgr == none)
+		return;
 	
 	//Copy out each character
 	for (i = 0; i < UnitsToExport.Length; i++)
@@ -181,7 +189,14 @@ simulated function DoExportCharacters(string FilenameForExport)
 		if (ExportUnit == None)
 			continue;
 
-		UnitData.UpdateOrAddUnit(ExportUnit);
+		Index = CharPoolMgr.CPExtraDatas.Find('ObjectID', ExportUnit.ObjectID);
+		if (Index != INDEX_NONE)
+		{
+			CPExtraData = CharPoolMgr.CPExtraDatas[Index];
+		}
+		else CPExtraData = CPEmptyData;
+
+		UnitData.UpdateOrAddUnit(ExportUnit, CPExtraData);
 	}
 
 	//Save it
@@ -271,13 +286,15 @@ simulated function DoImportCharacter(string FilenameForImport, int IndexOfCharac
 		return; 
 	}
 	//TODO: Maybe create soldier instead to attempt to salvage appearance?
-	
-	CharacterPool.InitSoldierOld(NewUnitState, CPData);
-	//NewUnitState.AppearanceStore = UnitData.CharacterPoolDatas[IndexOfCharacter].AppearanceStore;
-	UnitData.LoadExtraData(NewUnitState); // This will copy Appearance Store and some other stuff.
 
+	// Temporarily replace the default CP file with the one we're importing from so that 'InitSoldier' can call 'LoadExtraData' and add the new extra data into its parallel array.
+	CharacterPool.UnitData = UnitData;
+	CharacterPool.InitSoldier(NewUnitState, CPData);
 	CharacterPool.CharacterPool.AddItem(NewUnitState);
-	CharacterPool.SaveCharacterPool();
+
+	CharacterPool.UnitData = none; // Empty the reference and force CP to read the default CP from disk..
+	CharacterPool.GetUnitData(); 
+	CharacterPool.SaveCharacterPool(); // ..so it can save the new unit into it.
 }
 
 simulated function DoImportAllCharacters(string FilenameForImport)

@@ -304,11 +304,12 @@ simulated private function OnSoldierButtonClicked(UIButton ButtonSource)
 
 	UnitState.SetCharacterName(strFirstName, strLastName, CharGen.kSoldier.strNickName);
 	CustomizeScreen.CustomizeManager.CommitChanges();
-	CustomizeScreen.UpdateData();
-
+	
 	`CHARACTERPOOLMGRXTD.SetIsUnitUniform(UnitState, false);
 	
-	UpdateCustomizeMenuList(CustomizeScreen.List, false);
+	CustomizeScreen.List.ClearItems();
+	CustomizeScreen.UpdateData();
+	//UpdateCustomizeMenuList(CustomizeScreen.List, false);
 }
 
 // TODO: Add a popup with confirmation prompt here
@@ -331,11 +332,12 @@ simulated private function OnUniformButtonClicked(UIButton ButtonSource)
 	UnitState.bAllowedTypeDarkVIP = false;
 	CustomizeScreen.CustomizeManager.CommitChanges();
 	CustomizeScreen.CustomizeManager.ReCreatePawnVisuals(CustomizeScreen.CustomizeManager.ActorPawn, true);
-	CustomizeScreen.UpdateData();
 
 	`CHARACTERPOOLMGRXTD.SetIsUnitUniform(UnitState, true);
-	
-	UpdateCustomizeMenuList(CustomizeScreen.List, true);
+
+	CustomizeScreen.List.ClearItems();
+	CustomizeScreen.UpdateData();	
+	//UpdateCustomizeMenuList(CustomizeScreen.List, true);
 }
 
 simulated private function UpdateCustomizeMenuList(UIList List, bool bUnitIsUniform)

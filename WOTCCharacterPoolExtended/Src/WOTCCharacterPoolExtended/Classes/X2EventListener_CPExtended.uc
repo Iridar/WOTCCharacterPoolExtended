@@ -71,6 +71,7 @@ static function CHEventListenerTemplate Create_ListenerTemplate_StrategyAndTacti
 	Template.RegisterInStrategy = true;
 
 	Template.AddCHEvent('ItemAddedToSlot', OnItemAddedToSlot, ELD_Immediate, 50);
+	Template.AddCHEvent('UnitRankUp', OnUnitRankUp, ELD_Immediate, 50);
 
 	return Template;
 }
@@ -86,6 +87,7 @@ static function CHEventListenerTemplate Create_ListenerTemplate_CampaignStart()
 	Template.RegisterInCampaignStart = true; 
 
 	Template.AddCHEvent('ItemAddedToSlot', OnItemAddedToSlot_CampaignStart, ELD_Immediate, 50);
+	Template.AddCHEvent('UnitRankUp', OnUnitRankUp, ELD_Immediate, 50);
 
 	return Template;
 }
@@ -164,7 +166,7 @@ static function EventListenerReturn OnItemAddedToSlot_CampaignStart(Object Event
 	return ELR_NoInterrupt;
 }
 
-static private function MaybeApplyUniformAppearance(XComGameState_Unit UnitState, name ArmorTemplateName)
+static private function MaybeApplyUniformAppearance(XComGameState_Unit UnitState, name ArmorTemplateName, optional bool bClassUniformOnly = false)
 {
 	local CharacterPoolManagerExtended	CharacterPool;
 	local TAppearance					NewAppearance;
@@ -176,10 +178,35 @@ static private function MaybeApplyUniformAppearance(XComGameState_Unit UnitState
 	NewAppearance = UnitState.kAppearance;
 
 	`CPOLOG(UnitState.GetFullName() @ ArmorTemplateName);
-	if (CharacterPool.GetUniformAppearanceForUnit(NewAppearance, UnitState, ArmorTemplateName))
+	if (CharacterPool.GetUniformAppearanceForUnit(NewAppearance, UnitState, ArmorTemplateName, bClassUniformOnly))
 	{
 		UnitState.SetTAppearance(NewAppearance);
 		UnitState.StoreAppearance(UnitState.kAppearance.iGender, ArmorTemplateName);
 	}
 }
 
+
+static function EventListenerReturn OnUnitRankUp(Object EventData, Object EventSource, XComGameState NewGameState, Name Event, Object CallbackData)
+{
+	local XComGameState_Item ItemState;
+	local XComGameState_Unit UnitState;
+
+	UnitState = XComGameState_Unit(EventData);
+	if (UnitState == none)
+		return ELR_NoInterrupt;
+
+	UnitState = XComGameState_Unit(NewGameState.GetGameStateForObjectID(UnitState.ObjectID));
+	`CPOLOG(UnitState.GetFullName() @ UnitState.GetRank());
+	if (UnitState == none || UnitState.GetRank() > 1)
+		return ELR_NoInterrupt;
+
+	ItemState = UnitState.GetItemInSlot(eInvSlot_Armor, NewGameState);
+	if (ItemState == none)
+		return ELR_NoInterrupt;
+
+	`CPOLOG(UnitState.GetFullName() @ "equipped armor:" @ ItemState.GetMyTemplateName());
+
+	MaybeApplyUniformAppearance(UnitState, ItemState.GetMyTemplateName(), true);
+
+	return ELR_NoInterrupt;
+}

@@ -70,13 +70,14 @@ event InitSoldier(XComGameState_Unit Unit, const out CharacterPoolDataElement Ch
 {
 	local CPExtendedExtraDataStruct CPExtraData;
 
-	`CPOLOG("called for unit:" @ Unit.GetFullName() @ "|" @ Unit.ObjectID);
-
 	InitSoldierOld(Unit, CharacterPoolData);
-	GetUnitData();
+
+	`CPOLOG("called for unit:" @ Unit.GetFullName() @ "|" @ Unit.ObjectID @ "num extra datas:" @ CPExtraDatas.Length);
 	
+	GetUnitData();
 	if (UnitData.LoadExtraData(Unit, CPExtraData))
 	{
+		CPExtraData.SomeRandomString = "SomeRandomString";
 		`CPOLOG("Loaded extra data, unit is uniform:" @ CPExtraData.bIsUniform);
 		// Store extra data regarding this unit in the parallel array.
 		CPExtraDatas.AddItem(CPExtraData);
@@ -85,8 +86,6 @@ event InitSoldier(XComGameState_Unit Unit, const out CharacterPoolDataElement Ch
 
 function SaveCharacterPool()
 {
-	`CPOLOG("called");
-
 	SaveCharacterPoolExtended();
 	super.SaveCharacterPool();
 }
@@ -104,8 +103,6 @@ event XComGameState_Unit CreateSoldier(name DataTemplateName)
 	local XGCharacterGenerator          CharacterGenerator;
 	local XComGameStateHistory			History;
 	local XComGameStateContext_ChangeContainer ChangeContainer;
-
-	local CPExtendedExtraDataStruct		NewCPExtraData; // Added
 
 	History = `XCOMHISTORY;
 	
@@ -148,11 +145,20 @@ event XComGameState_Unit CreateSoldier(name DataTemplateName)
 	//Tell the history that we don't actually want this game state
 	History.CleanupPendingGameState(SoldierContainerState);
 
-	// Added
-	NewCPExtraData.ObjectID = NewSoldierState.ObjectID;
-	CPExtraDatas.AddItem(NewCPExtraData);
-
 	return NewSoldierState;
+}
+
+function RemoveUnit( XComGameState_Unit Character )
+{
+	local int Index;
+
+	super.RemoveUnit(Character);
+
+	Index = CPExtraDatas.Find('ObjectID', Character.ObjectID);
+	if (Index != INDEX_NONE)
+	{
+		CPExtraDatas.Remove(Index, 1);
+	}
 }
 
 // ============================================================================
@@ -185,6 +191,8 @@ final function SaveCharacterPoolExtended()
 		{
 			CPExtendedUnitData.CPExtraData = CPExtraDatas[Index];
 			CPExtendedUnitData.CPExtraData.ObjectID = -1;
+
+			`CPOLOG("Is uniform:" @ CPExtendedUnitData.CPExtraData.bIsUniform @ CPExtraDatas[Index].ObjectID);
 		}
 		else `CPOLOG("Failed to locate CPExtra Data for this unit");
 
@@ -270,18 +278,6 @@ simulated final function ValidateUnitAppearance(XComGameState_Unit UnitState)
 // ---------------------------------------------------------------------------
 // EXTRA DATA MANAGEMENT
 
-function RemoveUnit( XComGameState_Unit Character )
-{
-	local int Index;
-
-	super.RemoveUnit(Character);
-
-	Index = CPExtraDatas.Find('ObjectID', Character.ObjectID);
-	if (Index != INDEX_NONE)
-	{
-		CPExtraDatas.Remove(Index, 1);
-	}
-}
 final function bool IsUnitUniform(XComGameState_Unit UnitState)
 {
 	local int Index;
@@ -289,7 +285,7 @@ final function bool IsUnitUniform(XComGameState_Unit UnitState)
 	Index = CPExtraDatas.Find('ObjectID', UnitState.ObjectID);
 	if (Index != INDEX_NONE)
 	{
-		`CPOLOG(UnitState.GetFullName() @ CPExtraDatas[Index].bIsUniform);
+		`CPOLOG(UnitState.GetFullName() @ "|" @ UnitState.ObjectID @ CPExtraDatas[Index].bIsUniform @ "Index:" @ Index @ "Num extra datas:" @ CPExtraDatas.Length);
 		return CPExtraDatas[Index].bIsUniform;
 	}
 	`CPOLOG(UnitState.GetFullName() @ "No extra data for unit");

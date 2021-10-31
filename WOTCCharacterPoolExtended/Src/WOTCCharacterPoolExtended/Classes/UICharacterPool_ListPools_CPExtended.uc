@@ -178,7 +178,7 @@ simulated function DoExportCharacters(string FilenameForExport)
 	local int Index;
 	local int i;
 
-	CharPoolMgr = `CHARACTERPOOLMGRXTD;
+	CharPoolMgr = CharacterPoolManagerExtended(CharacterPoolMgr);
 	if (CharPoolMgr == none)
 		return;
 	
@@ -275,8 +275,9 @@ simulated function DoImportCharacter(string FilenameForImport, int IndexOfCharac
 	local CharacterPoolManagerExtended	CharacterPool;
 	local CharacterPoolDataElement		CPData;
 	local XComGameState_Unit			NewUnitState;
+	local CPExtendedExtraDataStruct		CPExtraData;
 
-	CharacterPool = CharacterPoolManagerExtended(`CHARACTERPOOLMGR);
+	CharacterPool = CharacterPoolManagerExtended(CharacterPoolMgr);
 	CPData = UnitData.CharacterPoolDatas[IndexOfCharacter].CharacterPoolData;
 	
 	NewUnitState = CharacterPool.CreateSoldier(CPData.CharacterTemplateName);
@@ -288,13 +289,27 @@ simulated function DoImportCharacter(string FilenameForImport, int IndexOfCharac
 	//TODO: Maybe create soldier instead to attempt to salvage appearance?
 
 	// Temporarily replace the default CP file with the one we're importing from so that 'InitSoldier' can call 'LoadExtraData' and add the new extra data into its parallel array.
-	CharacterPool.UnitData = UnitData;
-	CharacterPool.InitSoldier(NewUnitState, CPData);
+
+	CharacterPool.InitSoldierOld(NewUnitState, CPData);
 	CharacterPool.CharacterPool.AddItem(NewUnitState);
 
-	CharacterPool.UnitData = none; // Empty the reference and force CP to read the default CP from disk..
-	CharacterPool.GetUnitData(); 
+	if (UnitData.LoadExtraData(NewUnitState, CPExtraData))
+	{
+	}	
+	else
+	{
+		`CPOLOG("Failed to load extra data from import CP");
+		CPExtraData.ObjectID = NewUnitState.ObjectID;
+	}
+
+	`CPOLOG("Importing" @ NewUnitState.GetFullName() @ "is uniform:" @ CPExtraData.bIsUniform @ CPExtraData.ObjectID);
+
+	// Store extra data regarding this unit in the parallel array.
+	CharacterPool.CPExtraDatas.AddItem(CPExtraData);
+
+	`CPOLOG("Is uniform before save:" @ CharacterPool.IsUnitUniform(NewUnitState) @ CharacterPool.CPExtraDatas.Length);
 	CharacterPool.SaveCharacterPool(); // ..so it can save the new unit into it.
+	`CPOLOG("Is uniform after save:" @ CharacterPool.IsUnitUniform(NewUnitState));
 }
 
 simulated function DoImportAllCharacters(string FilenameForImport)

@@ -24,6 +24,9 @@ struct CPExtendedExtraDataStruct
 	var bool bAutoManageUniform;// Universal flag. 
 								// If automatic uniform management is enabled in MCM, then if this flag is 'true', this unit will be excluded from uniform management.
 								// If automatic uniform management is disabled in MCM, then if this flag is 'true', this unit will receive uniform management.
+
+	var string SomeRandomString;
+
 };
 
 struct CPExtendedStruct

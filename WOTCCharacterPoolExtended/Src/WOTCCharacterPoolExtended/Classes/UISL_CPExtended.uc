@@ -78,7 +78,7 @@ simulated function AddButtons()
 		
 		bUnitIsUniform = CharPoolMgr.IsUnitUniform(UnitState);
 
-		`CPOLOG(UnitState.GetFullName() @ "Is uniform:" @ bUnitIsUniform);
+		//`CPOLOG(UnitState.GetFullName() @ "Is uniform:" @ bUnitIsUniform);
 
 		if (!bListItemAlreadyExists)
 		{	
@@ -155,7 +155,8 @@ simulated function AddButtons()
 
 		UpdateCustomizeMenuList(CustomizeScreen.List, bUnitIsUniform);
 	}
-	CustomizeScreen.SetTimer(0.25f, false, nameof(AddButtons), self);
+	//CustomizeScreen.SetTimer(0.25f, false, nameof(AddButtons), self); // DEBUG ONLY
+	CustomizeScreen.SetTimer(1.0f, false, nameof(AddButtons), self);
 }
 
 simulated private function OnAutoManageUniformCheckboxChanged(UICheckbox CheckBox)

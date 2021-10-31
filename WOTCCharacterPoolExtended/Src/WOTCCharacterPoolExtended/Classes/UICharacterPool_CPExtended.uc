@@ -225,6 +225,30 @@ simulated private function OnCPE_ExportButtonCallback(UIButton kButton)
 	}
 }
 
+simulated function OnButtonCallbackCreateNew()
+{
+	local XComGameState_Unit		NewSoldierState;
+	local CPExtendedExtraDataStruct	NewCPExtraData; // Added
+
+	NewSoldierState = CharacterPoolMgr.CreateSoldier('Soldier');
+
+	NewSoldierState.PoolTimestamp = class'X2StrategyGameRulesetDataStructures'.static.GetSystemDateTimeString();
+	CharacterPoolMgr.CharacterPool.AddItem(NewSoldierState);
+
+	// Added
+	NewCPExtraData.ObjectID = NewSoldierState.ObjectID;
+	CharacterPoolManagerExtended(CharacterPoolMgr).CPExtraDatas.AddItem(NewCPExtraData);
+
+
+	PC.Pres.UICustomize_Menu( NewSoldierState, none ); // If sending in 'none', needs to create this character.
+	//<workshop> CHARACTER_POOL RJM 2016/02/05
+	//WAS:
+	//CharacterPoolMgr.SaveCharacterPool();	
+	SaveCharacterPool();
+	//</workshop>
+	SelectedCharacters.Length = 0;
+}
+
 
 // Support for entering character pool from Armory
 simulated function OnCancel()

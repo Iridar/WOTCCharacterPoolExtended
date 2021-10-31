@@ -6,6 +6,8 @@ static function OnPreCreateTemplates()
 
 	LocalEngine = `XENGINE;
 	LocalEngine.m_CharacterPoolManager = new class'CharacterPoolManagerExtended';
+
+	`CPOLOG("Replacing CP manager. Num extra datas:" @ CharacterPoolManagerExtended(LocalEngine.m_CharacterPoolManager).CPExtraDatas.Length);
 }
 
 static event OnLoadedSavedGame()
@@ -16,6 +18,13 @@ static event OnLoadedSavedGame()
 static event InstallNewCampaign(XComGameState StartState)
 {
 	class'UICustomize_CPExtended'.static.SetInitialSoldierListSettings();
+
+	`CPOLOG("Num extra datas:" @ `CHARACTERPOOLMGRXTD.CPExtraDatas.Length);
+}
+
+static event OnPostTemplatesCreated()
+{
+	`CPOLOG("Num extra datas:" @ `CHARACTERPOOLMGRXTD.CPExtraDatas.Length);
 }
 
 /*

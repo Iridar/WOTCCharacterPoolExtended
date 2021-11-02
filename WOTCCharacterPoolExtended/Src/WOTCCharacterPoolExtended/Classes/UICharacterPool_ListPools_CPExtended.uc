@@ -1,5 +1,7 @@
 class UICharacterPool_ListPools_CPExtended extends UICharacterPool_ListPools;
 
+// CURRENTLY UNUSED
+
 // This screen is used for:
 // 1. Displaying the list of "extended" Character Pool files that can be imported from or exported into.
 // 2. Creating new CP files.

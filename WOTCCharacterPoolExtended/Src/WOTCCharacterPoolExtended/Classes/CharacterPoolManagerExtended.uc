@@ -1,9 +1,16 @@
 class CharacterPoolManagerExtended extends CharacterPoolManager dependson(CPUnitData);
 
-// This class is a replacement for the game's own CharacterPoolManager with some extra functions and modifications.
-// The biggest difference is that in the addition to game's own .bin CP files, we also use "extended" format
-// in the form of CPUnitData class, which also stores units' appearance store.
-// Other big difference is that we validate units' appearance (to remove broken body parts caused by removed mods)
+// This class is a replacement for the game's own CharacterPoolManager with some extra functions and modifications,
+// as well as additional information about character pool units, which will be automatically serialized (saved)
+// in the character pool files created with this mod present.
+//
+// Apparently, just adding more class variables is enough to have them saved automatically. 
+// Presumable this happens because native functions store the character pool .bin file
+// by serializing the entire CharacterPoolManager object. It has some serialization rules that prevent it from saving
+// the 'CharacterPool' array of Unit States, but there are no special rules for additional data we add here.
+// 
+// This class mostly expands existing Character Pool functions; the only change in the normal functionality is that 
+// we validate units' appearance (to remove broken body parts caused by removed mods)
 // only if the mod is configured to do so via MCM. 
 // This is done so that people's Character Pool isn't immediately broken the moment they dare to run the game with a few mods disabled.
 

@@ -1,5 +1,7 @@
 class CPUnitData extends Object;
 
+// CURRENTLY UNUSED
+
 struct CosmeticOptionStruct
 {
 	var name OptionName; // Name of the cosmetic option that's part of the TAppearance, e.g. 'nmHead'

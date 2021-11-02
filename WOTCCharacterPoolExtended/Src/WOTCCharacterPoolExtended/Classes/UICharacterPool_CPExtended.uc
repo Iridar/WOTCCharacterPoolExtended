@@ -1,9 +1,11 @@
 class UICharacterPool_CPExtended extends UICharacterPool;
 
+/*
+// Just adding a couple of buttons in a third column at the bottom of the CP screen
+
 var UIButton CPE_ImportButton;
 var UIButton CPE_ExportButton;
 
-// Just adding a couple of buttons in a third column at the bottom of the CP screen
 simulated function InitScreen(XComPlayerController InitController, UIMovie InitMovie, optional name InitName)
 {
 	local float RunningY;
@@ -144,39 +146,6 @@ simulated function InitScreen(XComPlayerController InitController, UIMovie InitM
 	}
 }
 
-simulated function array<string> GetCharacterNames()
-{
-	local array<string> CharacterNames; 
-	local int i; 
-	
-	local XComGameState_Unit Soldier;
-	local string soldierName;
-
-	CharacterPoolManagerExtended(CharacterPoolMgr).SortCharacterPoolBySoldierName();
-	CharacterPoolManagerExtended(CharacterPoolMgr).SortCharacterPoolBySoldierClass();
-	
-	for( i = 0; i < CharacterPoolMgr.CharacterPool.Length; i++ )
-	{
-		Soldier = CharacterPoolMgr.CharacterPool[i];
-
-		// Display soldier class name in front of the name.
-		if (Soldier.GetSoldierClassTemplate() != none)
-		{
-			soldierName = Soldier.GetSoldierClassTemplate().DisplayName $ ": ";
-		}
-		else soldierName = "";
-
-
-		if( Soldier.GetNickName() != "" )
-			soldierName $= Soldier.GetFirstName() @ Soldier.GetNickName() @ Soldier.GetLastName();
-		else
-			soldierName $= Soldier.GetFirstName() @ Soldier.GetLastName();
-
-		CharacterNames.AddItem(soldierName);
-	}
-	return CharacterNames; 
-}
-
 simulated function UpdateEnabledButtons()
 {
 	super.UpdateEnabledButtons();
@@ -224,7 +193,46 @@ simulated private function OnCPE_ExportButtonCallback(UIButton kButton)
 		ListPools.UpdateData(true); // Is exporting?
 	}
 }
+*/
 
+// Sort the displayed list of soldiers and display more info.
+simulated function array<string> GetCharacterNames()
+{
+	local array<string> CharacterNames; 
+	local int i; 
+	
+	local XComGameState_Unit Soldier;
+	local string soldierName;
+
+	CharacterPoolManagerExtended(CharacterPoolMgr).SortCharacterPoolBySoldierName();
+	CharacterPoolManagerExtended(CharacterPoolMgr).SortCharacterPoolBySoldierClass();
+	
+	for( i = 0; i < CharacterPoolMgr.CharacterPool.Length; i++ )
+	{
+		Soldier = CharacterPoolMgr.CharacterPool[i];
+
+		// Display soldier class name in front of the name.
+		if (Soldier.GetSoldierClassTemplate() != none)
+		{
+			soldierName = Soldier.GetSoldierClassTemplate().DisplayName $ ": ";
+		}
+		else soldierName = "";
+
+
+		if( Soldier.GetNickName() != "" )
+			soldierName $= Soldier.GetFirstName() @ Soldier.GetNickName() @ Soldier.GetLastName();
+		else
+			soldierName $= Soldier.GetFirstName() @ Soldier.GetLastName();
+
+		CharacterNames.AddItem(soldierName);
+	}
+	return CharacterNames; 
+}
+
+
+// Wanted to add some extra data about the unit and put it into parallel array, but we can't expect every mod and UI Screen to do that for us.
+// Will be handled in CreateSoldier() itself.
+/*
 simulated function OnButtonCallbackCreateNew()
 {
 	local XComGameState_Unit		NewSoldierState;
@@ -248,9 +256,10 @@ simulated function OnButtonCallbackCreateNew()
 	//</workshop>
 	SelectedCharacters.Length = 0;
 }
-
+*/
 
 // Support for entering character pool from Armory
+/*
 simulated function OnCancel()
 {
 	if (InShell())
@@ -266,4 +275,4 @@ simulated function OnCancel()
 simulated private function bool InShell()
 {
 	return XComShellPresentationLayer(Movie.Pres) != none;
-}
+}*/
